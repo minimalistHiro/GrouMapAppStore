@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAmYhGlG7yzTUd-O8DKJKr0oXmQUTbACWE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1215704250</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.groumap.groumapstore</string>
+	<key>PROJECT_ID</key>
+	<string>groumap-ea452</string>
+	<key>STORAGE_BUCKET</key>
+	<string>groumap-ea452.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1215704250:ios:0552d9f305bb59ba1f6683</string>
+</dict>
+</plist>

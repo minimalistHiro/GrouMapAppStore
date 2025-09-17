@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "1215704250",
+    "project_id": "groumap-ea452",
+    "storage_bucket": "groumap-ea452.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1215704250:android:f4d72fdc4cabc4181f6683",
+        "android_client_info": {
+          "package_name": "com.groumap.groumap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1215704250-p01g6955uhu17koi0qbur3qbi9v98ues.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhD_vjTaz-UhfHWrR56TQ9xKD-LV4I1-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1215704250-p01g6955uhu17koi0qbur3qbi9v98ues.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.groumap.groumapstore"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1215704250:android:c8e551ea622ca9361f6683",
+        "android_client_info": {
+          "package_name": "com.groumap.groumapstore"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1215704250-p01g6955uhu17koi0qbur3qbi9v98ues.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhD_vjTaz-UhfHWrR56TQ9xKD-LV4I1-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1215704250-p01g6955uhu17koi0qbur3qbi9v98ues.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.groumap.groumapstore"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
