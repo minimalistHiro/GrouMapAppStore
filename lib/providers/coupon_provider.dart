@@ -8,14 +8,20 @@ final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, S
     return FirebaseFirestore.instance
         .collection('coupons')
         .where('storeId', isEqualTo: storeId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          })
+          .toList()
+        ..sort((a, b) {
+          final aTime = a['createdAt']?.toDate() ?? DateTime(1970);
+          final bTime = b['createdAt']?.toDate() ?? DateTime(1970);
+          return bTime.compareTo(aTime); // 降順ソート
+        });
     }).handleError((error) {
       debugPrint('Error fetching store coupons: $error');
       return [];
@@ -29,19 +35,29 @@ final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, S
 // アクティブなクーポンプロバイダー
 final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
   try {
-    final now = Timestamp.now();
     return FirebaseFirestore.instance
         .collection('coupons')
         .where('storeId', isEqualTo: storeId)
-        .where('validUntil', isGreaterThan: now)
-        .orderBy('validUntil')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final now = DateTime.now();
+      return snapshot.docs
+          .where((doc) {
+            final data = doc.data();
+            final validUntil = data['validUntil']?.toDate();
+            return validUntil != null && validUntil.isAfter(now);
+          })
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          })
+          .toList()
+        ..sort((a, b) {
+          final aTime = a['createdAt']?.toDate() ?? DateTime(1970);
+          final bTime = b['createdAt']?.toDate() ?? DateTime(1970);
+          return bTime.compareTo(aTime); // 降順ソート
+        });
     }).handleError((error) {
       debugPrint('Error fetching active coupons: $error');
       return [];

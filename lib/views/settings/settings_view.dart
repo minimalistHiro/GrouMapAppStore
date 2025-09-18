@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../widgets/custom_button.dart';
+import 'store_profile_edit_view.dart';
+import 'store_location_edit_view.dart';
+import 'menu_edit_view.dart';
+import '../auth/login_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -33,8 +37,10 @@ class SettingsView extends ConsumerWidget {
                   title: '店舗プロフィール',
                   subtitle: '店舗の基本情報を編集',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('店舗プロフィール編集は準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StoreProfileEditView(),
+                      ),
                     );
                   },
                 ),
@@ -43,8 +49,22 @@ class SettingsView extends ConsumerWidget {
                   title: '店舗位置情報',
                   subtitle: '店舗の位置情報を設定',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('位置情報設定は準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StoreLocationEditView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.restaurant_menu,
+                  title: 'メニューを編集',
+                  subtitle: '店舗のメニューを管理',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const MenuEditView(),
+                      ),
                     );
                   },
                 ),
@@ -120,6 +140,12 @@ class SettingsView extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('ログアウトしました')),
+                    );
+                    
+                    // ログアウト完了後、ログイン画面に遷移
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const LoginView()),
+                      (route) => false,
                     );
                   }
                 } catch (e) {

@@ -7,6 +7,12 @@ import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
 import 'feedback/feedback_send_view.dart';
 import 'feedback/feedback_manage_view.dart';
+import 'posts/create_post_view.dart';
+import 'coupons/create_coupon_view.dart';
+import 'posts/posts_manage_view.dart';
+import 'coupons/coupons_manage_view.dart';
+import 'stores/pending_stores_view.dart';
+import 'points/points_history_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -75,6 +81,11 @@ class HomeView extends ConsumerWidget {
               
               // QRスキャンボタン
               _buildQRScanButton(context, ref, storeId),
+              
+              const SizedBox(height: 16),
+              
+              // 新規作成ボタン
+              _buildCreateButtons(context, ref, storeId),
               
               const SizedBox(height: 24),
               
@@ -155,7 +166,7 @@ class HomeView extends ConsumerWidget {
             },
             child: Container(
               width: double.infinity,
-              height: 110,
+              height: 115,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF6B35), Color(0xFFFF8A65)],
@@ -425,13 +436,11 @@ class HomeView extends ConsumerWidget {
 
   Widget _buildStoreMenuGrid(BuildContext context, WidgetRef ref, String storeId) {
     final menuItems = [
-      {'icon': Icons.point_of_sale, 'label': 'ポイント発行履歴'},
-      {'icon': Icons.shopping_cart, 'label': 'ポイント利用履歴'},
+      {'icon': Icons.history, 'label': 'ポイント履歴'},
       {'icon': Icons.local_offer, 'label': 'クーポン管理'},
       {'icon': Icons.article, 'label': '投稿管理'},
       {'icon': Icons.analytics, 'label': '顧客分析'},
       {'icon': Icons.trending_up, 'label': '売上データ'},
-      {'icon': Icons.people, 'label': 'スタッフ管理'},
       {'icon': Icons.business, 'label': 'プラン・契約情報'},
       {'icon': Icons.notifications, 'label': '運営からのお知らせ'},
       {'icon': Icons.feedback, 'label': 'フィードバック送信'},
@@ -458,19 +467,7 @@ class HomeView extends ConsumerWidget {
             final itemHeight = 100.0; // 固定の高さを使用
             final aspectRatio = constraints.maxWidth / (itemHeight * 2); // 4列なので2倍
             
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '店舗管理メニュー',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
+            return GridView.count(
                   crossAxisCount: 4,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -484,11 +481,124 @@ class HomeView extends ConsumerWidget {
                     iconSize: iconSize,
                     fontSize: fontSize,
                   )).toList(),
-                ),
-              ],
-            );
+                );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildCreateButtons(BuildContext context, WidgetRef ref, String storeId) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          // 新規投稿を作成
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CreatePostView(),
+                  ),
+                );
+              },
+              child: Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF4CAF50).withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.post_add,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '新規投稿を作成',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // 新規クーポンを作成
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CreateCouponView(),
+                  ),
+                );
+              },
+              child: Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2196F3), Color(0xFF42A5F5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2196F3).withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.card_giftcard,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '新規クーポンを作成',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -507,6 +617,30 @@ class HomeView extends ConsumerWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const FeedbackManageView(),
+            ),
+          );
+        } else if (title == '投稿管理') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const PostsManageView(),
+            ),
+          );
+        } else if (title == 'クーポン管理') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const CouponsManageView(),
+            ),
+          );
+        } else if (title == '未承認店舗一覧') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const PendingStoresView(),
+            ),
+          );
+        } else if (title == 'ポイント履歴') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const PointsHistoryView(),
             ),
           );
         } else {
@@ -528,7 +662,7 @@ class HomeView extends ConsumerWidget {
                 color: const Color(0xFFFF6B35),
               ),
             ),
-            SizedBox(height: (iconSize ?? 24) * 0.15),
+            SizedBox(height: (iconSize ?? 24) * 0.3),
             Flexible(
               child: Text(
                 title,

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'store_info_view.dart';
+import 'approval_pending_view.dart';
+import '../main_navigation_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
   const LoginView({Key? key}) : super(key: key);
@@ -46,7 +49,9 @@ class _LoginViewState extends ConsumerState<LoginView> {
             backgroundColor: Colors.green,
           ),
         );
-        // ログイン成功時は自動的にホーム画面に遷移
+        
+        // 承認状況をチェックして適切な画面に遷移
+        await _checkApprovalAndNavigate();
       }
     } catch (e) {
       if (mounted) {
@@ -74,6 +79,64 @@ class _LoginViewState extends ConsumerState<LoginView> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _checkApprovalAndNavigate() async {
+    try {
+      // 店舗IDを取得
+      final userStoreIdAsync = ref.read(userStoreIdProvider);
+      final storeId = userStoreIdAsync.when(
+        data: (data) => data,
+        loading: () => null,
+        error: (error, stackTrace) => null,
+      );
+
+      if (storeId == null) {
+        // 店舗情報がない場合は承認待ち画面に遷移
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+          (route) => false,
+        );
+        return;
+      }
+
+      // 店舗の承認状況を確認
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get();
+
+      if (storeDoc.exists) {
+        final storeData = storeDoc.data()!;
+        final isApproved = storeData['isApproved'] ?? false;
+
+        if (isApproved) {
+          // 承認済みの場合は直接ホーム画面に遷移
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainNavigationView()),
+            (route) => false,
+          );
+        } else {
+          // 未承認の場合は承認待ち画面に遷移
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+            (route) => false,
+          );
+        }
+      } else {
+        // 店舗情報が見つからない場合は承認待ち画面に遷移
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      // エラーの場合は承認待ち画面に遷移
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+        (route) => false,
+      );
     }
   }
 
