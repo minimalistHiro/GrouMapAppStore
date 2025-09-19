@@ -110,66 +110,25 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
   }
 
   Widget _buildPointsIssuedHistory() {
-    if (_selectedStoreId == null) {
-      return const Center(
-        child: Text('店舗情報が見つかりません'),
-      );
-    }
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('point_transactions')
-          .where('storeId', isEqualTo: _selectedStoreId)
-          .where('paymentMethod', isEqualTo: 'points')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('エラーが発生しました: ${snapshot.error}'),
-          );
-        }
-
-        final points = snapshot.data?.docs ?? [];
-
-        if (points.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.point_of_sale,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'ポイント発行履歴がありません',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.point_of_sale,
+            size: 64,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'ポイント発行履歴は現在利用できません',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
             ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: points.length,
-          itemBuilder: (context, index) {
-            final point = points[index].data() as Map<String, dynamic>;
-            return _buildPointIssuedCard(point);
-          },
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
@@ -184,8 +143,6 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
       stream: FirebaseFirestore.instance
           .collection('point_transactions')
           .where('storeId', isEqualTo: _selectedStoreId)
-          .where('description', isEqualTo: 'ポイント支払い')
-          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -200,7 +157,30 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
           );
         }
 
-        final points = snapshot.data?.docs ?? [];
+        final allPoints = snapshot.data?.docs ?? [];
+        
+        // ポイント利用履歴をフィルタリング（descriptionが「ポイント支払い」のデータ）
+        final points = allPoints.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final storeId = data['storeId'] ?? '';
+          final description = data['description'] ?? '';
+          return storeId == _selectedStoreId && description == 'ポイント支払い';
+        }).toList();
+        
+        // 作成日時でソート（降順）
+        points.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTimeStr = aData['createdAt']?.toString() ?? '';
+          final bTimeStr = bData['createdAt']?.toString() ?? '';
+          
+          if (aTimeStr.isEmpty && bTimeStr.isEmpty) return 0;
+          if (aTimeStr.isEmpty) return 1;
+          if (bTimeStr.isEmpty) return -1;
+          
+          // 文字列として比較（ISO 8601形式なので文字列比較で正しくソートされる）
+          return bTimeStr.compareTo(aTimeStr);
+        });
 
         if (points.isEmpty) {
           return const Center(
@@ -329,6 +309,9 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
   }
 
   Widget _buildPointUsedCard(Map<String, dynamic> point) {
+    final amount = point['amount'] ?? 0;
+    final usedAmount = amount; // 正の値のまま使用
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -370,7 +353,7 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${point['amount'] ?? 0}ポイント利用',
+                    '${usedAmount}ポイント利用',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.red,
@@ -405,7 +388,7 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '-${point['amount'] ?? 0}',
+                '-$usedAmount',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -423,7 +406,19 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
     if (timestamp == null) return '日時不明';
     
     try {
-      final date = timestamp is DateTime ? timestamp : timestamp.toDate();
+      DateTime date;
+      
+      if (timestamp is DateTime) {
+        date = timestamp;
+      } else if (timestamp is Timestamp) {
+        date = timestamp.toDate();
+      } else if (timestamp is String) {
+        // ISO 8601形式の文字列をパース
+        date = DateTime.parse(timestamp);
+      } else {
+        return '日時不明';
+      }
+      
       final now = DateTime.now();
       final difference = now.difference(date);
       
@@ -437,6 +432,7 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
         return 'たった今';
       }
     } catch (e) {
+      print('日時フォーマットエラー: $e, timestamp: $timestamp');
       return '日時不明';
     }
   }

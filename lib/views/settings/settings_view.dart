@@ -6,6 +6,7 @@ import '../../widgets/custom_button.dart';
 import 'store_profile_edit_view.dart';
 import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
+import 'store_settings_view.dart';
 import '../auth/login_view.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -77,6 +78,18 @@ class SettingsView extends ConsumerWidget {
             _buildSection(
               title: 'アプリ設定',
               children: [
+                _buildSettingsItem(
+                  icon: Icons.qr_code,
+                  title: 'QRコード設定',
+                  subtitle: '店舗IDとQR検証設定',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StoreSettingsView(),
+                      ),
+                    );
+                  },
+                ),
                 _buildSettingsItem(
                   icon: Icons.notifications,
                   title: '通知設定',

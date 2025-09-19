@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'store_info_view.dart';
@@ -84,22 +85,42 @@ class _LoginViewState extends ConsumerState<LoginView> {
 
   Future<void> _checkApprovalAndNavigate() async {
     try {
-      // 店舗IDを取得
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
-        data: (data) => data,
-        loading: () => null,
-        error: (error, stackTrace) => null,
-      );
-
-      if (storeId == null) {
-        // 店舗情報がない場合は承認待ち画面に遷移
+      // 現在のユーザーを取得
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
           (route) => false,
         );
         return;
       }
+
+      // ユーザーの店舗IDを直接取得
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+          (route) => false,
+        );
+        return;
+      }
+
+      final userData = userDoc.data()!;
+      final createdStores = userData['createdStores'] as List<dynamic>?;
+      
+      if (createdStores == null || createdStores.isEmpty) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+          (route) => false,
+        );
+        return;
+      }
+
+      final storeId = createdStores.first as String;
 
       // 店舗の承認状況を確認
       final storeDoc = await FirebaseFirestore.instance

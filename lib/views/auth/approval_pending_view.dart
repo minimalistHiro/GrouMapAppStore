@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../providers/auth_provider.dart';
 import '../main_navigation_view.dart';
 
 class ApprovalPendingView extends ConsumerStatefulWidget {
@@ -34,20 +33,30 @@ class _ApprovalPendingViewState extends ConsumerState<ApprovalPendingView> {
         return;
       }
 
-      // 店舗IDを取得
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
-        data: (data) => data,
-        loading: () => null,
-        error: (error, stackTrace) => null,
-      );
+      // ユーザーの店舗IDを直接取得
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-      if (storeId == null) {
+      if (!userDoc.exists) {
         setState(() {
           _isChecking = false;
         });
         return;
       }
+
+      final userData = userDoc.data()!;
+      final createdStores = userData['createdStores'] as List<dynamic>?;
+      
+      if (createdStores == null || createdStores.isEmpty) {
+        setState(() {
+          _isChecking = false;
+        });
+        return;
+      }
+
+      final storeId = createdStores.first as String;
 
       // 店舗の承認状況を確認
       final storeDoc = await FirebaseFirestore.instance

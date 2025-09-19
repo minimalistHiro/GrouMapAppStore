@@ -13,6 +13,9 @@ import 'posts/posts_manage_view.dart';
 import 'coupons/coupons_manage_view.dart';
 import 'stores/pending_stores_view.dart';
 import 'points/points_history_view.dart';
+import 'notifications/notifications_view.dart';
+import 'notifications/create_announcement_view.dart';
+import 'qr/qr_scanner_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -132,17 +135,19 @@ class HomeView extends ConsumerWidget {
           
           const Spacer(),
           
-          // 右側：設定ボタン
+          // 右側：お知らせボタン
           IconButton(
             icon: const Icon(
-              Icons.settings_outlined,
+              Icons.notifications_outlined,
               size: 28,
               color: Colors.black87,
             ),
             onPressed: () {
-              // 設定画面に遷移
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('設定画面は準備中です')),
+              // お知らせ画面に遷移
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsView(),
+                ),
               );
             },
           ),
@@ -160,8 +165,10 @@ class HomeView extends ConsumerWidget {
           GestureDetector(
             onTap: () {
               // QRスキャン画面に遷移
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('QRスキャン機能は準備中です')),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const QRScannerView(),
+                ),
               );
             },
             child: Container(
@@ -442,10 +449,10 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.analytics, 'label': '顧客分析'},
       {'icon': Icons.trending_up, 'label': '売上データ'},
       {'icon': Icons.business, 'label': 'プラン・契約情報'},
-      {'icon': Icons.notifications, 'label': '運営からのお知らせ'},
       {'icon': Icons.feedback, 'label': 'フィードバック送信'},
       {'icon': Icons.storefront, 'label': '未承認店舗一覧'},
       {'icon': Icons.manage_accounts, 'label': 'フィードバック管理'},
+      {'icon': Icons.announcement, 'label': 'お知らせ作成'},
     ];
 
     return Container(
@@ -641,6 +648,12 @@ class HomeView extends ConsumerWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const PointsHistoryView(),
+            ),
+          );
+        } else if (title == 'お知らせ作成') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const CreateAnnouncementView(),
             ),
           );
         } else {
