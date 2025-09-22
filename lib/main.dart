@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'views/main_navigation_view.dart';
 
 void main() async {
@@ -18,6 +19,16 @@ void main() async {
       measurementId: "G-GG612PT6HQ",
     ),
   );
+  
+  // Firebase Emulator設定（開発環境のみ）
+  if (const bool.fromEnvironment('dart.vm.product') == false) {
+    try {
+      FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+      print('Firebase Emulator設定完了: localhost:5001');
+    } catch (e) {
+      print('Firebase Emulator設定エラー: $e');
+    }
+  }
   
   runApp(
     const ProviderScope(

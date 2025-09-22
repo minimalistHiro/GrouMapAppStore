@@ -27,8 +27,8 @@ class HomeView extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user != null) {
-          // ログイン済みの場合は店舗ホーム画面を表示
-          return _buildStoreHomeContent(context, ref, user.uid);
+          // ログイン済みの場合は店舗IDを取得して店舗ホーム画面を表示
+          return _buildStoreHomeContent(context, ref);
         } else {
           // 未ログインの場合はログイン画面を表示
           return const LoginView();
@@ -70,35 +70,113 @@ class HomeView extends ConsumerWidget {
     );
   }
 
-  Widget _buildStoreHomeContent(BuildContext context, WidgetRef ref, String storeId) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: SingleChildScrollView(
+  Widget _buildStoreHomeContent(BuildContext context, WidgetRef ref) {
+    final storeIdAsync = ref.watch(userStoreIdProvider);
+    
+    return storeIdAsync.when(
+      data: (storeId) {
+        if (storeId == null) {
+          return Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.store,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '店舗が設定されていません',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '設定画面から店舗を選択してください',
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        return Scaffold(
+          backgroundColor: Colors.grey[50],
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // ヘッダー部分
+                  _buildHeader(context, ref, storeId),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // QRスキャンボタン
+                  _buildQRScanButton(context, ref, storeId),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // 新規作成ボタン
+                  _buildCreateButtons(context, ref, storeId),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // 統計カード部分
+                  _buildStatsCard(context, ref, storeId),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // その他のコンテンツ
+                  _buildAdditionalContent(context, ref, storeId),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: Center(
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ヘッダー部分
-              _buildHeader(context, ref, storeId),
-              
-              const SizedBox(height: 24),
-              
-              // QRスキャンボタン
-              _buildQRScanButton(context, ref, storeId),
-              
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
+              ),
               const SizedBox(height: 16),
-              
-              // 新規作成ボタン
-              _buildCreateButtons(context, ref, storeId),
-              
+              Text(
+                '店舗情報の取得に失敗しました',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error.toString(),
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
-              
-              // 統計カード部分
-              _buildStatsCard(context, ref, storeId),
-              
-              const SizedBox(height: 24),
-              
-              // その他のコンテンツ
-              _buildAdditionalContent(context, ref, storeId),
+              CustomButton(
+                text: '再試行',
+                onPressed: () {
+                  ref.invalidate(userStoreIdProvider);
+                },
+              ),
             ],
           ),
         ),
@@ -446,8 +524,6 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.history, 'label': 'ポイント履歴'},
       {'icon': Icons.local_offer, 'label': 'クーポン管理'},
       {'icon': Icons.article, 'label': '投稿管理'},
-      {'icon': Icons.analytics, 'label': '顧客分析'},
-      {'icon': Icons.trending_up, 'label': '売上データ'},
       {'icon': Icons.business, 'label': 'プラン・契約情報'},
       {'icon': Icons.feedback, 'label': 'フィードバック送信'},
       {'icon': Icons.storefront, 'label': '未承認店舗一覧'},

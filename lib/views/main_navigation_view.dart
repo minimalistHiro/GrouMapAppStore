@@ -43,11 +43,20 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     await authState.when(
       data: (user) async {
         if (user != null) {
-          // ログイン済みの場合、必要なデータを並列で読み込み
-          await Future.wait([
-            _loadStoreData(user.uid),
-            _loadCouponData(user.uid),
-          ]);
+          // ログイン済みの場合、店舗IDを取得してデータを読み込み
+          final storeIdAsync = ref.read(userStoreIdProvider);
+          await storeIdAsync.when(
+            data: (storeId) async {
+              if (storeId != null) {
+                await Future.wait([
+                  _loadStoreData(storeId),
+                  _loadCouponData(storeId),
+                ]);
+              }
+            },
+            loading: () async {},
+            error: (error, _) async {},
+          );
         }
       },
       loading: () async {},
@@ -95,23 +104,33 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
       data: (user) async {
         if (user == null) return;
 
-        switch (tabIndex) {
-          case 0: // ホーム
-            await _loadHomeData(user.uid);
-            break;
-          case 1: // 分析
-            await _loadAnalyticsData(user.uid);
-            break;
-          case 2: // QRスキャナー
-            // QRスキャナーは特別なデータ読み込み不要
-            break;
-          case 3: // クーポン管理
-            await _loadCouponManagementData(user.uid);
-            break;
-          case 4: // 設定
-            await _loadSettingsData(user.uid);
-            break;
-        }
+        // 店舗IDを取得
+        final storeIdAsync = ref.read(userStoreIdProvider);
+        await storeIdAsync.when(
+          data: (storeId) async {
+            if (storeId == null) return;
+
+            switch (tabIndex) {
+              case 0: // ホーム
+                await _loadHomeData(storeId);
+                break;
+              case 1: // 分析
+                await _loadAnalyticsData(storeId);
+                break;
+              case 2: // QRスキャナー
+                // QRスキャナーは特別なデータ読み込み不要
+                break;
+              case 3: // クーポン管理
+                await _loadCouponManagementData(storeId);
+                break;
+              case 4: // 設定
+                await _loadSettingsData(storeId);
+                break;
+            }
+          },
+          loading: () async {},
+          error: (error, _) async {},
+        );
       },
       loading: () async {},
       error: (error, _) async {},

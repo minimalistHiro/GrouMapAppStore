@@ -23,7 +23,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
 
-// 現在のユーザーの店舗IDを取得するプロバイダー
+// 現在のユーザーの店舗IDを取得するプロバイダー（現在選択中の店舗を優先）
 final userStoreIdProvider = StreamProvider<String?>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(null);
@@ -35,6 +35,12 @@ final userStoreIdProvider = StreamProvider<String?>((ref) {
       .map((snapshot) {
     if (snapshot.exists) {
       final data = snapshot.data();
+      // 現在選択中の店舗IDを優先
+      final currentStoreId = data?['currentStoreId'] as String?;
+      if (currentStoreId != null) {
+        return currentStoreId;
+      }
+      // 選択中の店舗がない場合は、作成した店舗の最初のものを返す
       final createdStores = data?['createdStores'] as List<dynamic>?;
       if (createdStores != null && createdStores.isNotEmpty) {
         return createdStores.first as String;
@@ -44,6 +50,30 @@ final userStoreIdProvider = StreamProvider<String?>((ref) {
   }).handleError((error) {
     debugPrint('Error fetching user store ID: $error');
     return null;
+  });
+});
+
+// ユーザーが作成した店舗リストを取得するプロバイダー
+final userCreatedStoresProvider = StreamProvider<List<String>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+  
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .snapshots()
+      .map((snapshot) {
+    if (snapshot.exists) {
+      final data = snapshot.data();
+      final createdStores = data?['createdStores'] as List<dynamic>?;
+      if (createdStores != null) {
+        return createdStores.cast<String>();
+      }
+    }
+    return <String>[];
+  }).handleError((error) {
+    debugPrint('Error fetching user created stores: $error');
+    return <String>[];
   });
 });
 

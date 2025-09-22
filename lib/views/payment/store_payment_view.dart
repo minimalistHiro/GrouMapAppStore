@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/payment_provider.dart';
+import '../../providers/point_request_provider.dart';
+import '../../models/point_request_model.dart';
 
 class StorePaymentView extends ConsumerStatefulWidget {
   final String userId;
@@ -20,11 +22,209 @@ class StorePaymentView extends ConsumerStatefulWidget {
 class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   String _amount = '0';
   bool _isProcessing = false;
+  String _actualUserName = 'お客様';
+  bool _isLoadingUserInfo = true;
+  String? _profileImageUrl;
+  String _storeName = '店舗名';
+  bool _isLoadingStoreInfo = true;
+  String? _currentRequestId;
 
   @override
   void initState() {
     super.initState();
-    print('StorePaymentView: 初期化完了 - userId: ${widget.userId}, userName: ${widget.userName}');
+    print('StorePaymentView: 初期化完了 - userId: ${widget.userId}, userName: ${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}');
+    _loadUserInfo();
+    _loadStoreInfo();
+  }
+
+  /// ユーザー情報を読み込み
+  Future<void> _loadUserInfo() async {
+    try {
+      print('ユーザー情報取得開始: userId=${widget.userId}');
+      
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+
+      if (userDoc.exists && mounted) {
+        final userData = userDoc.data()!;
+        print('ユーザーデータ取得: $userData');
+        
+        // 安全にデータを取得
+        String displayName = 'お客様'; // デフォルト値
+        
+        // displayNameを安全に取得
+        if (userData.containsKey('displayName') && userData['displayName'] is String) {
+          displayName = userData['displayName'] as String;
+        } else if (userData.containsKey('email') && userData['email'] is String) {
+          displayName = userData['email'] as String;
+        } else if (userData.containsKey('name') && userData['name'] is String) {
+          displayName = userData['name'] as String;
+        }
+        
+        // 空文字列の場合はデフォルト値を使用
+        if (displayName.isEmpty) {
+          displayName = 'お客様';
+        }
+        
+        // プロフィール画像URLを取得
+        String? profileImageUrl;
+        if (userData.containsKey('profileImageUrl') && userData['profileImageUrl'] is String) {
+          profileImageUrl = userData['profileImageUrl'] as String;
+        }
+        
+        setState(() {
+          _actualUserName = displayName;
+          _profileImageUrl = profileImageUrl;
+          _isLoadingUserInfo = false;
+        });
+        
+        print('ユーザー情報を取得しました: $displayName');
+      } else {
+        print('ユーザードキュメントが存在しません');
+        setState(() {
+          _actualUserName = 'お客様';
+          _isLoadingUserInfo = false;
+        });
+      }
+    } catch (e) {
+      print('ユーザー情報取得エラー: $e');
+      print('エラーの詳細: ${e.toString()}');
+      
+      if (mounted) {
+        setState(() {
+          _actualUserName = 'お客様';
+          _isLoadingUserInfo = false;
+        });
+      }
+    }
+  }
+
+  /// 店舗情報を読み込み
+  Future<void> _loadStoreInfo() async {
+    try {
+      print('店舗情報取得開始');
+      
+      // 現在の店舗ユーザーを取得
+      final authState = ref.read(authStateProvider);
+      final storeUser = authState.value;
+      
+      if (storeUser == null) {
+        print('店舗ユーザーが認証されていません');
+        setState(() {
+          _storeName = '未認証店舗';
+          _isLoadingStoreInfo = false;
+        });
+        return;
+      }
+
+      print('店舗ユーザーID: ${storeUser.uid}');
+      
+      // 現在選択中の店舗IDを取得
+      final storeIdAsync = ref.read(userStoreIdProvider);
+      await storeIdAsync.when(
+        data: (currentStoreId) async {
+          if (currentStoreId == null) {
+            print('現在選択中の店舗がありません');
+            setState(() {
+              _storeName = '店舗未選択';
+              _isLoadingStoreInfo = false;
+            });
+            return;
+          }
+
+          print('現在選択中の店舗ID: $currentStoreId');
+          
+          // 選択中の店舗の情報を取得
+          final storeDoc = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(currentStoreId)
+              .get();
+
+          if (storeDoc.exists && mounted) {
+            final storeData = storeDoc.data()!;
+            print('店舗データ取得: $storeData');
+            
+            // 店舗名を安全に取得
+            String storeName = '店舗名';
+            if (storeData.containsKey('name') && storeData['name'] is String) {
+              storeName = storeData['name'] as String;
+            } else if (storeData.containsKey('storeName') && storeData['storeName'] is String) {
+              storeName = storeData['storeName'] as String;
+            }
+            
+            setState(() {
+              _storeName = storeName;
+              _isLoadingStoreInfo = false;
+            });
+            
+            print('店舗情報を取得しました: $storeName');
+            return;
+          }
+          
+          // storesコレクションにない場合は、usersコレクションで店舗情報を検索
+          print('storesコレクションに店舗が見つからないため、usersコレクションで検索');
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(storeUser.uid)
+              .get();
+
+          if (userDoc.exists && mounted) {
+            final userData = userDoc.data()!;
+            print('ユーザーデータから店舗情報を取得: $userData');
+            
+            // ユーザーデータから店舗名を取得
+            String storeName = '店舗名';
+            if (userData.containsKey('displayName') && userData['displayName'] is String) {
+              storeName = '${userData['displayName']}店';
+            } else if (userData.containsKey('email') && userData['email'] is String) {
+              final email = userData['email'] as String;
+              storeName = '${email.split('@')[0]}店';
+            }
+            
+            setState(() {
+              _storeName = storeName;
+              _isLoadingStoreInfo = false;
+            });
+            
+            print('ユーザーデータから店舗情報を取得しました: $storeName');
+            return;
+          }
+          
+          // どちらにも見つからない場合
+          print('店舗ドキュメントが存在しません');
+          setState(() {
+            _storeName = '店舗名未設定';
+            _isLoadingStoreInfo = false;
+          });
+        },
+        loading: () async {
+          print('店舗ID取得中...');
+          setState(() {
+            _storeName = '店舗情報読み込み中...';
+            _isLoadingStoreInfo = true;
+          });
+        },
+        error: (error, _) async {
+          print('店舗ID取得エラー: $error');
+          setState(() {
+            _storeName = '店舗情報取得エラー';
+            _isLoadingStoreInfo = false;
+          });
+        },
+      );
+    } catch (e) {
+      print('店舗情報取得エラー: $e');
+      print('エラーの詳細: ${e.toString()}');
+      
+      if (mounted) {
+        setState(() {
+          _storeName = 'エラー';
+          _isLoadingStoreInfo = false;
+        });
+      }
+    }
   }
 
   void _onNumberPressed(String number) {
@@ -53,7 +253,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     });
   }
 
-  void _onPayPressed() {
+  void _onPointAwardPressed() {
     final amount = int.tryParse(_amount);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,37 +265,51 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
       return;
     }
 
-    _showPaymentConfirmation(amount);
+    _showPointAwardConfirmation(amount);
   }
 
-  void _showPaymentConfirmation(int amount) {
+  void _showPointAwardConfirmation(int amount) {
+    final pointsToAward = amount ~/ 100;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('支払い確認'),
+        title: const Text('ポイント付与確認'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.payment, size: 64, color: Color(0xFFFF6B35)),
+            const Icon(Icons.stars, size: 64, color: Color(0xFFFF6B35)),
             const SizedBox(height: 16),
-            Text('${widget.userName}さん'),
+            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
             const SizedBox(height: 8),
-            Text('${amount.toString()}円を支払いますか？'),
-            const SizedBox(height: 16),
+            Text('${amount.toString()}円分のポイント付与をリクエストしますか？'),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: Colors.blue[200]!),
               ),
-              child: const Text(
-                '支払い後、お客様にポイントを付与します',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.orange,
-                ),
-                textAlign: TextAlign.center,
+              child: Column(
+                children: [
+                  Text(
+                    '付与予定ポイント: ${pointsToAward}pt',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'お客様の確認が必要です',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -108,20 +322,20 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _processPayment(amount);
+              _createPointRequest(amount, pointsToAward);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B35),
               foregroundColor: Colors.white,
             ),
-            child: const Text('支払い処理'),
+            child: const Text('リクエスト送信'),
           ),
         ],
       ),
     );
   }
 
-  void _processPayment(int amount) async {
+  void _createPointRequest(int amount, int pointsToAward) async {
     setState(() {
       _isProcessing = true;
     });
@@ -134,39 +348,46 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         throw Exception('店舗の認証情報が取得できませんでした');
       }
 
-      // 支払い処理を実行
-      final paymentNotifier = ref.read(paymentProvider.notifier);
-      final result = await paymentNotifier.processPayment(
+      // 現在選択中の店舗IDを取得
+      final storeIdAsync = ref.read(userStoreIdProvider);
+      final currentStoreId = storeIdAsync.value;
+      
+      if (currentStoreId == null) {
+        throw Exception('現在選択中の店舗がありません');
+      }
+
+      print('ポイント付与リクエスト作成開始: userId=${widget.userId}, storeId=$currentStoreId, amount=$amount, points=$pointsToAward');
+
+      // ポイント付与リクエストを作成
+      final requestNotifier = ref.read(pointRequestProvider.notifier);
+      final requestId = await requestNotifier.createPointRequest(
         userId: widget.userId,
-        storeId: storeUser.uid,
+        storeId: currentStoreId,
+        storeName: _storeName,
         amount: amount,
-        paymentMethod: 'cash',
-        description: '現金支払い',
+        pointsToAward: pointsToAward,
+        description: '店舗からのポイント付与リクエスト',
       );
 
-      if (result.isSuccess) {
-        // 成功時の処理
+      if (requestId != null) {
+        setState(() {
+          _currentRequestId = requestId;
+        });
+        
         if (mounted) {
-          _showSuccessDialog(amount, result);
+          _showRequestSentDialog(amount, pointsToAward);
         }
       } else {
-        // エラー時の処理
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.error ?? '支払い処理に失敗しました'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
+        throw Exception('ポイント付与リクエストの作成に失敗しました');
       }
     } catch (e) {
-      print('支払い処理エラー: $e');
+      print('ポイント付与リクエスト作成エラー: $e');
+      print('エラーの詳細: ${e.toString()}');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('支払い処理に失敗しました: $e'),
+            content: Text('ポイント付与リクエストの作成に失敗しました: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -181,20 +402,87 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     }
   }
 
-  void _showSuccessDialog(int amount, PaymentResult result) {
+
+  void _showRequestSentDialog(int amount, int pointsToAward) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('リクエスト送信完了'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.send, size: 64, color: Colors.blue),
+            const SizedBox(height: 16),
+            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
+            const SizedBox(height: 8),
+            Text(
+              'ポイント付与リクエストを送信しました',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '付与予定ポイント: ${pointsToAward}pt',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: const Text(
+                'お客様の確認をお待ちしています\n確認後、ポイントが付与されます',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // ホーム画面に戻る
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('完了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRequestAcceptedDialog(PointRequest request) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('支払い完了'),
+        title: const Text('ポイント付与完了'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.check_circle, size: 64, color: Colors.green),
             const SizedBox(height: 16),
-            Text('${widget.userName}さん'),
+            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
             const SizedBox(height: 8),
             Text(
-              '${amount.toString()}円の支払いが完了しました！',
+              'ポイント付与が完了しました！',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -203,7 +491,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
             ),
             const SizedBox(height: 8),
             Text(
-              '付与ポイント: ${result.pointsAwarded}pt',
+              '付与ポイント: ${request.pointsToAward}pt',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -218,7 +506,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
                 border: Border.all(color: Colors.green[200]!),
               ),
               child: Text(
-                'お客様のポイントが正常に更新されました\n取引ID: ${result.transactionId}',
+                'お客様のポイントが正常に更新されました\nリクエストID: ${request.id}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.green,
@@ -254,12 +542,118 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     );
   }
 
+  void _showRequestRejectedDialog(PointRequest request) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ポイント付与拒否'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cancel, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
+            const SizedBox(height: 8),
+            Text(
+              'ポイント付与が拒否されました',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+            if (request.rejectionReason != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                '理由: ${request.rejectionReason}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: const Text(
+                'お客様がポイント付与を拒否しました\nリクエストはキャンセルされました',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // ホーム画面に戻る
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('完了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // リクエストの状態を監視
+    if (_currentRequestId != null) {
+      ref.listen<AsyncValue<PointRequest?>>(
+        pointRequestStatusProvider(_currentRequestId!),
+        (previous, next) {
+          next.when(
+            data: (request) {
+              if (request != null) {
+                if (request.status == PointRequestStatus.accepted.value) {
+                  _showRequestAcceptedDialog(request);
+                } else if (request.status == PointRequestStatus.rejected.value) {
+                  _showRequestRejectedDialog(request);
+                }
+              }
+            },
+            loading: () {},
+            error: (error, _) {
+              print('リクエスト状態監視エラー: $error');
+            },
+          );
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('支払い金額入力'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('支払い金額入力'),
+            if (_isLoadingStoreInfo)
+              const Text(
+                '店舗情報読み込み中...',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              )
+            else
+              Text(
+                _storeName,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              ),
+          ],
+        ),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -308,17 +702,48 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               color: const Color(0xFFFF6B35),
               borderRadius: BorderRadius.circular(30),
             ),
-            child: Center(
-              child: Text(
-                widget.userName.isNotEmpty 
-                    ? widget.userName.substring(0, 1).toUpperCase()
-                    : '客',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: _isLoadingUserInfo
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                      ? Image.network(
+                          _profileImageUrl!,
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Text(
+                                _actualUserName.isNotEmpty 
+                                    ? _actualUserName.substring(0, 1).toUpperCase()
+                                    : '客',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            _actualUserName.isNotEmpty 
+                                ? _actualUserName.substring(0, 1).toUpperCase()
+                                : '客',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
             ),
           ),
           const SizedBox(width: 16),
@@ -328,7 +753,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.userName.isNotEmpty ? widget.userName : 'お客様',
+                  _isLoadingUserInfo ? '読み込み中...' : _actualUserName,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -448,13 +873,13 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               ],
             ),
           ),
-          // 支払いボタン
+          // ポイント付与確認ボタン
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 60,
             child: ElevatedButton(
-              onPressed: _isProcessing ? null : _onPayPressed,
+              onPressed: _isProcessing ? null : _onPointAwardPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF6B35),
                 foregroundColor: Colors.white,
@@ -466,7 +891,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               child: _isProcessing
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text(
-                      '支払い処理',
+                      'ポイント付与確認',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

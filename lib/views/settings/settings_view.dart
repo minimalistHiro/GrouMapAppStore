@@ -7,6 +7,7 @@ import 'store_profile_edit_view.dart';
 import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
 import 'store_settings_view.dart';
+import 'store_selection_view.dart';
 import '../auth/login_view.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -119,6 +120,18 @@ class SettingsView extends ConsumerWidget {
             _buildSection(
               title: 'アカウント',
               children: [
+                _buildSettingsItem(
+                  icon: Icons.storefront,
+                  title: '店舗を切り替える',
+                  subtitle: '管理する店舗を選択',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StoreSelectionView(),
+                      ),
+                    );
+                  },
+                ),
                 _buildSettingsItem(
                   icon: Icons.help_outline,
                   title: 'ヘルプ・サポート',

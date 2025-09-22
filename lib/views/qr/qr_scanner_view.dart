@@ -224,54 +224,91 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     final storeSettings = ref.read(storeSettingsProvider);
     if (storeSettings != null) return; // 既に設定済み
 
-    // 認証ユーザーから店舗IDを取得
-    final authState = ref.read(authStateProvider);
-    await authState.when(
-      data: (user) async {
-        if (user != null) {
-          try {
-            // ユーザーの店舗IDを取得
-            final userDoc = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get();
-            
-            if (userDoc.exists) {
-              final userData = userDoc.data()!;
-              final createdStores = userData['createdStores'] as List<dynamic>?;
-              if (createdStores != null && createdStores.isNotEmpty) {
-                final storeId = createdStores.first as String;
-                
-                // 店舗情報を取得
-                final storeDoc = await FirebaseFirestore.instance
-                    .collection('stores')
-                    .doc(storeId)
-                    .get();
-                
-                if (storeDoc.exists) {
-                  final storeData = storeDoc.data()!;
-                  final settings = StoreSettings(
-                    storeId: storeId,
-                    storeName: storeData['name'] ?? '店舗',
-                    description: storeData['description'],
-                  );
-                  
-                  // 店舗設定を設定
-                  final storeSettingsNotifier = ref.read(storeSettingsProvider.notifier);
-                  storeSettingsNotifier.setStoreSettings(settings);
-                  
-                  print('店舗設定を自動初期化しました: $storeId');
-                }
-              }
-            }
-          } catch (e) {
-            print('店舗設定の自動初期化に失敗しました: $e');
+    try {
+      // 認証ユーザーから店舗IDを取得
+      final authState = ref.read(authStateProvider);
+      
+      // 認証状態を待機
+      await authState.when(
+        data: (user) async {
+          if (user != null) {
+            await _loadStoreSettingsForUser(user.uid);
+          } else {
+            print('ユーザーがログインしていません');
           }
+        },
+        loading: () async {
+          print('認証状態を読み込み中...');
+          // 少し待ってから再試行
+          await Future.delayed(const Duration(seconds: 1));
+          final retryAuthState = ref.read(authStateProvider);
+          await retryAuthState.when(
+            data: (user) async {
+              if (user != null) {
+                await _loadStoreSettingsForUser(user.uid);
+              }
+            },
+            loading: () async {},
+            error: (error, _) async {
+              print('認証状態の読み込みに失敗: $error');
+            },
+          );
+        },
+        error: (error, _) async {
+          print('認証状態の読み込みエラー: $error');
+        },
+      );
+    } catch (e) {
+      print('店舗設定の自動初期化に失敗しました: $e');
+    }
+  }
+
+  /// ユーザーの店舗設定を読み込み
+  Future<void> _loadStoreSettingsForUser(String uid) async {
+    try {
+      // ユーザーの店舗IDを取得
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final createdStores = userData['createdStores'] as List<dynamic>?;
+        if (createdStores != null && createdStores.isNotEmpty) {
+          final storeId = createdStores.first as String;
+          
+          // 店舗情報を取得
+          final storeDoc = await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(storeId)
+              .get();
+          
+          if (storeDoc.exists) {
+            final storeData = storeDoc.data()!;
+            final settings = StoreSettings(
+              storeId: storeId,
+              storeName: storeData['name'] ?? '店舗',
+              description: storeData['description'],
+            );
+            
+            // 店舗設定を設定
+            final storeSettingsNotifier = ref.read(storeSettingsProvider.notifier);
+            storeSettingsNotifier.setStoreSettings(settings);
+            
+            print('店舗設定を自動初期化しました: $storeId');
+          } else {
+            print('店舗ドキュメントが見つかりません: $storeId');
+          }
+        } else {
+          print('ユーザーに作成された店舗がありません');
         }
-      },
-      loading: () async {},
-      error: (error, _) async {},
-    );
+      } else {
+        print('ユーザードキュメントが見つかりません: $uid');
+      }
+    } catch (e) {
+      print('店舗設定の読み込みに失敗しました: $e');
+    }
   }
 
   void _startScanning() {
@@ -323,6 +360,13 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
                 onPressed: () {
                   final testToken = _generateTestToken();
                   _manualInputController.text = testToken;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('テスト用QRトークンを生成しました'),
+                      duration: Duration(seconds: 2),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.auto_awesome, size: 16),
                 label: const Text('テスト用QRトークンを生成'),
@@ -365,7 +409,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     );
   }
 
-  void _processQRCode(BuildContext context, String qrCode) async {
+  void _processQRCode(BuildContext context, String qrCode) {
     print('QRコード処理開始: $qrCode');
     
     if (qrCode.isEmpty) {
@@ -384,13 +428,10 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     final storeSettings = ref.read(storeSettingsProvider);
     if (storeSettings == null || storeSettings.storeId.isEmpty) {
       if (context.mounted) {
-        // 店舗設定を再試行
-        await _initializeStoreSettings();
-        final updatedStoreSettings = ref.read(storeSettingsProvider);
-        if (updatedStoreSettings == null || updatedStoreSettings.storeId.isEmpty) {
-          _showStoreIdErrorDialog(context);
-          return;
-        }
+        // 店舗設定エラーを表示
+        print('店舗設定が見つかりません');
+        _showStoreIdErrorDialog(context);
+        return;
       } else {
         return;
       }
@@ -409,9 +450,10 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       ),
     );
 
-    // タイムアウト処理（5秒で強制終了）
+    // タイムアウト処理（10秒で強制終了）
     Timer? timeoutTimer;
-    timeoutTimer = Timer(const Duration(seconds: 5), () {
+    timeoutTimer = Timer(const Duration(seconds: 10), () {
+      print('QRコード処理がタイムアウトしました');
       if (context.mounted) {
         Navigator.of(context).pop(); // ローディングを閉じる
         _showErrorDialog(
@@ -422,16 +464,97 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       }
     });
 
+    // 同期的な処理を開始
+    _processQRCodeSync(context, qrCode, timeoutTimer);
+  }
+
+  /// QRコードの同期的処理（完全に同期的に実行）
+  void _processQRCodeSync(BuildContext context, String qrCode, Timer? timeoutTimer) {
     try {
+      print('同期的QRコード処理開始: $qrCode');
+      
+      // QRコードの形式をチェック
+      final isValidToken = _isValidQRToken(qrCode.trim());
+      print('QRトークン形式チェック結果: $isValidToken');
+      
+      if (!isValidToken) {
+        _closeLoadingDialog(context, timeoutTimer);
+        if (context.mounted) {
+          _showErrorDialog(
+            context,
+            '無効なQRコード',
+            'このQRコードは無効な形式です。\n正しいQRコードをスキャンしてください。',
+          );
+        }
+        return;
+      }
+
+      // 店舗設定を再取得
+      final currentStoreSettings = ref.read(storeSettingsProvider);
+      if (currentStoreSettings == null) {
+        _closeLoadingDialog(context, timeoutTimer);
+        if (context.mounted) {
+          _showStoreIdErrorDialog(context);
+        }
+        return;
+      }
+
+      // 同期的なモック検証を実行
+      final result = _mockVerifyQrTokenSync(qrCode.trim());
+      print('同期的モック検証完了: isSuccess=${result.isSuccess}, uid=${result.uid}');
+
+      // 結果に基づいて処理を分岐
+      if (result.isSuccess && result.uid != null) {
+        print('QR検証成功、支払い画面に遷移開始');
+        
+        // ローディングを閉じる
+        _closeLoadingDialog(context, timeoutTimer);
+        
+        // ウィジェットが破棄されていないかチェックしてから画面遷移
+        if (context.mounted) {
+          _navigateToPaymentScreenImmediate(context, result.uid!);
+        } else {
+          print('画面遷移時にウィジェットが破棄されています');
+        }
+      } else {
+        print('QR検証失敗、エラーダイアログ表示');
+        _closeLoadingDialog(context, timeoutTimer);
+        
+        if (context.mounted) {
+          _showVerificationErrorDialog(context, result);
+        }
+      }
+    } catch (e) {
+      print('同期的QRコード処理エラー: $e');
+      _closeLoadingDialog(context, timeoutTimer);
+      
+      if (context.mounted) {
+        _showErrorDialog(
+          context,
+          'QRコードの処理中にエラーが発生しました',
+          'エラー: $e',
+        );
+      }
+    }
+  }
+
+  /// QRコードの非同期処理
+  Future<void> _processQRCodeAsync(BuildContext context, String qrCode, Timer? timeoutTimer) async {
+    try {
+      // ウィジェットが破棄されていないかチェック
+      if (!context.mounted) {
+        print('処理開始時にウィジェットが破棄されています');
+        return;
+      }
+
       // QRコードの形式をチェック（Base64エンコードされたJSONかどうか）
       final isValidToken = _isValidQRToken(qrCode.trim());
       print('QRトークン形式チェック結果: $isValidToken');
       
       if (!isValidToken) {
         // 無効な形式の場合は即座にエラーを表示
-        timeoutTimer?.cancel();
         if (context.mounted) {
-          Navigator.of(context).pop(); // ローディングを閉じる
+          _closeLoadingDialog(context, timeoutTimer);
           _showErrorDialog(
             context,
             '無効なQRコード',
@@ -444,77 +567,170 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       // 店舗設定を再取得（null安全のため）
       final currentStoreSettings = ref.read(storeSettingsProvider);
       if (currentStoreSettings == null) {
-        timeoutTimer?.cancel();
         if (context.mounted) {
-          Navigator.of(context).pop(); // ローディングを閉じる
+          _closeLoadingDialog(context, timeoutTimer);
           _showStoreIdErrorDialog(context);
         }
         return;
       }
 
-      // Cloud FunctionsでQRトークンを検証（開発環境ではモック検証も試行）
+      // まずモック検証を試行（開発環境用）
       QRVerificationResult result;
       try {
-        final verificationNotifier = ref.read(qrVerificationProvider.notifier);
-        result = await verificationNotifier.verifyQrToken(
-          token: qrCode.trim(),
-          storeId: currentStoreSettings.storeId,
-        );
-        
-        // Cloud Functionsでエラーが発生した場合もモック検証を試行
-        if (!result.isSuccess && result.error != null) {
-          print('Cloud Functions検証失敗、モック検証を試行: ${result.error}');
-          result = _mockVerifyQrToken(qrCode.trim());
-        }
+        print('モック検証を開始');
+        result = await _mockVerifyQrToken(qrCode.trim());
+        print('モック検証完了: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
       } catch (e) {
-        print('Cloud Functions呼び出し失敗、モック検証を試行: $e');
-        // 開発環境用のモック検証
-        result = _mockVerifyQrToken(qrCode.trim());
+        print('モック検証エラー: $e');
+        result = QRVerificationResult(
+          isSuccess: false,
+          message: 'QRコードの検証に失敗しました',
+          status: QRVerificationStatus.invalid,
+          error: e.toString(),
+        );
       }
       
-      // タイムアウトタイマーをキャンセル
-      timeoutTimer?.cancel();
-      
-      // ローディングを閉じる
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+      print('最終QR検証結果: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
 
-      print('QR検証結果: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
-
+      // 結果に基づいて処理を分岐
       if (result.isSuccess) {
         // 成功時：支払い画面に遷移
         print('QR検証成功、支払い画面に遷移開始');
-        if (result.uid != null && context.mounted) {
-          await _navigateToPaymentScreen(context, result.uid!);
+        if (result.uid != null) {
+          // ローディングを閉じる
+          _closeLoadingDialog(context, timeoutTimer);
+          
+          // ウィジェットが破棄されていないかチェックしてから画面遷移
+          if (context.mounted) {
+            _navigateToPaymentScreenImmediate(context, result.uid!);
+          } else {
+            print('画面遷移時にウィジェットが破棄されています');
+          }
         } else {
-          print('支払い画面遷移失敗: uid=${result.uid}, context.mounted=${context.mounted}');
+          print('支払い画面遷移失敗: uid=${result.uid}');
+          _closeLoadingDialog(context, timeoutTimer);
+          if (context.mounted) {
+            _showErrorDialog(
+              context,
+              'ユーザー情報エラー',
+              'ユーザーIDが取得できませんでした',
+            );
+          }
         }
       } else {
         // エラー時：エラーダイアログを表示
         print('QR検証失敗、エラーダイアログ表示');
+        _closeLoadingDialog(context, timeoutTimer);
+        
         if (context.mounted) {
           _showVerificationErrorDialog(context, result);
+        } else {
+          print('エラーダイアログ表示時にウィジェットが破棄されています');
         }
       }
     } catch (e) {
       print('QRコード処理エラー: $e');
-      // タイムアウトタイマーをキャンセル
-      timeoutTimer?.cancel();
+      print('エラースタック: ${StackTrace.current}');
       
       // ローディングを確実に閉じる
+      _closeLoadingDialog(context, timeoutTimer);
+      
       if (context.mounted) {
-        Navigator.of(context).pop(); // ローディングを閉じる
         _showErrorDialog(
           context,
           'QRコードの処理中にエラーが発生しました',
+          'エラー: $e',
+        );
+      } else {
+        print('エラーダイアログ表示時にウィジェットが破棄されています');
+      }
+    }
+  }
+
+  /// ローディングダイアログを安全に閉じる
+  void _closeLoadingDialog(BuildContext context, Timer? timeoutTimer) {
+    timeoutTimer?.cancel();
+    if (context.mounted) {
+      try {
+        Navigator.of(context).pop(); // ローディングを閉じる
+        print('ローディングダイアログを閉じました');
+      } catch (e) {
+        print('ローディングダイアログを閉じる際のエラー: $e');
+      }
+    }
+  }
+
+  /// 支払い画面に即座に遷移（遅延なし）
+  void _navigateToPaymentScreenImmediate(BuildContext context, String uid) {
+    try {
+      print('支払い画面への即座遷移を開始: uid=$uid');
+
+      // ウィジェットが破棄されていないか再チェック
+      if (!context.mounted) {
+        print('画面遷移実行時にウィジェットが破棄されています');
+        return;
+      }
+
+      // 支払い画面に遷移（ユーザー情報は画面内で取得）
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => StorePaymentView(
+            userId: uid,
+            userName: 'お客様', // デフォルト名、画面内で実際の名前を取得
+          ),
+        ),
+      );
+      
+      print('支払い画面への遷移が完了しました');
+    } catch (e) {
+      print('支払い画面遷移エラー: $e');
+      // エラー時はウィジェットの状態をチェックせずにログのみ出力
+      print('画面遷移に失敗しました: $e');
+    }
+  }
+
+  /// 支払い画面に同期的に遷移（旧版、現在は使用していない）
+  void _navigateToPaymentScreenSync(BuildContext context, String uid) {
+    try {
+      // ウィジェットが破棄されていないかチェック
+      if (!context.mounted) {
+        print('支払い画面遷移時にウィジェットが破棄されています');
+        return;
+      }
+
+      print('支払い画面への遷移を開始: uid=$uid');
+
+      // 少し遅延を追加してから画面遷移を実行
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (context.mounted) {
+          // 支払い画面に遷移（ユーザー情報は画面内で取得）
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => StorePaymentView(
+                userId: uid,
+                userName: 'お客様', // デフォルト名、画面内で実際の名前を取得
+              ),
+            ),
+          );
+          
+          print('支払い画面への遷移が完了しました');
+        } else {
+          print('遅延後にウィジェットが破棄されています');
+        }
+      });
+    } catch (e) {
+      print('支払い画面遷移エラー: $e');
+      if (context.mounted) {
+        _showErrorDialog(
+          context,
+          '画面遷移エラー',
           'エラー: $e',
         );
       }
     }
   }
 
-  /// 支払い画面に遷移
+  /// 支払い画面に遷移（非同期版、現在は使用していない）
   Future<void> _navigateToPaymentScreen(BuildContext context, String uid) async {
     try {
       // ウィジェットが破棄されていないかチェック
@@ -668,14 +884,31 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('店舗設定エラー'),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.store, size: 64, color: Colors.orange),
-            SizedBox(height: 16),
-            Text(
-              '店舗IDが設定されていません。\n設定画面で店舗情報を設定してください。',
+            const Icon(Icons.store, size: 64, color: Colors.orange),
+            const SizedBox(height: 16),
+            const Text(
+              '店舗IDが設定されていません。\n以下のいずれかの原因が考えられます：',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• ユーザーがログインしていない'),
+                  Text('• 店舗が作成されていない'),
+                  Text('• 店舗情報の読み込みに失敗'),
+                ],
+              ),
             ),
           ],
         ),
@@ -736,21 +969,84 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   /// テスト用QRトークンを生成
   String _generateTestToken() {
     // 開発環境用のモックトークン（Base64エンコードされたJSON）
+    final now = DateTime.now();
     final testData = {
-      'sub': 'testuser${DateTime.now().millisecondsSinceEpoch}',
-      'iat': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'exp': (DateTime.now().add(const Duration(seconds: 60)).millisecondsSinceEpoch ~/ 1000),
-      'jti': 'test_${DateTime.now().millisecondsSinceEpoch}',
+      'sub': 'testuser${now.millisecondsSinceEpoch}',
+      'iat': now.millisecondsSinceEpoch ~/ 1000,
+      'exp': (now.add(const Duration(minutes: 5)).millisecondsSinceEpoch ~/ 1000), // 5分に延長
+      'jti': 'test_${now.millisecondsSinceEpoch}',
       'ver': 1,
     };
+    
+    print('テスト用QRトークン生成: exp=${testData['exp']}, now=${now.millisecondsSinceEpoch ~/ 1000}');
     
     final jsonString = '{"sub":"${testData['sub']}","iat":${testData['iat']},"exp":${testData['exp']},"jti":"${testData['jti']}","ver":${testData['ver']}}';
     return base64Encode(utf8.encode(jsonString));
   }
 
-  /// 開発環境用のモック検証
-  QRVerificationResult _mockVerifyQrToken(String token) {
+  /// 開発環境用の同期的モック検証
+  QRVerificationResult _mockVerifyQrTokenSync(String token) {
+    print('同期的モック検証開始: $token');
+    
+    try {
+      // Base64デコードを試行
+      final decodedBytes = base64Decode(token);
+      final jsonString = utf8.decode(decodedBytes);
+      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+      
+      final sub = jsonData['sub'] as String?;
+      final exp = jsonData['exp'] as int?;
+      final jti = jsonData['jti'] as String?;
+      
+      print('同期的モック検証データ: sub=$sub, exp=$exp, jti=$jti');
+      
+      if (sub == null || exp == null || jti == null) {
+        print('同期的モック検証失敗: 必須フィールドが不足');
+        return QRVerificationResult(
+          isSuccess: false,
+          message: '無効なQRコードです（モック検証）',
+          status: QRVerificationStatus.invalid,
+        );
+      }
+      
+      // 有効期限チェック
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      print('有効期限チェック: now=$now, exp=$exp, 残り時間=${exp - now}秒');
+      if (now > exp) {
+        print('同期的モック検証失敗: 有効期限切れ (${now - exp}秒過ぎています)');
+        return QRVerificationResult(
+          isSuccess: false,
+          message: 'QRの有効期限切れ（モック検証）\n${now - exp}秒過ぎています',
+          status: QRVerificationStatus.expired,
+        );
+      }
+      
+      // 成功
+      print('同期的モック検証成功: uid=$sub');
+      return QRVerificationResult(
+        isSuccess: true,
+        message: 'QRコードが有効です（モック検証）',
+        uid: sub,
+        jti: jti,
+        status: QRVerificationStatus.ok,
+      );
+    } catch (e) {
+      print('同期的モック検証エラー: $e');
+      return QRVerificationResult(
+        isSuccess: false,
+        message: '無効なQRコードです（モック検証）',
+        status: QRVerificationStatus.invalid,
+      );
+    }
+  }
+
+  /// 開発環境用のモック検証（非同期版、現在は使用していない）
+  Future<QRVerificationResult> _mockVerifyQrToken(String token) async {
     print('モック検証開始: $token');
+    
+    // 少し遅延を追加してリアルな処理をシミュレート
+    await Future.delayed(const Duration(milliseconds: 800));
+    
     try {
       // Base64デコードを試行
       final decodedBytes = base64Decode(token);
@@ -774,12 +1070,12 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       
       // 有効期限チェック
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      print('有効期限チェック: now=$now, exp=$exp');
+      print('有効期限チェック: now=$now, exp=$exp, 残り時間=${exp - now}秒');
       if (now > exp) {
-        print('モック検証失敗: 有効期限切れ');
+        print('モック検証失敗: 有効期限切れ (${now - exp}秒過ぎています)');
         return QRVerificationResult(
           isSuccess: false,
-          message: 'QRの有効期限切れ（モック検証）',
+          message: 'QRの有効期限切れ（モック検証）\n${now - exp}秒過ぎています',
           status: QRVerificationStatus.expired,
         );
       }
