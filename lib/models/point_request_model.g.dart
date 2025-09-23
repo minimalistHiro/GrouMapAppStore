@@ -14,6 +14,7 @@ _$PointRequestImpl _$$PointRequestImplFromJson(Map<String, dynamic> json) =>
       storeName: json['storeName'] as String,
       amount: (json['amount'] as num).toInt(),
       pointsToAward: (json['pointsToAward'] as num).toInt(),
+      userPoints: (json['userPoints'] as num).toInt(),
       status: json['status'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       respondedAt: json['respondedAt'] == null
@@ -31,6 +32,7 @@ Map<String, dynamic> _$$PointRequestImplToJson(_$PointRequestImpl instance) =>
       'storeName': instance.storeName,
       'amount': instance.amount,
       'pointsToAward': instance.pointsToAward,
+      'userPoints': instance.userPoints,
       'status': instance.status,
       'createdAt': instance.createdAt.toIso8601String(),
       'respondedAt': instance.respondedAt?.toIso8601String(),

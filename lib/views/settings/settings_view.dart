@@ -8,6 +8,9 @@ import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
 import 'store_settings_view.dart';
 import 'store_selection_view.dart';
+import 'help_support_view.dart';
+import 'app_info_view.dart';
+import 'notification_settings_view.dart';
 import '../auth/login_view.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -96,18 +99,10 @@ class SettingsView extends ConsumerWidget {
                   title: '通知設定',
                   subtitle: 'プッシュ通知の設定',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('通知設定は準備中です')),
-                    );
-                  },
-                ),
-                _buildSettingsItem(
-                  icon: Icons.palette,
-                  title: 'テーマ設定',
-                  subtitle: 'アプリのテーマを変更',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('テーマ設定は準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationSettingsView(),
+                      ),
                     );
                   },
                 ),
@@ -121,24 +116,14 @@ class SettingsView extends ConsumerWidget {
               title: 'アカウント',
               children: [
                 _buildSettingsItem(
-                  icon: Icons.storefront,
-                  title: '店舗を切り替える',
-                  subtitle: '管理する店舗を選択',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const StoreSelectionView(),
-                      ),
-                    );
-                  },
-                ),
-                _buildSettingsItem(
                   icon: Icons.help_outline,
                   title: 'ヘルプ・サポート',
                   subtitle: 'よくある質問やサポート',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ヘルプ・サポートは準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const HelpSupportView(),
+                      ),
                     );
                   },
                 ),
@@ -147,8 +132,10 @@ class SettingsView extends ConsumerWidget {
                   title: 'アプリについて',
                   subtitle: 'バージョン情報など',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('アプリ情報は準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AppInfoView(),
+                      ),
                     );
                   },
                 ),
@@ -384,17 +371,51 @@ class SettingsView extends ConsumerWidget {
                         ),
                       ),
                       
-                      // 編集ボタン
-                      IconButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('店舗情報編集は準備中です')),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Color(0xFFFF6B35),
-                        ),
+                      // ボタン群
+                      Column(
+                        children: [
+                          // 編集ボタン
+                          IconButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('店舗情報編集は準備中です')),
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.edit,
+                              color: Color(0xFFFF6B35),
+                            ),
+                          ),
+                          // 店舗切り替えボタン
+                          Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const StoreSelectionView(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: const Text(
+                                '店舗切り替え',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

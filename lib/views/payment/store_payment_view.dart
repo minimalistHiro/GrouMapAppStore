@@ -366,12 +366,13 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         storeName: _storeName,
         amount: amount,
         pointsToAward: pointsToAward,
+        userPoints: pointsToAward, // ユーザーに付与されるポイント
         description: '店舗からのポイント付与リクエスト',
       );
 
       if (requestId != null) {
         setState(() {
-          _currentRequestId = requestId;
+          _currentRequestId = requestId; // 新しいID形式: "storeId_userId"
         });
         
         if (mounted) {
@@ -491,7 +492,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
             ),
             const SizedBox(height: 8),
             Text(
-              '付与ポイント: ${request.pointsToAward}pt',
+              '付与ポイント: ${request.userPoints}pt',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,

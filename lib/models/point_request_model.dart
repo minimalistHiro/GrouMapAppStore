@@ -12,6 +12,7 @@ class PointRequest with _$PointRequest {
     required String storeName,
     required int amount,
     required int pointsToAward,
+    required int userPoints, // ユーザーに付与されるポイント
     required String status, // pending, accepted, rejected
     required DateTime createdAt,
     DateTime? respondedAt,

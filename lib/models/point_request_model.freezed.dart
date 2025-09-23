@@ -26,6 +26,7 @@ mixin _$PointRequest {
   String get storeName => throw _privateConstructorUsedError;
   int get amount => throw _privateConstructorUsedError;
   int get pointsToAward => throw _privateConstructorUsedError;
+  int get userPoints => throw _privateConstructorUsedError; // ユーザーに付与されるポイント
   String get status =>
       throw _privateConstructorUsedError; // pending, accepted, rejected
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -56,6 +57,7 @@ abstract class $PointRequestCopyWith<$Res> {
       String storeName,
       int amount,
       int pointsToAward,
+      int userPoints,
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
@@ -84,6 +86,7 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
     Object? storeName = null,
     Object? amount = null,
     Object? pointsToAward = null,
+    Object? userPoints = null,
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
@@ -114,6 +117,10 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
       pointsToAward: null == pointsToAward
           ? _value.pointsToAward
           : pointsToAward // ignore: cast_nullable_to_non_nullable
+              as int,
+      userPoints: null == userPoints
+          ? _value.userPoints
+          : userPoints // ignore: cast_nullable_to_non_nullable
               as int,
       status: null == status
           ? _value.status
@@ -154,6 +161,7 @@ abstract class _$$PointRequestImplCopyWith<$Res>
       String storeName,
       int amount,
       int pointsToAward,
+      int userPoints,
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
@@ -180,6 +188,7 @@ class __$$PointRequestImplCopyWithImpl<$Res>
     Object? storeName = null,
     Object? amount = null,
     Object? pointsToAward = null,
+    Object? userPoints = null,
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
@@ -210,6 +219,10 @@ class __$$PointRequestImplCopyWithImpl<$Res>
       pointsToAward: null == pointsToAward
           ? _value.pointsToAward
           : pointsToAward // ignore: cast_nullable_to_non_nullable
+              as int,
+      userPoints: null == userPoints
+          ? _value.userPoints
+          : userPoints // ignore: cast_nullable_to_non_nullable
               as int,
       status: null == status
           ? _value.status
@@ -245,6 +258,7 @@ class _$PointRequestImpl implements _PointRequest {
       required this.storeName,
       required this.amount,
       required this.pointsToAward,
+      required this.userPoints,
       required this.status,
       required this.createdAt,
       this.respondedAt,
@@ -267,6 +281,9 @@ class _$PointRequestImpl implements _PointRequest {
   @override
   final int pointsToAward;
   @override
+  final int userPoints;
+// ユーザーに付与されるポイント
+  @override
   final String status;
 // pending, accepted, rejected
   @override
@@ -280,7 +297,7 @@ class _$PointRequestImpl implements _PointRequest {
 
   @override
   String toString() {
-    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, description: $description, rejectionReason: $rejectionReason)';
+    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, userPoints: $userPoints, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, description: $description, rejectionReason: $rejectionReason)';
   }
 
   @override
@@ -296,6 +313,8 @@ class _$PointRequestImpl implements _PointRequest {
             (identical(other.amount, amount) || other.amount == amount) &&
             (identical(other.pointsToAward, pointsToAward) ||
                 other.pointsToAward == pointsToAward) &&
+            (identical(other.userPoints, userPoints) ||
+                other.userPoints == userPoints) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -317,6 +336,7 @@ class _$PointRequestImpl implements _PointRequest {
       storeName,
       amount,
       pointsToAward,
+      userPoints,
       status,
       createdAt,
       respondedAt,
@@ -347,6 +367,7 @@ abstract class _PointRequest implements PointRequest {
       required final String storeName,
       required final int amount,
       required final int pointsToAward,
+      required final int userPoints,
       required final String status,
       required final DateTime createdAt,
       final DateTime? respondedAt,
@@ -368,6 +389,8 @@ abstract class _PointRequest implements PointRequest {
   int get amount;
   @override
   int get pointsToAward;
+  @override
+  int get userPoints; // ユーザーに付与されるポイント
   @override
   String get status; // pending, accepted, rejected
   @override
