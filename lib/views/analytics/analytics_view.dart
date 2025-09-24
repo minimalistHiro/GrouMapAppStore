@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
+import 'store_user_trend_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -35,6 +36,11 @@ class AnalyticsView extends ConsumerWidget {
             
             // 今日の統計カード
             _buildTodayStatsCard(ref),
+            
+            const SizedBox(height: 24),
+            
+            // データセクション
+            _buildDataSection(ref),
             
             const SizedBox(height: 24),
             
@@ -416,6 +422,155 @@ class AnalyticsView extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Widget _buildDataSection(WidgetRef ref) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.analytics_outlined, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'データ',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) {
+              final dataItems = [
+                {
+                  'title': '店舗利用者推移',
+                  'icon': Icons.people_outline,
+                  'color': Colors.blue,
+                },
+                {
+                  'title': '新規顧客推移',
+                  'icon': Icons.person_add_outlined,
+                  'color': Colors.purple,
+                },
+                {
+                  'title': 'ポイント発行推移',
+                  'icon': Icons.monetization_on_outlined,
+                  'color': Colors.green,
+                },
+                {
+                  'title': 'ポイント利用推移',
+                  'icon': Icons.shopping_cart_outlined,
+                  'color': Colors.orange,
+                },
+                {
+                  'title': '全ユーザー数推移',
+                  'icon': Icons.group_outlined,
+                  'color': Colors.teal,
+                },
+                {
+                  'title': '全ポイント発行数推移',
+                  'icon': Icons.trending_up_outlined,
+                  'color': Colors.red,
+                },
+              ];
+              
+              final item = dataItems[index];
+              
+              return GestureDetector(
+                onTap: () {
+                  // 各データ項目の詳細画面への遷移処理
+                  _navigateToDataDetail(context, item['title'] as String);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: (item['color'] as Color).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        item['icon'] as IconData,
+                        color: item['color'] as Color,
+                        size: 24,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item['title'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: item['color'] as Color,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToDataDetail(BuildContext context, String dataType) {
+    // 各データタイプに応じた詳細画面への遷移処理
+    switch (dataType) {
+      case '店舗利用者推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const StoreUserTrendView(),
+          ),
+        );
+        break;
+      default:
+        // その他のデータタイプはスナックバーで確認メッセージを表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$dataType の詳細画面を開きます'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFFFF6B35),
+          ),
+        );
+    }
   }
 
   Widget _buildWeeklyStatsSection(WidgetRef ref) {

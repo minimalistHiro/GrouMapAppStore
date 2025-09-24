@@ -57,13 +57,13 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
   return FirebaseFirestore.instance
       .collection('point_requests')
       .doc(storeId)
-      .collection('user_requests')
-      .doc(userId)
+      .collection(userId)
+      .doc('request')
       .snapshots()
       .map((snapshot) {
     if (snapshot.exists) {
       return PointRequest.fromJson({
-        'id': snapshot.id,
+        'id': '${storeId}_${userId}',
         ...snapshot.data()!,
       });
     }
@@ -87,14 +87,17 @@ class PointRequestNotifier extends StateNotifier<void> {
     required String description,
   }) async {
     try {
+      final requestId = '${storeId}_${userId}';
+      
+      // 新しい構造に保存（店舗別のサブコレクション）
       final docRef = _firestore
           .collection('point_requests')
           .doc(storeId)
-          .collection('user_requests')
-          .doc(userId);
+          .collection(userId)
+          .doc('request');
       
       final newRequest = PointRequest(
-        id: docRef.id,
+        id: requestId,
         userId: userId,
         storeId: storeId,
         storeName: storeName,
@@ -106,7 +109,9 @@ class PointRequestNotifier extends StateNotifier<void> {
         createdAt: DateTime.now(),
       );
       await docRef.set(newRequest.toJson());
-      return '${storeId}_${userId}'; // 新しいID形式を返す
+      
+      print('ポイント付与リクエストを作成しました: $requestId');
+      return requestId;
     } catch (e) {
       print('Error creating point request: $e');
       return null;
@@ -129,16 +134,21 @@ class PointRequestNotifier extends StateNotifier<void> {
       final storeId = parts[0];
       final userId = parts[1];
       
-      await _firestore
-          .collection('point_requests')
-          .doc(storeId)
-          .collection('user_requests')
-          .doc(userId)
-          .update({
+      final updateData = {
         'status': status.value,
         'respondedAt': FieldValue.serverTimestamp(),
         if (rejectionReason != null) 'rejectionReason': rejectionReason,
-      });
+      };
+      
+      // 新しい構造を更新（店舗別のサブコレクション）
+      await _firestore
+          .collection('point_requests')
+          .doc(storeId)
+          .collection(userId)
+          .doc('request')
+          .update(updateData);
+      
+      print('ポイント付与リクエストの状態を更新しました: $requestId -> ${status.value}');
     } catch (e) {
       print('Error updating point request status: $e');
       rethrow;

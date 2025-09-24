@@ -170,3 +170,133 @@ final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
     return Stream.value([]);
   }
 });
+
+// 店舗利用者推移プロバイダー
+final storeUserTrendProvider = StreamProvider.family<List<Map<String, dynamic>>, Map<String, dynamic>>((ref, params) {
+  try {
+    final storeId = params['storeId'] as String;
+    final period = params['period'] as String; // 'week', 'month', 'year'
+    
+    DateTime startDate;
+    DateTime endDate = DateTime.now();
+    
+    switch (period) {
+      case 'week':
+        startDate = endDate.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+        break;
+      case 'year':
+        startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+        break;
+      default:
+        startDate = endDate.subtract(const Duration(days: 7));
+    }
+    
+    return FirebaseFirestore.instance
+        .collection('point_transactions')
+        .doc(storeId)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint('StoreUserTrendProvider: Found ${snapshot.data()?.keys.length ?? 0} users for storeId: $storeId');
+      
+      if (!snapshot.exists || snapshot.data() == null) {
+        debugPrint('StoreUserTrendProvider: No data found for storeId: $storeId');
+        return <Map<String, dynamic>>[];
+      }
+      
+      final storeData = snapshot.data()!;
+      debugPrint('StoreUserTrendProvider: Store data keys: ${storeData.keys.toList()}');
+      
+      // 各ユーザーのデータを処理
+      final Map<String, Set<String>> dailyUsers = {};
+      
+      for (final userId in storeData.keys) {
+        final userData = storeData[userId] as Map<String, dynamic>?;
+        if (userData == null) continue;
+        
+        // ユーザーの取引データを処理
+        for (final transactionId in userData.keys) {
+          final transactionData = userData[transactionId] as Map<String, dynamic>?;
+          if (transactionData == null) continue;
+          
+          final createdAt = transactionData['createdAt'];
+          if (createdAt == null) continue;
+          
+          DateTime docDate;
+          if (createdAt is DateTime) {
+            docDate = createdAt;
+          } else if (createdAt is Timestamp) {
+            docDate = createdAt.toDate();
+          } else {
+            continue;
+          }
+          
+          // 期間内のデータのみを処理
+          if (docDate.isAfter(startDate) && docDate.isBefore(endDate)) {
+            final dateKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            dailyUsers.putIfAbsent(dateKey, () => <String>{});
+            dailyUsers[dateKey]!.add(userId);
+          }
+        }
+      }
+      
+      debugPrint('StoreUserTrendProvider: Found ${dailyUsers.length} days with data');
+      
+      // 期間に応じてデータをグループ化
+      Map<String, Set<String>> groupedData = {};
+      
+      for (final entry in dailyUsers.entries) {
+        final dateStr = entry.key;
+        final users = entry.value;
+        
+        // 日付文字列を解析
+        final dateParts = dateStr.split('-');
+        if (dateParts.length != 3) continue;
+        
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        final docDate = DateTime(year, month, day);
+        
+        String groupKey;
+        switch (period) {
+          case 'week':
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            break;
+          case 'month':
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
+            break;
+          case 'year':
+            groupKey = '${docDate.year}';
+            break;
+          default:
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+        }
+        
+        groupedData.putIfAbsent(groupKey, () => <String>{});
+        groupedData[groupKey]!.addAll(users);
+      }
+      
+      // 結果をリストに変換してソート
+      final result = groupedData.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'userCount': entry.value.length,
+        };
+      }).toList();
+      
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+      
+      debugPrint('StoreUserTrendProvider: Returning ${result.length} data points');
+      return result;
+    }).handleError((error) {
+      debugPrint('Error fetching store user trend: $error');
+      return [];
+    });
+  } catch (e) {
+    debugPrint('Error creating store user trend stream: $e');
+    return Stream.value([]);
+  }
+});

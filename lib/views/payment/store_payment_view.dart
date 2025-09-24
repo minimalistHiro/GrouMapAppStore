@@ -121,99 +121,40 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
 
       print('店舗ユーザーID: ${storeUser.uid}');
       
-      // 現在選択中の店舗IDを取得
-      final storeIdAsync = ref.read(userStoreIdProvider);
-      await storeIdAsync.when(
-        data: (currentStoreId) async {
-          if (currentStoreId == null) {
-            print('現在選択中の店舗がありません');
-            setState(() {
-              _storeName = '店舗未選択';
-              _isLoadingStoreInfo = false;
-            });
-            return;
-          }
+      // まずusersコレクションから店舗情報を取得
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(storeUser.uid)
+          .get();
 
-          print('現在選択中の店舗ID: $currentStoreId');
-          
-          // 選択中の店舗の情報を取得
-          final storeDoc = await FirebaseFirestore.instance
-              .collection('stores')
-              .doc(currentStoreId)
-              .get();
-
-          if (storeDoc.exists && mounted) {
-            final storeData = storeDoc.data()!;
-            print('店舗データ取得: $storeData');
-            
-            // 店舗名を安全に取得
-            String storeName = '店舗名';
-            if (storeData.containsKey('name') && storeData['name'] is String) {
-              storeName = storeData['name'] as String;
-            } else if (storeData.containsKey('storeName') && storeData['storeName'] is String) {
-              storeName = storeData['storeName'] as String;
-            }
-            
-            setState(() {
-              _storeName = storeName;
-              _isLoadingStoreInfo = false;
-            });
-            
-            print('店舗情報を取得しました: $storeName');
-            return;
-          }
-          
-          // storesコレクションにない場合は、usersコレクションで店舗情報を検索
-          print('storesコレクションに店舗が見つからないため、usersコレクションで検索');
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(storeUser.uid)
-              .get();
-
-          if (userDoc.exists && mounted) {
-            final userData = userDoc.data()!;
-            print('ユーザーデータから店舗情報を取得: $userData');
-            
-            // ユーザーデータから店舗名を取得
-            String storeName = '店舗名';
-            if (userData.containsKey('displayName') && userData['displayName'] is String) {
-              storeName = '${userData['displayName']}店';
-            } else if (userData.containsKey('email') && userData['email'] is String) {
-              final email = userData['email'] as String;
-              storeName = '${email.split('@')[0]}店';
-            }
-            
-            setState(() {
-              _storeName = storeName;
-              _isLoadingStoreInfo = false;
-            });
-            
-            print('ユーザーデータから店舗情報を取得しました: $storeName');
-            return;
-          }
-          
-          // どちらにも見つからない場合
-          print('店舗ドキュメントが存在しません');
-          setState(() {
-            _storeName = '店舗名未設定';
-            _isLoadingStoreInfo = false;
-          });
-        },
-        loading: () async {
-          print('店舗ID取得中...');
-          setState(() {
-            _storeName = '店舗情報読み込み中...';
-            _isLoadingStoreInfo = true;
-          });
-        },
-        error: (error, _) async {
-          print('店舗ID取得エラー: $error');
-          setState(() {
-            _storeName = '店舗情報取得エラー';
-            _isLoadingStoreInfo = false;
-          });
-        },
-      );
+      if (userDoc.exists && mounted) {
+        final userData = userDoc.data()!;
+        print('ユーザーデータから店舗情報を取得: $userData');
+        
+        // ユーザーデータから店舗名を取得
+        String storeName = '店舗名';
+        if (userData.containsKey('displayName') && userData['displayName'] is String) {
+          storeName = userData['displayName'] as String;
+        } else if (userData.containsKey('email') && userData['email'] is String) {
+          final email = userData['email'] as String;
+          storeName = '${email.split('@')[0]}店';
+        }
+        
+        setState(() {
+          _storeName = storeName;
+          _isLoadingStoreInfo = false;
+        });
+        
+        print('ユーザーデータから店舗情報を取得しました: $storeName');
+        return;
+      }
+      
+      // どちらにも見つからない場合
+      print('店舗ドキュメントが存在しません');
+      setState(() {
+        _storeName = '店舗名未設定';
+        _isLoadingStoreInfo = false;
+      });
     } catch (e) {
       print('店舗情報取得エラー: $e');
       print('エラーの詳細: ${e.toString()}');
@@ -348,22 +289,50 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         throw Exception('店舗の認証情報が取得できませんでした');
       }
 
-      // 現在選択中の店舗IDを取得
-      final storeIdAsync = ref.read(userStoreIdProvider);
-      final currentStoreId = storeIdAsync.value;
+      // 店舗ユーザーのcurrentStoreIdを取得
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(storeUser.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception('店舗ユーザーの情報が取得できませんでした');
+      }
+
+      final userData = userDoc.data()!;
+      final currentStoreId = userData['currentStoreId'] as String?;
       
-      if (currentStoreId == null) {
+      if (currentStoreId == null || currentStoreId.isEmpty) {
         throw Exception('現在選択中の店舗がありません');
       }
 
-      print('ポイント付与リクエスト作成開始: userId=${widget.userId}, storeId=$currentStoreId, amount=$amount, points=$pointsToAward');
+      // 店舗名を取得
+      String storeName = '店舗名';
+      try {
+        final storeDoc = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(currentStoreId)
+            .get();
+        
+        if (storeDoc.exists) {
+          final storeData = storeDoc.data()!;
+          if (storeData.containsKey('name') && storeData['name'] is String) {
+            storeName = storeData['name'] as String;
+          }
+        }
+      } catch (e) {
+        print('店舗名取得エラー: $e');
+        // エラーの場合はデフォルト値を使用
+      }
+
+      print('ポイント付与リクエスト作成開始: userId=${widget.userId}, storeId=$currentStoreId, storeName=$storeName, amount=$amount, points=$pointsToAward');
 
       // ポイント付与リクエストを作成
       final requestNotifier = ref.read(pointRequestProvider.notifier);
       final requestId = await requestNotifier.createPointRequest(
         userId: widget.userId,
         storeId: currentStoreId,
-        storeName: _storeName,
+        storeName: storeName,
         amount: amount,
         pointsToAward: pointsToAward,
         userPoints: pointsToAward, // ユーザーに付与されるポイント
