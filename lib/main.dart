@@ -78,6 +78,9 @@ class GrouMapStoreApp extends StatelessWidget {
         ),
       ),
       home: const MainNavigationView(),
+      routes: {
+        '/main': (context) => const MainNavigationView(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }

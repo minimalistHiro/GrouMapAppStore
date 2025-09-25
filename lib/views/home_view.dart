@@ -17,6 +17,8 @@ import 'notifications/notifications_view.dart';
 import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
 import 'plans/plan_contract_view.dart';
+import 'badges/badge_create_view.dart';
+import 'badges/badge_manage_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -535,6 +537,7 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.storefront, 'label': '未承認店舗一覧'},
       {'icon': Icons.manage_accounts, 'label': 'フィードバック管理'},
       {'icon': Icons.announcement, 'label': 'お知らせ作成'},
+      {'icon': Icons.workspace_premium, 'label': 'バッジ管理'},
     ];
 
     return Container(
@@ -742,6 +745,12 @@ class HomeView extends ConsumerWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const PlanContractView(),
+            ),
+          );
+        } else if (title == 'バッジ管理') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const BadgeManageView(),
             ),
           );
         } else {

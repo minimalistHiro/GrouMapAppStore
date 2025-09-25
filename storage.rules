@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // バッジ画像
+    match /badges/{badgeId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'company'];
+    }
+    
+    // 店舗画像
+    match /stores/{storeId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.uid == resource.metadata.createdBy || 
+         request.auth.token.role in ['admin', 'company']);
+    }
+    
+    // クーポン画像
+    match /coupons/{couponId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.uid == resource.metadata.createdBy || 
+         request.auth.token.role in ['admin', 'company']);
+    }
+    
+    // 投稿画像
+    match /posts/{postId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.uid == resource.metadata.createdBy || 
+         request.auth.token.role in ['admin', 'company']);
+    }
+    
+    // その他のファイルは認証が必要
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

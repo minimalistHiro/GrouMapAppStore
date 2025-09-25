@@ -425,8 +425,11 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る
-              Navigator.of(context).pop();
+              // ホーム画面に戻る（MainNavigationViewのホームタブ）
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B35),
@@ -490,8 +493,11 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る
-              Navigator.of(context).pop();
+              // ホーム画面に戻る（MainNavigationViewのホームタブ）
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (route) => false,
+              );
             },
             child: const Text('完了'),
           ),
@@ -565,8 +571,11 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る
-              Navigator.of(context).pop();
+              // ホーム画面に戻る（MainNavigationViewのホームタブ）
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B35),

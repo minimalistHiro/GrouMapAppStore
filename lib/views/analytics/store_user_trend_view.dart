@@ -465,34 +465,36 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
   }
 
   Widget _buildErrorChart(String storeId) {
-    return SizedBox(
-      height: 300,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'データの読み込みに失敗しました',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.red[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () {
-                ref.invalidate(storeUserTrendProvider({
-                  'storeId': storeId,
-                  'period': _selectedPeriod,
-                }));
-              },
+    return Consumer(
+      builder: (context, ref, child) {
+        return SizedBox(
+          height: 300,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'データの読み込みに失敗しました',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.red[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.invalidate(storeUserTrendProvider({
+                      'storeId': storeId,
+                      'period': _selectedPeriod,
+                    }));
+                  },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF6B35),
                 foregroundColor: Colors.white,
@@ -502,6 +504,8 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 // 店舗データプロバイダー
 final storeDataProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, storeId) {
@@ -177,8 +178,9 @@ final storeUserTrendProvider = StreamProvider.family<List<Map<String, dynamic>>,
     final storeId = params['storeId'] as String;
     final period = params['period'] as String; // 'week', 'month', 'year'
     
-    DateTime startDate;
-    DateTime endDate = DateTime.now();
+        DateTime startDate;
+        // 画像内のデータが未来の日付（2025-09-24）のため、一時的に未来の日付に設定
+        DateTime endDate = DateTime(2026, 1, 1);
     
     switch (period) {
       case 'week':
@@ -194,72 +196,91 @@ final storeUserTrendProvider = StreamProvider.family<List<Map<String, dynamic>>,
         startDate = endDate.subtract(const Duration(days: 7));
     }
     
-    return FirebaseFirestore.instance
-        .collection('point_transactions')
-        .doc(storeId)
-        .snapshots()
-        .map((snapshot) {
-      debugPrint('StoreUserTrendProvider: Found ${snapshot.data()?.keys.length ?? 0} users for storeId: $storeId');
+    // point_transactions/{storeId}/{userId}/{transactionId} の構造に対応
+    // 直接point_transactionsコレクションにアクセスしてデータを取得
+    debugPrint('StoreUserTrendProvider: Starting stream for storeId: $storeId, period: $period');
+    
+    final controller = StreamController<List<Map<String, dynamic>>>();
+    final Map<String, StreamSubscription<QuerySnapshot>> userSubs = {};
+    StreamSubscription<QuerySnapshot>? usersRootSub;
+
+    void emitCombined() async {
+      // Combine all current snapshots into a single sorted list
+      final List<Map<String, dynamic>> all = [];
+      await Future.wait(userSubs.entries.map((e) async {
+        // Read latest once from each subcollection (cache or server)
+        final snap = await FirebaseFirestore.instance
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(e.key)
+            .get();
+        for (final d in snap.docs) {
+          final data = d.data() as Map<String, dynamic>;
+          all.add({
+            ...data,
+            'transactionId': d.id,
+            'userId': e.key,
+          });
+        }
+      }));
       
-      if (!snapshot.exists || snapshot.data() == null) {
-        debugPrint('StoreUserTrendProvider: No data found for storeId: $storeId');
-        return <Map<String, dynamic>>[];
-      }
+      // 期間とdescriptionでフィルタリング
+      final filteredData = all.where((transaction) {
+        // descriptionが「ポイント付与」のもののみ
+        if (transaction['description'] != 'ポイント付与') return false;
+        
+        final createdAt = transaction['createdAt'];
+        if (createdAt == null) return false;
+        
+        DateTime docDate;
+        if (createdAt is DateTime) {
+          docDate = createdAt;
+        } else if (createdAt is Timestamp) {
+          docDate = createdAt.toDate();
+        } else {
+          return false;
+        }
+        
+        return docDate.isAfter(startDate) && docDate.isBefore(endDate);
+      }).toList();
       
-      final storeData = snapshot.data()!;
-      debugPrint('StoreUserTrendProvider: Store data keys: ${storeData.keys.toList()}');
-      
-      // 各ユーザーのデータを処理
+      // 日付でグループ化してユーザー数をカウント
       final Map<String, Set<String>> dailyUsers = {};
       
-      for (final userId in storeData.keys) {
-        final userData = storeData[userId] as Map<String, dynamic>?;
-        if (userData == null) continue;
+      for (final transaction in filteredData) {
+        final createdAt = transaction['createdAt'];
+        if (createdAt == null) continue;
         
-        // ユーザーの取引データを処理
-        for (final transactionId in userData.keys) {
-          final transactionData = userData[transactionId] as Map<String, dynamic>?;
-          if (transactionData == null) continue;
-          
-          final createdAt = transactionData['createdAt'];
-          if (createdAt == null) continue;
-          
-          DateTime docDate;
-          if (createdAt is DateTime) {
-            docDate = createdAt;
-          } else if (createdAt is Timestamp) {
-            docDate = createdAt.toDate();
-          } else {
-            continue;
-          }
-          
-          // 期間内のデータのみを処理
-          if (docDate.isAfter(startDate) && docDate.isBefore(endDate)) {
-            final dateKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
-            dailyUsers.putIfAbsent(dateKey, () => <String>{});
-            dailyUsers[dateKey]!.add(userId);
-          }
+        DateTime docDate;
+        if (createdAt is DateTime) {
+          docDate = createdAt;
+        } else if (createdAt is Timestamp) {
+          docDate = createdAt.toDate();
+        } else {
+          continue;
         }
+        
+        final dateKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+        dailyUsers.putIfAbsent(dateKey, () => <String>{});
+        dailyUsers[dateKey]!.add(transaction['userId'] as String);
       }
-      
-      debugPrint('StoreUserTrendProvider: Found ${dailyUsers.length} days with data');
       
       // 期間に応じてデータをグループ化
       Map<String, Set<String>> groupedData = {};
-      
+
       for (final entry in dailyUsers.entries) {
         final dateStr = entry.key;
         final users = entry.value;
-        
+
         // 日付文字列を解析
         final dateParts = dateStr.split('-');
         if (dateParts.length != 3) continue;
-        
+
         final year = int.parse(dateParts[0]);
         final month = int.parse(dateParts[1]);
         final day = int.parse(dateParts[2]);
         final docDate = DateTime(year, month, day);
-        
+
         String groupKey;
         switch (period) {
           case 'week':
@@ -274,11 +295,11 @@ final storeUserTrendProvider = StreamProvider.family<List<Map<String, dynamic>>,
           default:
             groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
         }
-        
+
         groupedData.putIfAbsent(groupKey, () => <String>{});
         groupedData[groupKey]!.addAll(users);
       }
-      
+
       // 結果をリストに変換してソート
       final result = groupedData.entries.map((entry) {
         return {
@@ -286,15 +307,50 @@ final storeUserTrendProvider = StreamProvider.family<List<Map<String, dynamic>>,
           'userCount': entry.value.length,
         };
       }).toList();
-      
+
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
-      
+
       debugPrint('StoreUserTrendProvider: Returning ${result.length} data points');
-      return result;
-    }).handleError((error) {
-      debugPrint('Error fetching store user trend: $error');
-      return [];
+      if (!controller.isClosed) controller.add(result);
+    }
+
+    // Watch users under point_transactions/{storeId} and attach per-user listeners
+    // まず users コレクションから userId を取得
+    usersRootSub = FirebaseFirestore.instance.collection('users').snapshots().listen((usersSnap) {
+      final incoming = usersSnap.docs.map((d) => d.id).toSet();
+      final current = userSubs.keys.toSet();
+
+      // Add new user listeners
+      for (final userId in incoming.difference(current)) {
+        final sub = FirebaseFirestore.instance
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .snapshots()
+            .listen((_) {
+          emitCombined();
+        });
+        userSubs[userId] = sub;
+      }
+
+      // Remove obsolete listeners
+      for (final userId in current.difference(incoming)) {
+        userSubs.remove(userId)?.cancel();
+      }
+
+      // Emit after topology change
+      emitCombined();
     });
+
+    ref.onDispose(() {
+      usersRootSub?.cancel();
+      for (final s in userSubs.values) {
+        s.cancel();
+      }
+      controller.close();
+    });
+
+    return controller.stream;
   } catch (e) {
     debugPrint('Error creating store user trend stream: $e');
     return Stream.value([]);

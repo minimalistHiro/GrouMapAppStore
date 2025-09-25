@@ -62,9 +62,19 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
       .snapshots()
       .map((snapshot) {
     if (snapshot.exists) {
+      final data = snapshot.data()!;
+      // TimestampをDateTimeに変換
+      final convertedData = Map<String, dynamic>.from(data);
+      if (data['createdAt'] != null) {
+        convertedData['createdAt'] = data['createdAt'].toDate();
+      }
+      if (data['respondedAt'] != null) {
+        convertedData['respondedAt'] = data['respondedAt'].toDate();
+      }
+      
       return PointRequest.fromJson({
         'id': '${storeId}_${userId}',
-        ...snapshot.data()!,
+        ...convertedData,
       });
     }
     return null;

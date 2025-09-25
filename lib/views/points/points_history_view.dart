@@ -3,6 +3,87 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
+import 'dart:async';
+
+// 店舗用のポイント取引履歴プロバイダー
+final storePointTransactionsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
+  final firestore = FirebaseFirestore.instance;
+  
+  final controller = StreamController<List<Map<String, dynamic>>>();
+  final Map<String, StreamSubscription<QuerySnapshot>> userSubs = {};
+  StreamSubscription<QuerySnapshot>? usersRootSub;
+
+  void emitCombined() async {
+    // Combine all current snapshots into a single sorted list
+    final List<Map<String, dynamic>> all = [];
+    await Future.wait(userSubs.entries.map((e) async {
+      // Read latest once from each subcollection (cache or server)
+      final snap = await firestore
+          .collection('point_transactions')
+          .doc(storeId)
+          .collection(e.key)
+          .orderBy('createdAt', descending: true)
+          .get();
+      for (final d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        all.add({
+          ...data,
+          'transactionId': d.id,
+        });
+      }
+    }));
+    all.sort((a, b) {
+      final aTime = a['createdAt'];
+      final bTime = b['createdAt'];
+      if (aTime is DateTime && bTime is DateTime) {
+        return bTime.compareTo(aTime);
+      } else if (aTime is Timestamp && bTime is Timestamp) {
+        return bTime.compareTo(aTime);
+      }
+      return 0;
+    });
+    if (!controller.isClosed) controller.add(all);
+  }
+
+  // Watch users under point_transactions/{storeId} and attach per-user listeners
+  // まず users コレクションから userId を取得
+  usersRootSub = firestore.collection('users').snapshots().listen((usersSnap) {
+    final incoming = usersSnap.docs.map((d) => d.id).toSet();
+    final current = userSubs.keys.toSet();
+
+    // Add new user listeners
+    for (final userId in incoming.difference(current)) {
+      final sub = firestore
+          .collection('point_transactions')
+          .doc(storeId)
+          .collection(userId)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .listen((_) {
+        emitCombined();
+      });
+      userSubs[userId] = sub;
+    }
+
+    // Remove obsolete listeners
+    for (final userId in current.difference(incoming)) {
+      userSubs.remove(userId)?.cancel();
+    }
+
+    // Emit after topology change
+    emitCombined();
+  });
+
+  ref.onDispose(() {
+    usersRootSub?.cancel();
+    for (final s in userSubs.values) {
+      s.cancel();
+    }
+    controller.close();
+  });
+
+  return controller.stream;
+});
 
 class PointsHistoryView extends ConsumerStatefulWidget {
   const PointsHistoryView({Key? key}) : super(key: key);
@@ -110,24 +191,58 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
   }
 
   Widget _buildPointsIssuedHistory() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.point_of_sale,
-            size: 64,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'ポイント発行履歴は現在利用できません',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+    if (_selectedStoreId == null) {
+      return const Center(
+        child: Text('店舗情報が見つかりません'),
+      );
+    }
+
+    final transactionsAsync = ref.watch(storePointTransactionsProvider(_selectedStoreId!));
+
+    return transactionsAsync.when(
+      data: (transactions) {
+        // ポイント発行履歴をフィルタリング（descriptionが「ポイント付与」のデータ）
+        final points = transactions.where((transaction) {
+          return transaction['description'] == 'ポイント付与';
+        }).toList();
+
+        if (points.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.point_of_sale,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'ポイント発行履歴がありません',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: points.length,
+          itemBuilder: (context, index) {
+            final transaction = points[index];
+            return _buildPointIssuedCard(transaction);
+          },
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text('エラーが発生しました: $error'),
       ),
     );
   }
@@ -139,48 +254,14 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
       );
     }
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('point_transactions')
-          .where('storeId', isEqualTo: _selectedStoreId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
+    final transactionsAsync = ref.watch(storePointTransactionsProvider(_selectedStoreId!));
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('エラーが発生しました: ${snapshot.error}'),
-          );
-        }
-
-        final allPoints = snapshot.data?.docs ?? [];
-        
+    return transactionsAsync.when(
+      data: (transactions) {
         // ポイント利用履歴をフィルタリング（descriptionが「ポイント支払い」のデータ）
-        final points = allPoints.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final storeId = data['storeId'] ?? '';
-          final description = data['description'] ?? '';
-          return storeId == _selectedStoreId && description == 'ポイント支払い';
+        final points = transactions.where((transaction) {
+          return transaction['description'] == 'ポイント支払い';
         }).toList();
-        
-        // 作成日時でソート（降順）
-        points.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aTimeStr = aData['createdAt']?.toString() ?? '';
-          final bTimeStr = bData['createdAt']?.toString() ?? '';
-          
-          if (aTimeStr.isEmpty && bTimeStr.isEmpty) return 0;
-          if (aTimeStr.isEmpty) return 1;
-          if (bTimeStr.isEmpty) return -1;
-          
-          // 文字列として比較（ISO 8601形式なので文字列比較で正しくソートされる）
-          return bTimeStr.compareTo(aTimeStr);
-        });
 
         if (points.isEmpty) {
           return const Center(
@@ -209,13 +290,20 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
           padding: const EdgeInsets.all(16),
           itemCount: points.length,
           itemBuilder: (context, index) {
-            final point = points[index].data() as Map<String, dynamic>;
-            return _buildPointUsedCard(point);
+            final transaction = points[index];
+            return _buildPointUsedCard(transaction);
           },
         );
       },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text('エラーが発生しました: $error'),
+      ),
     );
   }
+
 
   Widget _buildPointIssuedCard(Map<String, dynamic> point) {
     return Card(
