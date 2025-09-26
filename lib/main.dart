@@ -61,7 +61,7 @@ class GrouMapStoreApp extends StatelessWidget {
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
