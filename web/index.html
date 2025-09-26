@@ -19,6 +19,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="GrouMap Store - 店舗管理アプリ">
+  <meta name="theme-color" content="#0175C2">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,6 +71,33 @@
   </script>
 </head>
 <body>
+  <button id="pwaInstallButton" style="position: fixed; right: 16px; bottom: 16px; z-index: 10000; display: none; padding: 10px 14px; border: none; border-radius: 8px; background: #0175C2; color: #fff; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer;">ホーム画面に追加</button>
+  <script>
+    let deferredPrompt;
+    const installBtn = document.getElementById('pwaInstallButton');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'inline-block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    installBtn?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    // iOS (Safari) は beforeinstallprompt をサポートしていないため、
+    // 必要に応じてガイダンス表示などを検討してください。
+  </script>
   <script>
     window.addEventListener('load', function(ev) {
       // Download main.dart.js

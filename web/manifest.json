@@ -1,11 +1,12 @@
 {
-    "name": "groumapapp_store",
-    "short_name": "groumapapp_store",
-    "start_url": ".",
+    "name": "GrouMap Store",
+    "short_name": "GrouMap",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "GrouMap Store - 店舗管理用PWA",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
