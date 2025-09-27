@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Flutter Web (8080)",
+      "type": "shell",
+      "command": "flutter pub get && flutter run -d web-server --web-renderer html --web-port 8080",
+      "problemMatcher": []
+    }
+  ]
+}
