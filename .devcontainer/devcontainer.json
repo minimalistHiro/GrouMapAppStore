@@ -1,0 +1,12 @@
+{
+  "name": "Flutter",
+  "image": "cirrusci/flutter:stable",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "flutter-web",
+      "visibility": "public"
+    }
+  },
+  "postCreateCommand": "flutter doctor"
+}
