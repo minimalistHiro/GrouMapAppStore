@@ -5,7 +5,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import 'sign_up_view.dart';
@@ -60,6 +59,11 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     '居酒屋',
     'ファストフード',
     'スイーツ',
+    'ラーメン',
+    '寿司',
+    '焼肉',
+    'パン',
+    'バー',
     'その他',
   ];
 

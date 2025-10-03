@@ -5,6 +5,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 // バッジ作成状態管理
 class BadgeCreateState {
@@ -13,6 +15,7 @@ class BadgeCreateState {
   final bool isSuccess;
   final String? imageUrl;
   final File? selectedImage;
+  final Uint8List? webImageBytes;
 
   const BadgeCreateState({
     this.isLoading = false,
@@ -20,6 +23,7 @@ class BadgeCreateState {
     this.isSuccess = false,
     this.imageUrl,
     this.selectedImage,
+    this.webImageBytes,
   });
 
   BadgeCreateState copyWith({
@@ -28,6 +32,7 @@ class BadgeCreateState {
     bool? isSuccess,
     String? imageUrl,
     File? selectedImage,
+    Uint8List? webImageBytes,
   }) {
     return BadgeCreateState(
       isLoading: isLoading ?? this.isLoading,
@@ -35,6 +40,7 @@ class BadgeCreateState {
       isSuccess: isSuccess ?? this.isSuccess,
       imageUrl: imageUrl ?? this.imageUrl,
       selectedImage: selectedImage ?? this.selectedImage,
+      webImageBytes: webImageBytes ?? this.webImageBytes,
     );
   }
 }
@@ -157,6 +163,8 @@ class BadgeCreateNotifier extends StateNotifier<BadgeCreateState> {
   // 画像選択
   Future<void> pickImage() async {
     try {
+      state = state.copyWith(isLoading: true, error: null);
+      
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1024,
@@ -165,34 +173,108 @@ class BadgeCreateNotifier extends StateNotifier<BadgeCreateState> {
       );
 
       if (image != null) {
-        state = state.copyWith(
-          selectedImage: File(image.path),
-          error: null,
-        );
+        if (kIsWeb) {
+          // Webプラットフォーム用の処理
+          final bytes = await image.readAsBytes();
+          const maxSize = 5 * 1024 * 1024; // 5MB
+          
+          if (bytes.length > maxSize) {
+            state = state.copyWith(
+              isLoading: false,
+              error: '画像ファイルが大きすぎます。5MB以下のファイルを選択してください。',
+            );
+            return;
+          }
+          
+          state = state.copyWith(
+            webImageBytes: bytes,
+            selectedImage: null,
+            isLoading: false,
+            error: null,
+          );
+        } else {
+          // モバイルプラットフォーム用の処理
+          final file = File(image.path);
+          final fileSize = await file.length();
+          const maxSize = 5 * 1024 * 1024; // 5MB
+          
+          if (fileSize > maxSize) {
+            state = state.copyWith(
+              isLoading: false,
+              error: '画像ファイルが大きすぎます。5MB以下のファイルを選択してください。',
+            );
+            return;
+          }
+          
+          state = state.copyWith(
+            selectedImage: file,
+            webImageBytes: null,
+            isLoading: false,
+            error: null,
+          );
+        }
+      } else {
+        // ユーザーがキャンセルした場合
+        state = state.copyWith(isLoading: false);
       }
     } catch (e) {
-      state = state.copyWith(error: '画像の選択に失敗しました: $e');
+      String errorMessage = '画像の選択に失敗しました';
+      
+      if (e.toString().contains('Permission denied')) {
+        errorMessage = '画像へのアクセス権限がありません。設定で権限を許可してください。';
+      } else if (e.toString().contains('No such file')) {
+        errorMessage = '選択された画像ファイルが見つかりません。';
+      } else if (e.toString().contains('Invalid image')) {
+        errorMessage = '無効な画像ファイルです。別の画像を選択してください。';
+      } else if (e.toString().contains('Not supported')) {
+        errorMessage = 'このブラウザでは画像選択がサポートされていません。Chrome、Firefox、Safariをお試しください。';
+      } else {
+        errorMessage = '画像の選択に失敗しました: $e';
+      }
+      
+      state = state.copyWith(
+        isLoading: false,
+        error: errorMessage,
+      );
     }
   }
 
   // 画像アップロード
   Future<String?> uploadImage(String badgeId) async {
-    if (state.selectedImage == null) return null;
+    if (state.selectedImage == null && state.webImageBytes == null) return null;
 
     try {
       state = state.copyWith(isLoading: true, error: null);
 
       final ref = _storage.ref().child('badges/$badgeId/image.png');
-      final uploadTask = ref.putFile(state.selectedImage!);
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      if (kIsWeb && state.webImageBytes != null) {
+        // Webプラットフォーム用の処理
+        final uploadTask = ref.putData(state.webImageBytes!);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      state = state.copyWith(
-        imageUrl: downloadUrl,
-        isLoading: false,
-      );
+        state = state.copyWith(
+          imageUrl: downloadUrl,
+          isLoading: false,
+        );
 
-      return downloadUrl;
+        return downloadUrl;
+      } else if (state.selectedImage != null) {
+        // モバイルプラットフォーム用の処理
+        final uploadTask = ref.putFile(state.selectedImage!);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+
+        state = state.copyWith(
+          imageUrl: downloadUrl,
+          isLoading: false,
+        );
+
+        return downloadUrl;
+      } else {
+        throw Exception('画像が選択されていません');
+      }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -212,7 +294,7 @@ class BadgeCreateNotifier extends StateNotifier<BadgeCreateState> {
 
       // 画像をアップロード（選択されている場合）
       String? imageUrl;
-      if (state.selectedImage != null) {
+      if (state.selectedImage != null || state.webImageBytes != null) {
         imageUrl = await uploadImage(badgeId);
         if (imageUrl == null) {
           state = state.copyWith(
@@ -221,6 +303,24 @@ class BadgeCreateNotifier extends StateNotifier<BadgeCreateState> {
           );
           return false;
         }
+      }
+
+      // 条件データをFirestore用に変換
+      Map<String, dynamic> conditionData;
+      if (formData.conditionMode == 'jsonlogic') {
+        // JSON Logicモードの場合、JSON文字列をパースしてオブジェクトに変換
+        try {
+          conditionData = json.decode(formData.jsonLogicCondition);
+        } catch (e) {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'JSON Logicの形式が正しくありません: $e',
+          );
+          return false;
+        }
+      } else {
+        // 基本モードの場合、既存のconditionDataを使用
+        conditionData = formData.conditionData;
       }
 
       // バッジデータを保存
@@ -233,7 +333,7 @@ class BadgeCreateNotifier extends StateNotifier<BadgeCreateState> {
         'order': formData.order,
         'requiredValue': formData.requiredValue,
         'imageUrl': imageUrl,
-        'condition': formData.conditionData,
+        'condition': conditionData,
         'conditionVersion': 1,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -380,6 +480,14 @@ const List<Map<String, dynamic>> conditionTypeOptions = [
   {'value': 'payment_amount', 'label': '会計金額', 'params': ['threshold', 'period']},
   {'value': 'day_of_week_count', 'label': '曜日ごとの回数', 'params': ['threshold', 'day_of_week', 'period']},
   {'value': 'usage_count', 'label': '利用回数', 'params': ['threshold', 'period']},
+  {'value': 'cities_count', 'label': '異なる市での利用', 'params': ['threshold']},
+  {'value': 'time_range_usage', 'label': '時間帯利用', 'params': ['threshold', 'start_hour', 'end_hour']},
+  {'value': 'monthly_usage', 'label': '月利用', 'params': ['threshold', 'tz']},
+  {'value': 'genre_usage', 'label': 'ジャンル別来店回数', 'params': ['threshold', 'genre', 'period', 'tz']},
+  {'value': 'same_city_usage', 'label': '同じ市での利用', 'params': ['threshold', 'period', 'tz']},
+  {'value': 'same_store_usage', 'label': '同じ店の利用回数', 'params': ['threshold', 'period', 'tz']},
+  {'value': 'store_creation_within_months', 'label': '店の作成日から○ヶ月以内に来店', 'params': ['threshold', 'months']},
+  {'value': 'regular_store_count', 'label': '常連店舗（スタンプカード10個）数', 'params': ['threshold']},
 ];
 
 // 期間の選択肢
@@ -388,6 +496,7 @@ const List<Map<String, dynamic>> periodOptions = [
   {'value': 'week', 'label': '週'},
   {'value': 'month', 'label': '月'},
   {'value': 'year', 'label': '年'},
+  {'value': 'unlimited', 'label': '無期限'},
 ];
 
 // 曜日の選択肢
@@ -399,4 +508,19 @@ const List<Map<String, dynamic>> dayOfWeekOptions = [
   {'value': 'friday', 'label': '金曜日'},
   {'value': 'saturday', 'label': '土曜日'},
   {'value': 'sunday', 'label': '日曜日'},
+];
+
+// ジャンル（カテゴリ）の選択肢
+const List<Map<String, dynamic>> genreOptions = [
+  {'value': 'カフェ', 'label': 'カフェ'},
+  {'value': 'レストラン', 'label': 'レストラン'},
+  {'value': '居酒屋', 'label': '居酒屋'},
+  {'value': 'ファストフード', 'label': 'ファストフード'},
+  {'value': 'スイーツ', 'label': 'スイーツ'},
+  {'value': 'ラーメン', 'label': 'ラーメン'},
+  {'value': '寿司', 'label': '寿司'},
+  {'value': '焼肉', 'label': '焼肉'},
+  {'value': 'パン', 'label': 'パン'},
+  {'value': 'バー', 'label': 'バー'},
+  {'value': 'その他', 'label': 'その他'},
 ];

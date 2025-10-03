@@ -2,12 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/badge_provider.dart';
 import 'badge_create_view.dart';
+import 'badge_edit_view.dart';
 
-class BadgeManageView extends ConsumerWidget {
+class BadgeManageView extends ConsumerStatefulWidget {
   const BadgeManageView({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BadgeManageView> createState() => _BadgeManageViewState();
+}
+
+class _BadgeManageViewState extends ConsumerState<BadgeManageView>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  String _selectedCategory = 'すべて';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 1, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final badgesAsync = ref.watch(badgesProvider);
 
     return Scaffold(
@@ -30,6 +52,7 @@ class BadgeManageView extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black87),
+            tooltip: 'バッジを作成',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -45,7 +68,29 @@ class BadgeManageView extends ConsumerWidget {
           if (badges.isEmpty) {
             return _buildEmptyState(context);
           }
-          return _buildBadgeList(context, badges);
+          
+          // 表示順でソート
+          final sortedBadges = List<Map<String, dynamic>>.from(badges)
+            ..sort((a, b) {
+              final orderA = a['order'] as int? ?? 0;
+              final orderB = b['order'] as int? ?? 0;
+              return orderA.compareTo(orderB);
+            });
+          
+          // カテゴリを動的生成
+          final categories = <String>{'すべて'}
+            ..addAll(sortedBadges.map((b) => b['category'] as String? ?? '未分類').where((c) => c.isNotEmpty));
+          
+          if (!categories.contains(_selectedCategory)) {
+            _selectedCategory = 'すべて';
+          }
+          
+          // カテゴリでフィルタリング
+          final filteredBadges = _selectedCategory == 'すべて'
+              ? sortedBadges
+              : sortedBadges.where((b) => (b['category'] as String? ?? '未分類') == _selectedCategory).toList();
+          
+          return _buildBadgeList(context, filteredBadges, categories.toList());
         },
         loading: () => const Center(
           child: CircularProgressIndicator(
@@ -133,24 +178,70 @@ class BadgeManageView extends ConsumerWidget {
     );
   }
 
-  Widget _buildBadgeList(BuildContext context, List<Map<String, dynamic>> badges) {
+  Widget _buildBadgeList(BuildContext context, List<Map<String, dynamic>> badges, List<String> categories) {
     return Column(
       children: [
         // 統計情報
         _buildStatsCard(badges),
         
-        // バッジ一覧
+        // カテゴリタブ
+        _buildCategoryTabs(categories),
+        
+        // バッジ一覧（グリッドレイアウト）
         Expanded(
-          child: ListView.builder(
+          child: Padding(
             padding: const EdgeInsets.all(16),
-            itemCount: badges.length,
-            itemBuilder: (context, index) {
-              final badge = badges[index];
-              return _buildBadgeCard(context, badge);
-            },
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 0.75,
+              ),
+              itemCount: badges.length,
+              itemBuilder: (context, index) {
+                final badge = badges[index];
+                return _buildBadgeCard(context, badge);
+              },
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryTabs(List<String> categories) {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final isSelected = category == _selectedCategory;
+          
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedCategory = category;
+                });
+              },
+              selectedColor: const Color(0xFFFF6B35).withOpacity(0.2),
+              checkmarkColor: const Color(0xFFFF6B35),
+              labelStyle: TextStyle(
+                color: isSelected ? const Color(0xFFFF6B35) : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -236,180 +327,151 @@ class BadgeManageView extends ConsumerWidget {
       (option) => option['value'] == rarity,
       orElse: () => rarityOptions.first,
     );
-    final category = badge['category'] as String? ?? 'basic';
-    final categoryInfo = categoryOptions.firstWhere(
-      (option) => option['value'] == category,
-      orElse: () => categoryOptions.first,
-    );
+    final isActive = badge['isActive'] == true;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+    return GestureDetector(
+      onTap: () => _showBadgeDetail(context, badge),
+      onLongPress: () => _showContextMenu(context, badge),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // バッジアイコン
+              _getBadgeIcon(
+                badge['imageUrl'],
+                rarityInfo: rarityInfo,
+                isActive: isActive,
+                size: 75,
+              ),
+              
+              const SizedBox(height: 6),
+              
+              // バッジ名
+              Text(
+                badge['name'] ?? 'バッジ名なし',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? Colors.black87 : Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              const SizedBox(height: 3),
+              
+              // レア度表示
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: rarityInfo['color'].withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: rarityInfo['color'], width: 1),
+                ),
+                child: Text(
+                  rarityInfo['label'],
+                  style: TextStyle(
+                    fontSize: 7,
+                    fontWeight: FontWeight.bold,
+                    color: rarityInfo['color'],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 2),
+              
+              // アクティブ状態
+              Icon(
+                isActive ? Icons.check_circle : Icons.pause_circle,
+                size: 10,
+                color: isActive ? Colors.green : Colors.orange,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: rarityInfo['color'].withOpacity(0.1),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: rarityInfo['color'],
-              width: 2,
-            ),
-          ),
-          child: badge['imageUrl'] != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Image.network(
-                    badge['imageUrl'],
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.workspace_premium,
-                        color: rarityInfo['color'],
-                        size: 24,
-                      );
-                    },
-                  ),
-                )
-              : Icon(
-                  Icons.workspace_premium,
-                  color: rarityInfo['color'],
-                  size: 24,
-                ),
-        ),
-        title: Text(
-          badge['name'] ?? 'バッジ名なし',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+    );
+  }
+
+  Widget _getBadgeIcon(String? imageUrl, {required Map<String, dynamic> rarityInfo, required bool isActive, double size = 24}) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: Opacity(
+          opacity: isActive ? 1.0 : 0.5,
+          child: Image.network(
+            imageUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                Icons.workspace_premium,
+                size: size,
+                color: isActive ? rarityInfo['color'] : Colors.grey,
+              );
+            },
           ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      );
+    }
+    
+    return Icon(
+      Icons.workspace_premium,
+      size: size,
+      color: isActive ? rarityInfo['color'] : Colors.grey,
+    );
+  }
+
+  void _showContextMenu(BuildContext context, Map<String, dynamic> badge) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 4),
-            Text(
-              badge['description'] ?? '説明なし',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: rarityInfo['color'].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: rarityInfo['color'], width: 1),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('編集'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => BadgeEditView(badgeId: badge['id']),
                   ),
-                  child: Text(
-                    rarityInfo['label'],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: rarityInfo['color'],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!, width: 1),
-                  ),
-                  child: Text(
-                    categoryInfo['label'],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: (badge['isActive'] == true ? Colors.green : Colors.orange).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: badge['isActive'] == true ? Colors.green : Colors.orange,
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    badge['isActive'] == true ? 'アクティブ' : '非アクティブ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: badge['isActive'] == true ? Colors.green : Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'edit':
-                // TODO: バッジ編集画面を実装
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('バッジ編集機能は準備中です')),
                 );
-                break;
-              case 'delete':
-                _showDeleteDialog(context, badge);
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 16),
-                  SizedBox(width: 8),
-                  Text('編集'),
-                ],
-              ),
+              },
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 16, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('削除', style: TextStyle(color: Colors.red)),
-                ],
-              ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('削除', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteDialog(context, badge);
+              },
             ),
           ],
         ),
-        onTap: () {
-          _showBadgeDetail(context, badge);
-        },
       ),
     );
   }
@@ -435,37 +497,19 @@ class BadgeManageView extends ConsumerWidget {
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: rarityInfo['color'].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(60),
-                border: Border.all(
-                  color: rarityInfo['color'],
-                  width: 3,
-                ),
-              ),
-              child: badge['imageUrl'] != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(57),
-                      child: Image.network(
-                        badge['imageUrl'],
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.workspace_premium,
-                            color: rarityInfo['color'],
-                            size: 48,
-                          );
-                        },
-                      ),
-                    )
-                  : Icon(
+            CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.grey[100],
+              backgroundImage: badge['imageUrl'] != null
+                  ? NetworkImage(badge['imageUrl'])
+                  : null,
+              child: badge['imageUrl'] == null
+                  ? Icon(
                       Icons.workspace_premium,
                       color: rarityInfo['color'],
                       size: 48,
-                    ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 16),
             Text(
@@ -573,9 +617,10 @@ class BadgeManageView extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // TODO: バッジ編集画面を実装
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('バッジ編集機能は準備中です')),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => BadgeEditView(badgeId: badge['id']),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(

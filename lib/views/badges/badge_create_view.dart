@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../../providers/badge_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
-import 'badge_manage_view.dart';
 
 class BadgeCreateView extends ConsumerStatefulWidget {
   const BadgeCreateView({Key? key}) : super(key: key);
@@ -30,14 +30,13 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     
-    // フォームデータの初期化
+    // フォームデータの初期化（初期値は空白/0）
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final formData = ref.read(badgeFormProvider);
-      _nameController.text = formData.name;
-      _descriptionController.text = formData.description;
-      _orderController.text = formData.order.toString();
-      _requiredValueController.text = formData.requiredValue.toString();
-      _jsonLogicController.text = formData.jsonLogicCondition;
+      _nameController.text = '';
+      _descriptionController.text = '';
+      _orderController.text = '0';
+      _requiredValueController.text = '0';
+      _jsonLogicController.text = '';
     });
   }
 
@@ -182,7 +181,7 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
           // 画像プレビュー
           Center(
             child: GestureDetector(
-              onTap: () => ref.read(badgeCreateProvider.notifier).pickImage(),
+              onTap: badgeCreateState.isLoading ? null : () => ref.read(badgeCreateProvider.notifier).pickImage(),
               child: Container(
                 width: 120,
                 height: 120,
@@ -194,35 +193,87 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
                     style: BorderStyle.solid,
                   ),
                 ),
-                child: badgeCreateState.selectedImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          badgeCreateState.selectedImage!,
-                          fit: BoxFit.cover,
+                child: badgeCreateState.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)),
                         ),
                       )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate,
-                            size: 32,
-                            color: Colors.grey[400],
+                    : badgeCreateState.selectedImage != null || badgeCreateState.webImageBytes != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: kIsWeb && badgeCreateState.webImageBytes != null
+                                ? Image.memory(
+                                    badgeCreateState.webImageBytes!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Image.file(
+                                    badgeCreateState.selectedImage!,
+                                    fit: BoxFit.cover,
+                                  ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate,
+                                size: 32,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '画像を選択',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '画像を選択',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
               ),
             ),
           ),
+          
+          // エラーメッセージ表示
+          if (badgeCreateState.error != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(top: 16),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red[700],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      badgeCreateState.error!,
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => ref.read(badgeCreateProvider.notifier).clearError(),
+                    child: Icon(
+                      Icons.close,
+                      color: Colors.red[700],
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -539,7 +590,7 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
           ),
           const SizedBox(height: 8),
           const Text(
-            '獲得条件の設定方法を選択してください',
+            '獲得条件の設定方法を選択してください（モード切り替え時は内容がクリアされます）',
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey,
@@ -551,7 +602,14 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => ref.read(badgeFormProvider.notifier).updateConditionMode('typed'),
+                  onTap: () {
+                    if (formData.conditionMode != 'typed') {
+                      // 高度モードから基本モードに切り替える時、JSON Logic内容をクリア
+                      _jsonLogicController.clear();
+                      ref.read(badgeFormProvider.notifier).updateJsonLogicCondition('');
+                    }
+                    ref.read(badgeFormProvider.notifier).updateConditionMode('typed');
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -604,7 +662,14 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
               
               Expanded(
                 child: GestureDetector(
-                  onTap: () => ref.read(badgeFormProvider.notifier).updateConditionMode('jsonlogic'),
+                  onTap: () {
+                    if (formData.conditionMode != 'jsonlogic') {
+                      // 基本モードから高度モードに切り替える時、基本モードの内容をクリア
+                      ref.read(badgeFormProvider.notifier).updateConditionType('');
+                      ref.read(badgeFormProvider.notifier).updateConditionParams({});
+                    }
+                    ref.read(badgeFormProvider.notifier).updateConditionMode('jsonlogic');
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -660,60 +725,176 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
   }
 
   Widget _buildTypedConditionSection(BadgeFormData formData) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '条件設定',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // 条件タイプ選択
+              DropdownButtonFormField<String>(
+                value: formData.conditionType.isEmpty ? null : formData.conditionType,
+                decoration: const InputDecoration(
+                  labelText: '条件タイプ',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: conditionTypeOptions.map((option) {
+                  return DropdownMenuItem<String>(
+                    value: option['value'] as String,
+                    child: Text(option['label'] as String),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(badgeFormProvider.notifier).updateConditionType(value);
+                    // パラメータをリセット
+                    ref.read(badgeFormProvider.notifier).updateConditionParams({});
+                  }
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '条件タイプを選択してください';
+                  }
+                  return null;
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // 条件パラメータ
+              if (formData.conditionType.isNotEmpty)
+                _buildConditionParams(formData),
+            ],
+          ),
+        ),
+        
+        // JSON形式プレビュー
+        if (formData.conditionType.isNotEmpty)
+          _buildJsonPreview(formData),
+      ],
+    );
+  }
+
+  Widget _buildJsonPreview(BadgeFormData formData) {
+    final jsonString = JsonEncoder.withIndent('  ').convert(formData.conditionData);
+    
+    // 条件タイプに応じた説明を生成
+    String getConditionDescription() {
+      switch (formData.conditionType) {
+        case 'first_checkin':
+          return '※ point_transactionsコレクションに初めてユーザーのuidが登録された時';
+        case 'points_total':
+          return '※ ユーザーの累計ポイントが閾値以上の時';
+        case 'points_in_period':
+          return '※ 指定期間内のポイント獲得数が閾値以上の時';
+        case 'checkins_count':
+          return '※ 指定期間内のチェックイン回数が閾値以上の時';
+        case 'user_level':
+          return '※ ユーザーのレベルが閾値以上の時';
+        case 'badge_count':
+          return '※ 獲得バッジ数が閾値以上の時';
+        case 'payment_amount':
+          return '※ 指定期間内の支払い総額が閾値以上の時';
+        case 'day_of_week_count':
+          return '※ 指定曜日の利用回数が閾値以上の時';
+        case 'usage_count':
+          return '※ 指定期間内の利用回数が閾値以上の時';
+        case 'cities_count':
+          return '※ 異なる市で利用した回数が閾値以上の時（例: 3つ以上の異なる市で利用）';
+        case 'time_range_usage':
+          return '※ 指定時間帯（例: 18時〜22時）での利用回数が閾値以上の時';
+        case 'monthly_usage':
+          return '※ 月間での利用回数が閾値以上の時（例: 月に5回以上利用）';
+        case 'genre_usage':
+          return '※ 指定ジャンルの店での利用回数が閾値以上の時（例: カフェで3回以上利用）';
+        case 'same_city_usage':
+          return '※ 同じ市での利用回数が閾値以上の時（例: 川口市で5回以上利用）';
+        case 'same_store_usage':
+          return '※ 同じ店での利用回数が閾値以上の時（例: 特定の店で3回以上利用）';
+        case 'store_creation_within_months':
+          return '※ 店の作成日から指定月数以内に来店した回数が閾値以上の時';
+        case 'regular_store_count':
+          return '※ スタンプカードを10個集めた店舗数が閾値以上の時（例: 3店舗で常連になる）';
+        default:
+          return '';
+      }
+    }
+    
     return Container(
+      margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '条件設定',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Row(
+            children: [
+              Icon(
+                Icons.code,
+                size: 16,
+                color: Colors.grey[700],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'JSON形式プレビュー',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+          if (getConditionDescription().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              getConditionDescription(),
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.blue[700],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: SelectableText(
+              jsonString,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: Colors.grey[800],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          
-          // 条件タイプ選択
-          DropdownButtonFormField<String>(
-            value: formData.conditionType.isEmpty ? null : formData.conditionType,
-            decoration: const InputDecoration(
-              labelText: '条件タイプ',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            items: conditionTypeOptions.map((option) {
-              return DropdownMenuItem<String>(
-                value: option['value'] as String,
-                child: Text(option['label'] as String),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(badgeFormProvider.notifier).updateConditionType(value);
-                // パラメータをリセット
-                ref.read(badgeFormProvider.notifier).updateConditionParams({});
-              }
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '条件タイプを選択してください';
-              }
-              return null;
-            },
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 条件パラメータ
-          if (formData.conditionType.isNotEmpty)
-            _buildConditionParams(formData),
         ],
       ),
     );
@@ -832,6 +1013,116 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
             final newParams = Map<String, dynamic>.from(formData.conditionParams);
             newParams[param] = val;
             ref.read(badgeFormProvider.notifier).updateConditionParams(newParams);
+          },
+        );
+      case 'start_hour':
+        return TextFormField(
+          decoration: const InputDecoration(
+            labelText: '開始時刻（時） *',
+            hintText: '18',
+            border: OutlineInputBorder(),
+            helperText: '0〜23の数値を入力',
+          ),
+          keyboardType: TextInputType.number,
+          initialValue: value?.toString() ?? '',
+          onChanged: (val) {
+            final intValue = int.tryParse(val) ?? 0;
+            final newParams = Map<String, dynamic>.from(formData.conditionParams);
+            newParams[param] = intValue;
+            ref.read(badgeFormProvider.notifier).updateConditionParams(newParams);
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '開始時刻を入力してください';
+            }
+            final intValue = int.tryParse(value);
+            if (intValue == null) {
+              return '数値を入力してください';
+            }
+            if (intValue < 0 || intValue > 23) {
+              return '0〜23の範囲で入力してください';
+            }
+            return null;
+          },
+        );
+      case 'end_hour':
+        return TextFormField(
+          decoration: const InputDecoration(
+            labelText: '終了時刻（時） *',
+            hintText: '22',
+            border: OutlineInputBorder(),
+            helperText: '0〜23の数値を入力',
+          ),
+          keyboardType: TextInputType.number,
+          initialValue: value?.toString() ?? '',
+          onChanged: (val) {
+            final intValue = int.tryParse(val) ?? 0;
+            final newParams = Map<String, dynamic>.from(formData.conditionParams);
+            newParams[param] = intValue;
+            ref.read(badgeFormProvider.notifier).updateConditionParams(newParams);
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '終了時刻を入力してください';
+            }
+            final intValue = int.tryParse(value);
+            if (intValue == null) {
+              return '数値を入力してください';
+            }
+            if (intValue < 0 || intValue > 23) {
+              return '0〜23の範囲で入力してください';
+            }
+            return null;
+          },
+        );
+      case 'genre':
+        return DropdownButtonFormField<String>(
+          value: value?.toString() ?? 'カフェ',
+          decoration: const InputDecoration(
+            labelText: 'ジャンル *',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: genreOptions.map((option) {
+            return DropdownMenuItem<String>(
+              value: option['value'] as String,
+              child: Text(option['label'] as String),
+            );
+          }).toList(),
+          onChanged: (val) {
+            final newParams = Map<String, dynamic>.from(formData.conditionParams);
+            newParams[param] = val;
+            ref.read(badgeFormProvider.notifier).updateConditionParams(newParams);
+          },
+        );
+      case 'months':
+        return TextFormField(
+          decoration: const InputDecoration(
+            labelText: '月数 *',
+            hintText: '3',
+            border: OutlineInputBorder(),
+            helperText: '1〜12の数値を入力',
+          ),
+          keyboardType: TextInputType.number,
+          initialValue: value?.toString() ?? '',
+          onChanged: (val) {
+            final intValue = int.tryParse(val) ?? 0;
+            final newParams = Map<String, dynamic>.from(formData.conditionParams);
+            newParams[param] = intValue;
+            ref.read(badgeFormProvider.notifier).updateConditionParams(newParams);
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '月数を入力してください';
+            }
+            final intValue = int.tryParse(value);
+            if (intValue == null) {
+              return '数値を入力してください';
+            }
+            if (intValue < 1 || intValue > 12) {
+              return '1〜12の範囲で入力してください';
+            }
+            return null;
           },
         );
       default:
@@ -959,6 +1250,55 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
     }
   }
 
+  bool _isFormValid(BadgeFormData formData) {
+    // 基本情報の必須項目チェック
+    if (formData.name.trim().isEmpty || formData.description.trim().isEmpty) {
+      return false;
+    }
+    
+    // 条件設定のチェック
+    if (formData.conditionMode == 'typed') {
+      if (formData.conditionType.isEmpty) {
+        return false;
+      }
+      // 必須パラメータのチェック
+      final selectedType = conditionTypeOptions.firstWhere(
+        (option) => option['value'] == formData.conditionType,
+        orElse: () => {'params': []},
+      );
+      final requiredParams = List<String>.from(selectedType['params'] ?? []);
+      
+      for (String param in requiredParams) {
+        if (param == 'threshold' && (formData.conditionParams[param] == null || formData.conditionParams[param] == 0)) {
+          return false;
+        }
+        if (param == 'start_hour' && (formData.conditionParams[param] == null || formData.conditionParams[param] == 0)) {
+          return false;
+        }
+        if (param == 'end_hour' && (formData.conditionParams[param] == null || formData.conditionParams[param] == 0)) {
+          return false;
+        }
+        if (param == 'months' && (formData.conditionParams[param] == null || formData.conditionParams[param] == 0)) {
+          return false;
+        }
+        if (param == 'genre' && (formData.conditionParams[param] == null || formData.conditionParams[param].toString().isEmpty)) {
+          return false;
+        }
+      }
+    } else if (formData.conditionMode == 'jsonlogic') {
+      if (formData.jsonLogicCondition.trim().isEmpty) {
+        return false;
+      }
+      try {
+        json.decode(formData.jsonLogicCondition);
+      } catch (e) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
   Widget _buildSaveButton(BadgeCreateState createState, BadgeFormData formData, currentUser) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1017,32 +1357,10 @@ class _BadgeCreateViewState extends ConsumerState<BadgeCreateView>
                 flex: 2,
                 child: CustomButton(
                   text: createState.isLoading ? '保存中...' : 'バッジを保存',
-                  onPressed: createState.isLoading ? null : () => _saveBadge(formData, currentUser),
+                  onPressed: (createState.isLoading || !_isFormValid(formData)) ? null : () => _saveBadge(formData, currentUser),
                 ),
               ),
             ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // バッジ編集ボタン
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: createState.isLoading ? null : () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const BadgeManageView(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.edit, size: 16),
-              label: const Text('バッジ管理画面へ'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: BorderSide(color: Colors.grey[400]!),
-              ),
-            ),
           ),
         ],
       ),
