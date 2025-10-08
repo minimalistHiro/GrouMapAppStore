@@ -167,6 +167,8 @@ class AuthService {
                'displayName': storeInfo['name'], // 店舗名をdisplayNameに設定
                'createdAt': FieldValue.serverTimestamp(),
                'isOwner': false, // デフォルトでfalse（一般店舗）
+               'emailVerified': false, // メール認証状態を初期化
+               'emailVerifiedAt': null,
              }, SetOptions(merge: true));
       
     } catch (e) {
@@ -183,6 +185,66 @@ class AuthService {
   // パスワードリセット
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  // メール認証メールを送信
+  Future<void> sendEmailVerification() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('ユーザーがログインしていません');
+      }
+      
+      debugPrint('=== メール認証送信開始 ===');
+      debugPrint('ユーザーID: ${user.uid}');
+      debugPrint('メールアドレス: ${user.email}');
+      debugPrint('現在の認証状態: ${user.emailVerified}');
+      
+      if (user.emailVerified) {
+        debugPrint('既にメール認証済みです');
+        return;
+      }
+      
+      // ActionCodeSettingsを設定（Web用）
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'https://groumap-ea452.firebaseapp.com',
+        handleCodeInApp: false,
+      );
+      
+      debugPrint('送信リクエスト実行中...');
+      await user.sendEmailVerification(actionCodeSettings);
+      debugPrint('✅ メール認証メール送信成功: ${user.email}');
+      debugPrint('=== メール認証送信完了 ===');
+    } catch (e) {
+      debugPrint('❌ メール認証メール送信エラー: $e');
+      debugPrint('エラータイプ: ${e.runtimeType}');
+      if (e is FirebaseException) {
+        debugPrint('Firebaseエラーコード: ${e.code}');
+        debugPrint('Firebaseエラーメッセージ: ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
+  // メール認証状態を確認
+  Future<bool> isEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.reload();
+      return user.emailVerified;
+    }
+    return false;
+  }
+
+  // ユーザーのメール認証状態をFirestoreに保存
+  Future<void> updateEmailVerificationStatus(bool isVerified) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'emailVerified': isVerified,
+        'emailVerifiedAt': isVerified ? FieldValue.serverTimestamp() : null,
+      });
+    }
   }
 
   // ユーザープロフィール更新

@@ -574,28 +574,175 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildWeeklyStatsSection(WidgetRef ref) {
-    return _buildStatsSection(
-      title: '週間統計',
-      icon: Icons.calendar_view_week,
-      stats: [
-        {'label': '週間来店者数', 'value': '1,247', 'change': '+12%'},
-        {'label': '週間売上', 'value': '¥1,496,400', 'change': '+8%'},
-        {'label': '平均客単価', 'value': '¥1,200', 'change': '+5%'},
-        {'label': 'リピート率', 'value': '68%', 'change': '+3%'},
-      ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
+        
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildStatsSection(
+                title: '週間統計',
+                icon: Icons.calendar_view_week,
+                stats: [
+                  {'label': '週間来店者数', 'value': '-', 'change': '-'},
+                  {'label': '週間売上', 'value': '-', 'change': '-'},
+                  {'label': '平均客単価', 'value': '-', 'change': '-'},
+                  {'label': 'リピート率', 'value': '-', 'change': '-'},
+                ],
+              );
+            }
+            
+            final weeklyStatsAsync = ref.watch(weeklyStatsProvider(storeId));
+            
+            return weeklyStatsAsync.when(
+              data: (weeklyStats) {
+                final visitorCount = weeklyStats['visitorCount'] ?? 0;
+                final totalSales = weeklyStats['totalSales'] ?? 0;
+                final avgSpending = weeklyStats['avgSpending'] ?? 0;
+                final repeatRate = weeklyStats['repeatRate'] ?? 0;
+                
+                return _buildStatsSection(
+                  title: '週間統計',
+                  icon: Icons.calendar_view_week,
+                  stats: [
+                    {'label': '週間来店者数', 'value': '$visitorCount', 'change': '-'},
+                    {'label': '週間売上', 'value': '¥${totalSales.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
+                    {'label': '平均客単価', 'value': '¥${avgSpending.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
+                    {'label': 'リピート率', 'value': '$repeatRate%', 'change': '-'},
+                  ],
+                );
+              },
+              loading: () => _buildStatsSection(
+                title: '週間統計',
+                icon: Icons.calendar_view_week,
+                stats: [
+                  {'label': '週間来店者数', 'value': '読込中...', 'change': '-'},
+                  {'label': '週間売上', 'value': '読込中...', 'change': '-'},
+                  {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
+                  {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
+                ],
+              ),
+              error: (error, stackTrace) {
+                debugPrint('Error loading weekly stats: $error');
+                return _buildStatsSection(
+                  title: '週間統計',
+                  icon: Icons.calendar_view_week,
+                  stats: [
+                    {'label': '週間来店者数', 'value': '-', 'change': '-'},
+                    {'label': '週間売上', 'value': '-', 'change': '-'},
+                    {'label': '平均客単価', 'value': '-', 'change': '-'},
+                    {'label': 'リピート率', 'value': '-', 'change': '-'},
+                  ],
+                );
+              },
+            );
+          },
+          loading: () => _buildStatsSection(
+            title: '週間統計',
+            icon: Icons.calendar_view_week,
+            stats: [
+              {'label': '週間来店者数', 'value': '読込中...', 'change': '-'},
+              {'label': '週間売上', 'value': '読込中...', 'change': '-'},
+              {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
+              {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
+            ],
+          ),
+          error: (error, stackTrace) => _buildStatsSection(
+            title: '週間統計',
+            icon: Icons.calendar_view_week,
+            stats: [
+              {'label': '週間来店者数', 'value': '-', 'change': '-'},
+              {'label': '週間売上', 'value': '-', 'change': '-'},
+              {'label': '平均客単価', 'value': '-', 'change': '-'},
+              {'label': 'リピート率', 'value': '-', 'change': '-'},
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildMonthlyStatsSection(WidgetRef ref) {
-    return _buildStatsSection(
-      title: '月間統計',
-      icon: Icons.calendar_month,
-      stats: [
-        {'label': '月間来店者数', 'value': '4,892', 'change': '+15%'},
-        {'label': '月間売上', 'value': '¥5,870,400', 'change': '+18%'},
-        {'label': '新規顧客数', 'value': '978', 'change': '+22%'},
-        {'label': '顧客満足度', 'value': '4.7/5.0', 'change': '+0.2'},
-      ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
+        
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildStatsSection(
+                title: '月間統計',
+                icon: Icons.calendar_month,
+                stats: [
+                  {'label': '月間来店者数', 'value': '-', 'change': '-'},
+                  {'label': '月間売上', 'value': '-', 'change': '-'},
+                  {'label': '新規顧客数', 'value': '-', 'change': '-'},
+                ],
+              );
+            }
+            
+            final monthlyStatsAsync = ref.watch(monthlyStatsProvider(storeId));
+            
+            return monthlyStatsAsync.when(
+              data: (monthlyStats) {
+                final visitorCount = monthlyStats['visitorCount'] ?? 0;
+                final totalSales = monthlyStats['totalSales'] ?? 0;
+                final newCustomers = monthlyStats['newCustomers'] ?? 0;
+                
+                return _buildStatsSection(
+                  title: '月間統計',
+                  icon: Icons.calendar_month,
+                  stats: [
+                    {'label': '月間来店者数', 'value': '$visitorCount', 'change': '-'},
+                    {'label': '月間売上', 'value': '¥${totalSales.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
+                    {'label': '新規顧客数', 'value': '$newCustomers', 'change': '-'},
+                  ],
+                );
+              },
+              loading: () => _buildStatsSection(
+                title: '月間統計',
+                icon: Icons.calendar_month,
+                stats: [
+                  {'label': '月間来店者数', 'value': '読込中...', 'change': '-'},
+                  {'label': '月間売上', 'value': '読込中...', 'change': '-'},
+                  {'label': '新規顧客数', 'value': '読込中...', 'change': '-'},
+                ],
+              ),
+              error: (error, stackTrace) {
+                debugPrint('Error loading monthly stats: $error');
+                return _buildStatsSection(
+                  title: '月間統計',
+                  icon: Icons.calendar_month,
+                  stats: [
+                    {'label': '月間来店者数', 'value': '-', 'change': '-'},
+                    {'label': '月間売上', 'value': '-', 'change': '-'},
+                    {'label': '新規顧客数', 'value': '-', 'change': '-'},
+                  ],
+                );
+              },
+            );
+          },
+          loading: () => _buildStatsSection(
+            title: '月間統計',
+            icon: Icons.calendar_month,
+            stats: [
+              {'label': '月間来店者数', 'value': '読込中...', 'change': '-'},
+              {'label': '月間売上', 'value': '読込中...', 'change': '-'},
+              {'label': '新規顧客数', 'value': '読込中...', 'change': '-'},
+            ],
+          ),
+          error: (error, stackTrace) => _buildStatsSection(
+            title: '月間統計',
+            icon: Icons.calendar_month,
+            stats: [
+              {'label': '月間来店者数', 'value': '-', 'change': '-'},
+              {'label': '月間売上', 'value': '-', 'change': '-'},
+              {'label': '新規顧客数', 'value': '-', 'change': '-'},
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -701,6 +848,8 @@ class AnalyticsView extends ConsumerWidget {
           ref.invalidate(storeDataProvider(storeId));
           ref.invalidate(todayVisitorsProvider(storeId));
           ref.invalidate(storeStatsProvider(storeId));
+          ref.invalidate(weeklyStatsProvider(storeId));
+          ref.invalidate(monthlyStatsProvider(storeId));
         }
       },
       loading: () {},

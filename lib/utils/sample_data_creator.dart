@@ -184,6 +184,142 @@ class SampleDataCreator {
     }
   }
 
+  // サンプルポイントトランザクションデータを作成
+  static Future<void> createSamplePointTransactions(String storeId, String userId) async {
+    try {
+      final now = DateTime.now();
+      final transactions = [
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 10,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 1))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 15,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 2))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 20,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 3))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 12,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 4))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 8,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 5))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 25,
+          'description': 'ポイント付与',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 6))),
+        },
+        {
+          'storeId': storeId,
+          'userId': userId,
+          'storeName': 'テスト店舗',
+          'userName': 'テストユーザー',
+          'amount': 30,
+          'description': 'ポイント支払い',
+          'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 2))),
+        },
+      ];
+
+      for (final transaction in transactions) {
+        await _firestore
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .add(transaction);
+        print('ポイントトランザクションを作成しました: ${transaction['description']} (${transaction['amount']}ポイント)');
+      }
+
+      print('サンプルポイントトランザクションデータの作成が完了しました');
+    } catch (e) {
+      print('サンプルポイントトランザクションデータの作成でエラーが発生しました: $e');
+    }
+  }
+
+  // データ診断: 現在のポイントトランザクションデータを確認
+  static Future<void> diagnosePointTransactions(String storeId) async {
+    try {
+      print('\n=== Point Transactions 診断開始 ===');
+      print('StoreId: $storeId');
+      
+      // 全ユーザーを取得
+      final usersSnapshot = await _firestore.collection('users').get();
+      print('総ユーザー数: ${usersSnapshot.docs.length}');
+      
+      int totalTransactions = 0;
+      int pointAwardTransactions = 0;
+      int pointPaymentTransactions = 0;
+      
+      for (final userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final transactionsSnapshot = await _firestore
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .get();
+        
+        if (transactionsSnapshot.docs.isNotEmpty) {
+          print('\n--- User: $userId ---');
+          print('トランザクション数: ${transactionsSnapshot.docs.length}');
+          
+          for (final transDoc in transactionsSnapshot.docs) {
+            final data = transDoc.data();
+            totalTransactions++;
+            
+            if (data['description'] == 'ポイント付与') {
+              pointAwardTransactions++;
+            } else if (data['description'] == 'ポイント支払い') {
+              pointPaymentTransactions++;
+            }
+            
+            print('  - ${data['description']}: ${data['amount']}ポイント (${data['createdAt']})');
+          }
+        }
+      }
+      
+      print('\n=== 診断結果 ===');
+      print('総トランザクション数: $totalTransactions');
+      print('ポイント付与: $pointAwardTransactions');
+      print('ポイント支払い: $pointPaymentTransactions');
+      print('=== Point Transactions 診断完了 ===\n');
+    } catch (e) {
+      print('診断エラー: $e');
+    }
+  }
+
   // すべてのサンプルデータを作成
   static Future<void> createAllSampleData(String storeId) async {
     await createSampleAnnouncements(storeId);

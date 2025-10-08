@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'store_info_view.dart';
 import 'approval_pending_view.dart';
+import 'email_verification_pending_view.dart';
 import '../main_navigation_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
@@ -90,6 +91,19 @@ class _LoginViewState extends ConsumerState<LoginView> {
       if (user == null) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
+          (route) => false,
+        );
+        return;
+      }
+
+      // まずメール認証状態をチェック
+      final authService = ref.read(authServiceProvider);
+      final isEmailVerified = await authService.isEmailVerified();
+      
+      if (!isEmailVerified) {
+        // メール認証未完了の場合は認証待ち画面に遷移
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const EmailVerificationPendingView()),
           (route) => false,
         );
         return;

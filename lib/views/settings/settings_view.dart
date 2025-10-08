@@ -147,28 +147,7 @@ class SettingsView extends ConsumerWidget {
             // ログアウトボタン
             CustomButton(
               text: 'ログアウト',
-              onPressed: () async {
-                try {
-                  await ref.read(authServiceProvider).signOut();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ログアウトしました')),
-                    );
-                    
-                    // ログアウト完了後、ログイン画面に遷移
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginView()),
-                      (route) => false,
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('ログアウトに失敗しました: $e')),
-                    );
-                  }
-                }
-              },
+              onPressed: () => _showLogoutDialog(context, ref),
               backgroundColor: Colors.red,
               textColor: Colors.white,
             ),
@@ -514,6 +493,58 @@ class SettingsView extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('ログアウトの確認'),
+          content: const Text('ログアウトしますか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _performLogout(context, ref);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('ログアウト'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _performLogout(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(authServiceProvider).signOut();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ログアウトしました')),
+        );
+        
+        // ログアウト完了後、ログイン画面に遷移
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginView()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ログアウトに失敗しました: $e')),
+        );
+      }
+    }
   }
 
   void _showWithdrawalDialog(BuildContext context, WidgetRef ref) {

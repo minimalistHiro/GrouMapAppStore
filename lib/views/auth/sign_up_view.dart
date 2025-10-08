@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import 'approval_pending_view.dart';
+import 'email_verification_pending_view.dart';
 import '../main_navigation_view.dart';
 
 class SignUpView extends ConsumerStatefulWidget {
@@ -187,26 +188,65 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
     if (_formKey.currentState!.validate()) {
       try {
         final authService = ref.read(authServiceProvider);
+        
+        // アカウント作成
+        print('アカウント作成開始: ${_emailController.text.trim()}');
         await authService.createUserWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
           widget.storeInfo,
         );
+        print('アカウント作成完了');
+        
+        // 少し待機してからメール送信
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // メール認証メールを送信
+        print('メール認証メール送信開始');
+        try {
+          await authService.sendEmailVerification();
+          print('メール認証メール送信完了');
+        } catch (emailError) {
+          print('メール送信エラー: $emailError');
+          // メール送信エラーでも画面遷移は行う
+        }
         
         // 成功時の処理
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('アカウントと店舗情報を作成しました')),
+            const SnackBar(
+              content: Text('アカウントと店舗情報を作成しました。認証メールを送信しました。'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
           );
           
-          // 承認状況をチェックして適切な画面に遷移
-          await _checkApprovalAndNavigate();
+          // メール認証待ち画面に遷移
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const EmailVerificationPendingView()),
+            (route) => false,
+          );
         }
       } catch (e) {
         // エラー時の処理
+        print('アカウント作成エラー: $e');
         if (mounted) {
+          String errorMessage = 'アカウント作成に失敗しました';
+          
+          if (e.toString().contains('email-already-in-use')) {
+            errorMessage = 'このメールアドレスは既に使用されています';
+          } else if (e.toString().contains('invalid-email')) {
+            errorMessage = '無効なメールアドレスです';
+          } else if (e.toString().contains('weak-password')) {
+            errorMessage = 'パスワードが弱すぎます';
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('アカウント作成に失敗しました: ${e.toString()}')),
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
           );
         }
       }
