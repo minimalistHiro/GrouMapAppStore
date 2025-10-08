@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'store_info_view.dart';
-import 'approval_pending_view.dart';
-import 'email_verification_pending_view.dart';
-import '../main_navigation_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
   const LoginView({Key? key}) : super(key: key);
@@ -52,8 +47,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
           ),
         );
         
-        // 承認状況をチェックして適切な画面に遷移
-        await _checkApprovalAndNavigate();
+        // AuthWrapperが自動的に適切な画面に遷移するため、ここでは何もしない
       }
     } catch (e) {
       if (mounted) {
@@ -81,97 +75,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  Future<void> _checkApprovalAndNavigate() async {
-    try {
-      // 現在のユーザーを取得
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-          (route) => false,
-        );
-        return;
-      }
-
-      // まずメール認証状態をチェック
-      final authService = ref.read(authServiceProvider);
-      final isEmailVerified = await authService.isEmailVerified();
-      
-      if (!isEmailVerified) {
-        // メール認証未完了の場合は認証待ち画面に遷移
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const EmailVerificationPendingView()),
-          (route) => false,
-        );
-        return;
-      }
-
-      // ユーザーの店舗IDを直接取得
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-          (route) => false,
-        );
-        return;
-      }
-
-      final userData = userDoc.data()!;
-      final createdStores = userData['createdStores'] as List<dynamic>?;
-      
-      if (createdStores == null || createdStores.isEmpty) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-          (route) => false,
-        );
-        return;
-      }
-
-      final storeId = createdStores.first as String;
-
-      // 店舗の承認状況を確認
-      final storeDoc = await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .get();
-
-      if (storeDoc.exists) {
-        final storeData = storeDoc.data()!;
-        final isApproved = storeData['isApproved'] ?? false;
-
-        if (isApproved) {
-          // 承認済みの場合は直接ホーム画面に遷移
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const MainNavigationView()),
-            (route) => false,
-          );
-        } else {
-          // 未承認の場合は承認待ち画面に遷移
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-            (route) => false,
-          );
-        }
-      } else {
-        // 店舗情報が見つからない場合は承認待ち画面に遷移
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      // エラーの場合は承認待ち画面に遷移
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const ApprovalPendingView()),
-        (route) => false,
-      );
     }
   }
 
