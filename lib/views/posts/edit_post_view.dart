@@ -179,8 +179,19 @@ class _EditPostViewState extends State<EditPostView> {
       // 全ての画像URLを結合
       final allImageUrls = [..._existingImageUrls, ...newImageUrls];
 
+      // storeIdを取得
+      final storeId = widget.postData['storeId'];
+      if (storeId == null) {
+        throw Exception('店舗IDが見つかりません');
+      }
+
       // Firestoreに投稿情報を更新
-      await FirebaseFirestore.instance.collection('posts').doc(postId).update({
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(storeId)
+          .collection('posts')
+          .doc(postId)
+          .update({
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),
         'category': _selectedCategory,

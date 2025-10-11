@@ -526,19 +526,37 @@ class SettingsView extends ConsumerWidget {
 
   Future<void> _performLogout(BuildContext context, WidgetRef ref) async {
     try {
+      // ローディング表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // ログアウト処理
       await ref.read(authServiceProvider).signOut();
+
+      // ローディングを閉じる
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ログアウトしました')),
-        );
-        
-        // ログアウト完了後、ログイン画面に遷移
+        Navigator.of(context).pop();
+      }
+
+      // ログイン画面に遷移
+      if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginView()),
           (route) => false,
         );
       }
     } catch (e) {
+      // ローディングを閉じる
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // エラー表示
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ログアウトに失敗しました: $e')),

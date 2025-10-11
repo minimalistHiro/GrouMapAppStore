@@ -88,88 +88,120 @@ final storeStatsProvider = StreamProvider.family<Map<String, dynamic>?, String>(
   }
 });
 
-// 今日の訪問者プロバイダー
+// 今日の訪問者プロバイダー（point_transactionsから取得）
 final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
-  try {
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-    
-    return FirebaseFirestore.instance
-        .collection('point_transactions')
-        .where('storeId', isEqualTo: storeId)
-        .where('description', isEqualTo: 'ポイント支払い')
-        .snapshots()
-        .map((snapshot) {
-      // 今日のデータのみをフィルタリングしてソート
-      final todayDocs = snapshot.docs.where((doc) {
-        final data = doc.data();
-        final createdAt = data['createdAt'];
-        if (createdAt == null) return false;
-        
-        DateTime docDate;
-        if (createdAt is DateTime) {
-          docDate = createdAt;
-        } else if (createdAt is Timestamp) {
-          docDate = createdAt.toDate();
-        } else {
-          return false;
+  final firestore = FirebaseFirestore.instance;
+  final today = DateTime.now();
+  final startOfDay = DateTime(today.year, today.month, today.day);
+  final endOfDay = startOfDay.add(const Duration(days: 1));
+  
+  final controller = StreamController<List<Map<String, dynamic>>>();
+  final Map<String, StreamSubscription<QuerySnapshot>> userSubs = {};
+  StreamSubscription<QuerySnapshot>? usersRootSub;
+
+  void emitCombined() async {
+    try {
+      // Combine all current snapshots into a single sorted list
+      final List<Map<String, dynamic>> all = [];
+      await Future.wait(userSubs.entries.map((e) async {
+        // Read latest once from each subcollection
+        final snap = await firestore
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(e.key)
+            .get();
+        for (final d in snap.docs) {
+          final data = d.data();
+          // ポイント付与のみをフィルタリング
+          if (data['description'] == 'ポイント付与') {
+            // 今日のデータのみをフィルタリング
+            final createdAt = data['createdAt'];
+            if (createdAt != null) {
+              DateTime docDate;
+              if (createdAt is DateTime) {
+                docDate = createdAt;
+              } else if (createdAt is Timestamp) {
+                docDate = createdAt.toDate();
+              } else if (createdAt is String) {
+                try {
+                  docDate = DateTime.parse(createdAt);
+                } catch (_) {
+                  continue;
+                }
+              } else {
+                continue;
+              }
+              
+              if (docDate.isAfter(startOfDay) && docDate.isBefore(endOfDay)) {
+                all.add({
+                  ...data,
+                  'transactionId': d.id,
+                  'userName': data['userName'] ?? 'ゲストユーザー',
+                  'pointsEarned': data['amount'] ?? 0,
+                  'timestamp': data['createdAt'],
+                  'storeName': data['storeName'] ?? '店舗名不明',
+                });
+              }
+            }
+          }
         }
-        
-        return docDate.isAfter(startOfDay) && docDate.isBefore(endOfDay);
-      }).toList();
+      }));
       
       // 作成日時で降順ソート
-      todayDocs.sort((a, b) {
-        final aData = a.data();
-        final bData = b.data();
-        final aTime = aData['createdAt'];
-        final bTime = bData['createdAt'];
-        
-        if (aTime == null && bTime == null) return 0;
-        if (aTime == null) return 1;
-        if (bTime == null) return -1;
-        
-        DateTime aDate, bDate;
-        if (aTime is DateTime) {
-          aDate = aTime;
-        } else if (aTime is Timestamp) {
-          aDate = aTime.toDate();
-        } else {
-          return 0;
+      all.sort((a, b) {
+        final aTime = a['createdAt'];
+        final bTime = b['createdAt'];
+        if (aTime is DateTime && bTime is DateTime) {
+          return bTime.compareTo(aTime);
+        } else if (aTime is Timestamp && bTime is Timestamp) {
+          return bTime.compareTo(aTime);
         }
-        
-        if (bTime is DateTime) {
-          bDate = bTime;
-        } else if (bTime is Timestamp) {
-          bDate = bTime.toDate();
-        } else {
-          return 0;
-        }
-        
-        return bDate.compareTo(aDate);
+        return 0;
       });
       
-      return todayDocs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        // 訪問者カード用のデータ形式に変換
-        return {
-          'id': doc.id,
-          'userName': data['userName'] ?? 'ゲストユーザー',
-          'pointsEarned': data['amount'] ?? 0,
-          'timestamp': data['createdAt'],
-          'storeName': data['storeName'] ?? '店舗名不明',
-        };
-      }).toList();
-    }).handleError((error) {
-      debugPrint('Error fetching today visitors: $error');
-      return [];
-    });
-  } catch (e) {
-    debugPrint('Error creating today visitors stream: $e');
-    return Stream.value([]);
+      if (!controller.isClosed) controller.add(all);
+    } catch (e) {
+      debugPrint('Error in emitCombined: $e');
+      if (!controller.isClosed) controller.add([]);
+    }
   }
+
+  // Watch users and attach per-user listeners
+  usersRootSub = firestore.collection('users').snapshots().listen((usersSnap) {
+    final incoming = usersSnap.docs.map((d) => d.id).toSet();
+    final current = userSubs.keys.toSet();
+
+    // Add new user listeners
+    for (final userId in incoming.difference(current)) {
+      final sub = firestore
+          .collection('point_transactions')
+          .doc(storeId)
+          .collection(userId)
+          .snapshots()
+          .listen((_) {
+        emitCombined();
+      });
+      userSubs[userId] = sub;
+    }
+
+    // Remove obsolete listeners
+    for (final userId in current.difference(incoming)) {
+      userSubs.remove(userId)?.cancel();
+    }
+
+    // Emit after topology change
+    emitCombined();
+  });
+
+  ref.onDispose(() {
+    usersRootSub?.cancel();
+    for (final s in userSubs.values) {
+      s.cancel();
+    }
+    controller.close();
+  });
+
+  return controller.stream;
 });
 
 // 店舗利用者推移の状態管理
@@ -606,4 +638,89 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
       'newCustomers': 0,
     });
   }
+});
+
+// 今日の新規顧客プロバイダー（今日初めて利用したユーザー数を取得）
+final todayNewCustomersProvider = StreamProvider.family<int, String>((ref, storeId) {
+  final firestore = FirebaseFirestore.instance;
+  final today = DateTime.now();
+  final startOfDay = DateTime(today.year, today.month, today.day);
+  final endOfDay = startOfDay.add(const Duration(days: 1));
+  
+  final controller = StreamController<int>();
+  StreamSubscription<QuerySnapshot>? usersListener;
+
+  void calculateNewCustomers() async {
+    try {
+      final usersSnapshot = await firestore.collection('users').get();
+      int newCustomerCount = 0;
+      
+      for (var userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        
+        // このユーザーの全取引履歴を取得
+        final transactionsSnapshot = await firestore
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .where('description', isEqualTo: 'ポイント付与')
+            .get();
+        
+        if (transactionsSnapshot.docs.isEmpty) continue;
+        
+        // 今日の取引があるかチェック
+        final todayTransactions = transactionsSnapshot.docs.where((doc) {
+          final data = doc.data();
+          final createdAt = data['createdAt'];
+          if (createdAt == null) return false;
+          
+          DateTime docDate;
+          if (createdAt is DateTime) {
+            docDate = createdAt;
+          } else if (createdAt is Timestamp) {
+            docDate = createdAt.toDate();
+          } else if (createdAt is String) {
+            try {
+              docDate = DateTime.parse(createdAt);
+            } catch (e) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+          
+          return docDate.isAfter(startOfDay) && docDate.isBefore(endOfDay);
+        }).toList();
+        
+        // 今日の取引がない場合はスキップ
+        if (todayTransactions.isEmpty) continue;
+        
+        // 全取引が今日のもののみか確認（= 今日が初めての利用）
+        if (transactionsSnapshot.docs.length == todayTransactions.length) {
+          newCustomerCount++;
+        }
+      }
+      
+      if (!controller.isClosed) {
+        controller.add(newCustomerCount);
+      }
+    } catch (e) {
+      debugPrint('Error calculating new customers: $e');
+      if (!controller.isClosed) {
+        controller.add(0);
+      }
+    }
+  }
+
+  // ユーザーの変更を監視
+  usersListener = firestore.collection('users').snapshots().listen((_) {
+    calculateNewCustomers();
+  });
+
+  ref.onDispose(() {
+    usersListener?.cancel();
+    controller.close();
+  });
+
+  return controller.stream;
 });

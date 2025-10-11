@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../providers/auth_provider.dart';
 import 'create_coupon_view.dart';
 import 'edit_coupon_view.dart';
 
@@ -65,16 +66,39 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
             );
           }
           
-          return Column(
-            children: [
-              // フィルター
-              _buildFilterSection(),
+          final userStoreIdAsync = ref.watch(userStoreIdProvider);
+          
+          return userStoreIdAsync.when(
+            data: (storeId) {
+              if (storeId == null) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.store, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('店舗情報が見つかりません'),
+                    ],
+                  ),
+                );
+              }
               
-              // クーポン一覧
-              Expanded(
-                child: _buildCouponsList(user.uid),
-              ),
-            ],
+              return Column(
+                children: [
+                  // フィルター
+                  _buildFilterSection(),
+                  
+                  // クーポン一覧
+                  Expanded(
+                    child: _buildCouponsList(storeId),
+                  ),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(
+              child: Text('エラー: $error'),
+            ),
           );
         },
       ),
@@ -154,11 +178,12 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
-  Widget _buildCouponsList(String userId) {
+  Widget _buildCouponsList(String storeId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('coupons')
-          .where('createdBy', isEqualTo: userId)
+          .doc(storeId)
+          .collection('coupons')
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -245,14 +270,14 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
           itemBuilder: (context, index) {
             final coupon = filteredCoupons[index];
             final data = coupon.data() as Map<String, dynamic>;
-            return _buildCouponCard(data);
+            return _buildCouponCard(data, storeId);
           },
         );
       },
     );
   }
 
-  Widget _buildCouponCard(Map<String, dynamic> coupon) {
+  Widget _buildCouponCard(Map<String, dynamic> coupon, String storeId) {
     // 終了日の表示用フォーマット
     String formatEndDate() {
       try {
@@ -503,13 +528,13 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                           color: isActive ? Colors.orange : Colors.green,
                         ),
                         onPressed: () {
-                          _toggleCouponStatus(coupon['couponId'], !isActive);
+                          _toggleCouponStatus(coupon['couponId'], storeId, !isActive);
                         },
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                         onPressed: () {
-                          _showDeleteDialog(coupon['couponId']);
+                          _showDeleteDialog(coupon['couponId'], storeId);
                         },
                       ),
                     ],
@@ -523,7 +548,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
-  void _showDeleteDialog(String couponId) {
+  void _showDeleteDialog(String couponId, String storeId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -538,7 +563,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _deleteCoupon(couponId);
+                await _deleteCoupon(couponId, storeId);
               },
               child: const Text('削除', style: TextStyle(color: Colors.red)),
             ),
@@ -548,32 +573,50 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
-  Future<void> _deleteCoupon(String couponId) async {
+  Future<void> _deleteCoupon(String couponId, String storeId) async {
     try {
-      await FirebaseFirestore.instance.collection('coupons').doc(couponId).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('クーポンを削除しました')),
-      );
+      await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc(couponId)
+          .delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('クーポンを削除しました')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('削除に失敗しました: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _toggleCouponStatus(String couponId, bool isActive) async {
+  Future<void> _toggleCouponStatus(String couponId, String storeId, bool isActive) async {
     try {
-      await FirebaseFirestore.instance.collection('coupons').doc(couponId).update({
+      await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc(couponId)
+          .update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isActive ? 'クーポンを有効にしました' : 'クーポンを無効にしました')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isActive ? 'クーポンを有効にしました' : 'クーポンを無効にしました')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ステータス変更に失敗しました: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ステータス変更に失敗しました: $e')),
+        );
+      }
     }
   }
 }

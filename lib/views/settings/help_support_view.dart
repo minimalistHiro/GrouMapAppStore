@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
+import 'email_support_view.dart';
+import 'phone_support_view.dart';
 
 class HelpSupportView extends StatelessWidget {
   const HelpSupportView({Key? key}) : super(key: key);
@@ -30,7 +32,7 @@ class HelpSupportView extends StatelessWidget {
             const SizedBox(height: 24),
             
             // お問い合わせセクション
-            _buildContactSection(),
+            _buildContactSection(context),
             
             const SizedBox(height: 24),
             
@@ -156,7 +158,7 @@ class HelpSupportView extends StatelessWidget {
     );
   }
 
-  Widget _buildContactSection() {
+  Widget _buildContactSection(BuildContext context) {
     return _buildSection(
       title: 'お問い合わせ',
       icon: Icons.contact_support,
@@ -164,14 +166,14 @@ class HelpSupportView extends StatelessWidget {
         _buildContactItem(
           icon: Icons.email,
           title: 'メールサポート',
-          subtitle: 'support@groumap.com',
-          onTap: () => _copyEmailToClipboard(),
+          subtitle: 'お問い合わせフォームを開く',
+          onTap: () => _navigateToEmailSupport(context),
         ),
         _buildContactItem(
           icon: Icons.phone,
           title: '電話サポート',
-          subtitle: '平日 9:00-18:00',
-          onTap: () => _showPhoneDialog(),
+          subtitle: '080-6050-7194（平日 9:00-18:00）',
+          onTap: () => _navigateToPhoneSupport(context),
         ),
         _buildContactItem(
           icon: Icons.chat,
@@ -330,14 +332,20 @@ class HelpSupportView extends StatelessWidget {
     );
   }
 
-  void _copyEmailToClipboard() {
-    Clipboard.setData(const ClipboardData(text: 'support@groumap.com'));
-    // 実際のアプリではスナックバーでコピー完了を通知
+  void _navigateToEmailSupport(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const EmailSupportView(),
+      ),
+    );
   }
 
-  void _showPhoneDialog() {
-    // 電話番号のダイアログを表示
-    // 実際のアプリでは電話番号を表示
+  void _navigateToPhoneSupport(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PhoneSupportView(),
+      ),
+    );
   }
 
   void _showChatDialog() {

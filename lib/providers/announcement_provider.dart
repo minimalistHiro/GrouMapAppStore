@@ -18,6 +18,40 @@ final announcementsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   });
 });
 
+// 未読お知らせ数プロバイダー
+final unreadAnnouncementCountProvider = StreamProvider.family<int, String>((ref, userId) {
+  try {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .asyncMap((userSnapshot) async {
+      if (!userSnapshot.exists) return 0;
+      
+      final userData = userSnapshot.data()!;
+      final readNotifications = (userData['readNotifications'] as List<dynamic>?)?.cast<String>() ?? [];
+      
+      // アクティブなお知らせの総数を取得
+      final announcementsSnapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('isActive', isEqualTo: true)
+          .where('isPublished', isEqualTo: true)
+          .get();
+      
+      final totalAnnouncements = announcementsSnapshot.docs.length;
+      final unreadCount = totalAnnouncements - readNotifications.length;
+      
+      return unreadCount > 0 ? unreadCount : 0;
+    }).handleError((error) {
+      debugPrint('Error getting unread announcement count: $error');
+      return 0;
+    });
+  } catch (e) {
+    debugPrint('Error creating unread announcement count stream: $e');
+    return Stream.value(0);
+  }
+});
+
 class AnnouncementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 

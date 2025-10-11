@@ -6,7 +6,7 @@ import '../providers/coupon_provider.dart';
 import 'home_view.dart';
 import 'analytics/analytics_view.dart';
 import 'qr/qr_scanner_view.dart';
-import 'coupons/coupon_management_view.dart';
+import 'coupons/coupons_view.dart';
 import 'settings/settings_view.dart';
 
 class MainNavigationView extends ConsumerStatefulWidget {
@@ -23,7 +23,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     const HomeView(),
     const AnalyticsView(),
     const QRScannerView(),
-    const CouponManagementView(),
+    const CouponsView(),
     const SettingsView(),
   ];
 

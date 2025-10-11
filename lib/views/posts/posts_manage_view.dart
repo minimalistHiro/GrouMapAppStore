@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../providers/auth_provider.dart';
 import 'create_post_view.dart';
 import 'edit_post_view.dart';
 
@@ -65,16 +66,39 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
             );
           }
           
-          return Column(
-            children: [
-              // フィルター
-              _buildFilterSection(),
+          final userStoreIdAsync = ref.watch(userStoreIdProvider);
+          
+          return userStoreIdAsync.when(
+            data: (storeId) {
+              if (storeId == null) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.store, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('店舗情報が見つかりません'),
+                    ],
+                  ),
+                );
+              }
               
-              // 投稿一覧
-              Expanded(
-                child: _buildPostsList(user.uid),
-              ),
-            ],
+              return Column(
+                children: [
+                  // フィルター
+                  _buildFilterSection(),
+                  
+                  // 投稿一覧
+                  Expanded(
+                    child: _buildPostsList(storeId),
+                  ),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(
+              child: Text('エラー: $error'),
+            ),
           );
         },
       ),
@@ -137,17 +161,13 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  Widget _buildPostsList(String userId) {
+  Widget _buildPostsList(String storeId) {
     return StreamBuilder<QuerySnapshot>(
-      stream: _selectedFilter == 'all'
-          ? FirebaseFirestore.instance
-              .collection('posts')
-              .where('createdBy', isEqualTo: userId)
-              .snapshots()
-          : FirebaseFirestore.instance
-              .collection('posts')
-              .where('createdBy', isEqualTo: userId)
-              .snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .doc(storeId)
+          .collection('posts')
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -221,14 +241,14 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
           itemBuilder: (context, index) {
             final post = filteredPosts[index];
             final data = post.data() as Map<String, dynamic>;
-            return _buildPostCard(data);
+            return _buildPostCard(data, storeId);
           },
         );
       },
     );
   }
 
-  Widget _buildPostCard(Map<String, dynamic> post) {
+  Widget _buildPostCard(Map<String, dynamic> post, String storeId) {
     // 作成日の表示用フォーマット
     String formatDate() {
       try {
@@ -435,7 +455,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       IconButton(
                         icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                         onPressed: () {
-                          _showDeleteDialog(post['postId']);
+                          _showDeleteDialog(post['postId'], storeId);
                         },
                       ),
                     ],
@@ -449,7 +469,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  void _showDeleteDialog(String postId) {
+  void _showDeleteDialog(String postId, String storeId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -464,7 +484,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _deletePost(postId);
+                await _deletePost(postId, storeId);
               },
               child: const Text('削除', style: TextStyle(color: Colors.red)),
             ),
@@ -474,16 +494,25 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  Future<void> _deletePost(String postId) async {
+  Future<void> _deletePost(String postId, String storeId) async {
     try {
-      await FirebaseFirestore.instance.collection('posts').doc(postId).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('投稿を削除しました')),
-      );
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(storeId)
+          .collection('posts')
+          .doc(postId)
+          .delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('投稿を削除しました')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('削除に失敗しました: $e')),
+        );
+      }
     }
   }
 }

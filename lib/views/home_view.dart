@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
+import '../providers/announcement_provider.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
 import 'feedback/feedback_send_view.dart';
@@ -17,7 +18,6 @@ import 'notifications/notifications_view.dart';
 import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
 import 'plans/plan_contract_view.dart';
-import 'badges/badge_create_view.dart';
 import 'badges/badge_manage_view.dart';
 
 class HomeView extends ConsumerWidget {
@@ -188,6 +188,8 @@ class HomeView extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, String storeId) {
+    final authState = ref.watch(authStateProvider);
+    
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Row(
@@ -216,15 +218,62 @@ class HomeView extends ConsumerWidget {
           
           const Spacer(),
           
-          // 右側：お知らせボタン
+          // 右側：お知らせボタン（バッジ付き）
           IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              size: 28,
-              color: Colors.black87,
+            icon: Stack(
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  size: 28,
+                  color: Colors.black87,
+                ),
+                // 未読通知のバッジ
+                authState.when(
+                  data: (user) {
+                    if (user == null) return const SizedBox.shrink();
+                    
+                    final unreadCountAsync = ref.watch(unreadAnnouncementCountProvider(user.uid));
+                    
+                    return unreadCountAsync.when(
+                      data: (unreadCount) {
+                        if (unreadCount > 0) {
+                          return Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ],
             ),
             onPressed: () {
-              // お知らせ画面に遷移
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => const NotificationsView(),
@@ -402,47 +451,45 @@ class HomeView extends ConsumerWidget {
           Consumer(
             builder: (context, ref, child) {
               final todayVisitorsAsync = ref.watch(todayVisitorsProvider(storeId));
+              final todayNewCustomersAsync = ref.watch(todayNewCustomersProvider(storeId));
               
               return todayVisitorsAsync.when(
                 data: (visitorData) {
-                  // visitorDataから来店者数を取得
-                  int visitorCount = 0;
-                  if (visitorData.isNotEmpty) {
-                    visitorCount = visitorData.first['count'] ?? 0;
-                  }
+                  // visitorDataから来店者数を取得（transactionsコレクションのデータ）
+                  final visitorCount = visitorData.length;
                   
-                  return Column(
-                    children: [
-                      // 今日の来店者と新規顧客
-                      Row(
+                  // 配布ポイントの合計を計算
+                  final totalPointsAwarded = visitorData.fold<int>(
+                    0,
+                    (sum, visitor) => sum + ((visitor['pointsEarned'] as int?) ?? 0),
+                  );
+                  
+                  return todayNewCustomersAsync.when(
+                    data: (newCustomerCount) {
+                      return Row(
                         children: [
                           Expanded(
                             child: _buildStatItem(
                               '今日の来店者',
                               visitorCount.toString(),
                               Icons.people,
-                              Colors.blue,
+                              const Color(0xFFFF6B35),
                             ),
                           ),
                           Expanded(
                             child: _buildStatItem(
                               '今日の新規顧客',
-                              '${(visitorCount * 0.2).round()}',
+                              newCustomerCount.toString(),
                               Icons.person_add,
-                              Colors.purple,
+                              const Color(0xFFFF6B35),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
                           Expanded(
                             child: _buildStatItem(
                               '今日の配布ポイント',
-                              '${visitorCount * 10}',
+                              totalPointsAwarded.toString(),
                               Icons.monetization_on,
-                              Colors.green,
+                              const Color(0xFFFF6B35),
                             ),
                           ),
                           Expanded(
@@ -450,12 +497,84 @@ class HomeView extends ConsumerWidget {
                               '今日のクーポン使用',
                               '${(visitorCount * 0.3).round()}',
                               Icons.local_offer,
-                              Colors.orange,
+                              const Color(0xFFFF6B35),
                             ),
                           ),
                         ],
-                      ),
-                    ],
+                      );
+                    },
+                    loading: () => Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の来店者',
+                            visitorCount.toString(),
+                            Icons.people,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の新規顧客',
+                            '...',
+                            Icons.person_add,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の配布ポイント',
+                            totalPointsAwarded.toString(),
+                            Icons.monetization_on,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日のクーポン使用',
+                            '${(visitorCount * 0.3).round()}',
+                            Icons.local_offer,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                      ],
+                    ),
+                    error: (_, __) => Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の来店者',
+                            visitorCount.toString(),
+                            Icons.people,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の新規顧客',
+                            '0',
+                            Icons.person_add,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日の配布ポイント',
+                            totalPointsAwarded.toString(),
+                            Icons.monetization_on,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildStatItem(
+                            '今日のクーポン使用',
+                            '${(visitorCount * 0.3).round()}',
+                            Icons.local_offer,
+                            const Color(0xFFFF6B35),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 },
                 loading: () => const CircularProgressIndicator(),

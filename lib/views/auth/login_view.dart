@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
+import '../main_navigation_view.dart';
 import 'store_info_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
@@ -47,7 +48,11 @@ class _LoginViewState extends ConsumerState<LoginView> {
           ),
         );
         
-        // AuthWrapperが自動的に適切な画面に遷移するため、ここでは何もしない
+        // ホーム画面に遷移
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainNavigationView()),
+          (route) => false, // すべての前の画面を削除
+        );
       }
     } catch (e) {
       if (mounted) {

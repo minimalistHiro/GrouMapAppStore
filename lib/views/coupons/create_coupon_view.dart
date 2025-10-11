@@ -96,13 +96,18 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         throw Exception('ユーザーがログインしていません');
       }
 
-      // クーポンIDを生成
-      final couponId = FirebaseFirestore.instance.collection('coupons').doc().id;
-      
       // 店舗が選択されているかチェック
       if (_selectedStoreId == null || _selectedStoreName.isEmpty) {
         throw Exception('店舗を選択してください');
       }
+
+      // クーポンIDを生成
+      final couponId = FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(_selectedStoreId)
+          .collection('coupons')
+          .doc()
+          .id;
 
       // 画像をFirebase Storageに保存
       String? imageUrl;
@@ -139,7 +144,12 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       }
 
       // Firestoreにクーポン情報を保存
-      await FirebaseFirestore.instance.collection('coupons').doc(couponId).set({
+      await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(_selectedStoreId)
+          .collection('coupons')
+          .doc(couponId)
+          .set({
         'couponId': couponId,
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -150,6 +160,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'validUntil': _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
         'usageLimit': int.parse(_usageLimitController.text),
         'usedCount': 0,
+        'viewCount': 0,
         'createdBy': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),

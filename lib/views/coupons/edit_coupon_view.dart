@@ -169,8 +169,19 @@ class _EditCouponViewState extends State<EditCouponView> {
         }
       }
 
+      // storeIdを取得
+      final storeId = widget.couponData['storeId'];
+      if (storeId == null) {
+        throw Exception('店舗IDが見つかりません');
+      }
+
       // Firestoreにクーポン情報を更新
-      await FirebaseFirestore.instance.collection('coupons').doc(couponId).update({
+      await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc(couponId)
+          .update({
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'discountType': _selectedDiscountType,

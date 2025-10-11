@@ -103,13 +103,18 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
         throw Exception('ユーザーがログインしていません');
       }
 
-      // 投稿IDを生成
-      final postId = FirebaseFirestore.instance.collection('posts').doc().id;
-      
       // 店舗が選択されているかチェック
       if (_selectedStoreId == null || _selectedStoreName.isEmpty) {
         throw Exception('店舗を選択してください');
       }
+
+      // 投稿IDを生成
+      final postId = FirebaseFirestore.instance
+          .collection('posts')
+          .doc(_selectedStoreId)
+          .collection('posts')
+          .doc()
+          .id;
 
       // 画像をFirebase Storageに保存
       List<String> imageUrls = [];
@@ -176,7 +181,12 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
       }
 
       // Firestoreに投稿情報を保存
-      await FirebaseFirestore.instance.collection('posts').doc(postId).set({
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(_selectedStoreId)
+          .collection('posts')
+          .doc(postId)
+          .set({
         'postId': postId,
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),

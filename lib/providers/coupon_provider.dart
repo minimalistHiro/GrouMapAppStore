@@ -7,7 +7,8 @@ final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, S
   try {
     return FirebaseFirestore.instance
         .collection('coupons')
-        .where('storeId', isEqualTo: storeId)
+        .doc(storeId)
+        .collection('coupons')
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -37,7 +38,8 @@ final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
   try {
     return FirebaseFirestore.instance
         .collection('coupons')
-        .where('storeId', isEqualTo: storeId)
+        .doc(storeId)
+        .collection('coupons')
         .snapshots()
         .map((snapshot) {
       final now = DateTime.now();
@@ -45,7 +47,8 @@ final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
           .where((doc) {
             final data = doc.data();
             final validUntil = data['validUntil']?.toDate();
-            return validUntil != null && validUntil.isAfter(now);
+            final isActive = data['isActive'] ?? true;
+            return isActive && validUntil != null && validUntil.isAfter(now);
           })
           .map((doc) {
             final data = doc.data();
