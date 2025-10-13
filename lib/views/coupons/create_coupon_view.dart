@@ -84,7 +84,44 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
   }
 
   Future<void> _createCoupon() async {
-    if (!_formKey.currentState!.validate()) return;
+    // 店舗が選択されているかチェック
+    if (_selectedStoreId == null || _selectedStoreName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('店舗を選択してください'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('入力内容に不備があります。赤字の項目を確認してください。'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -94,11 +131,6 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw Exception('ユーザーがログインしていません');
-      }
-
-      // 店舗が選択されているかチェック
-      if (_selectedStoreId == null || _selectedStoreName.isEmpty) {
-        throw Exception('店舗を選択してください');
       }
 
       // クーポンIDを生成

@@ -28,6 +28,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   String _storeName = '店舗名';
   bool _isLoadingStoreInfo = true;
   String? _currentRequestId;
+  double _pointReturnRate = 1.0; // デフォルト1.0%（100円で1ポイント）
 
   @override
   void initState() {
@@ -74,13 +75,22 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           profileImageUrl = userData['profileImageUrl'] as String;
         }
         
+        // ポイント還元率を取得（お客様の設定値）
+        double pointReturnRate = 1.0;
+        if (userData.containsKey('pointReturnRate')) {
+          if (userData['pointReturnRate'] is num) {
+            pointReturnRate = (userData['pointReturnRate'] as num).toDouble();
+          }
+        }
+        
         setState(() {
           _actualUserName = displayName;
           _profileImageUrl = profileImageUrl;
+          _pointReturnRate = pointReturnRate;
           _isLoadingUserInfo = false;
         });
         
-        print('ユーザー情報を取得しました: $displayName');
+        print('ユーザー情報を取得しました: $displayName, 還元率: $pointReturnRate%');
       } else {
         print('ユーザードキュメントが存在しません');
         setState(() {
@@ -210,7 +220,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   }
 
   void _showPointAwardConfirmation(int amount) {
-    final pointsToAward = amount ~/ 100;
+    final pointsToAward = (amount * _pointReturnRate / 100).floor();
     
     showDialog(
       context: context,
@@ -795,7 +805,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ),
           const SizedBox(height: 8),
           Text(
-            '付与予定ポイント: ${(int.tryParse(_amount) ?? 0) ~/ 100}pt',
+            '付与予定ポイント: ${((int.tryParse(_amount) ?? 0) * _pointReturnRate / 100).floor()}pt',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.green,

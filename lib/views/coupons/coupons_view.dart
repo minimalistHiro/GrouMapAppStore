@@ -117,15 +117,18 @@ class CouponsView extends ConsumerWidget {
                 const SizedBox(height: 8),
                 const Text('新しい投稿を作成してみましょう！'),
                 const SizedBox(height: 16),
-                CustomButton(
-                  text: '新規投稿を作成',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreatePostView(),
-                      ),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: CustomButton(
+                    text: '新規投稿を作成',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const CreatePostView(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -136,7 +139,7 @@ class CouponsView extends ConsumerWidget {
           children: [
             // 新規投稿作成ボタン
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: CustomButton(
@@ -422,15 +425,18 @@ class CouponsView extends ConsumerWidget {
                 const SizedBox(height: 8),
                 const Text('新しいクーポンを作成してみましょう！'),
                 const SizedBox(height: 16),
-                CustomButton(
-                  text: '新規クーポンを作成',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreateCouponView(),
-                      ),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: CustomButton(
+                    text: '新規クーポンを作成',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const CreateCouponView(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -441,7 +447,7 @@ class CouponsView extends ConsumerWidget {
           children: [
             // 新規クーポン作成ボタン
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: CustomButton(
@@ -554,15 +560,18 @@ class CouponsView extends ConsumerWidget {
                 const SizedBox(height: 8),
                 const Text('非公開または期限切れのクーポンが表示されます'),
                 const SizedBox(height: 16),
-                CustomButton(
-                  text: '新規クーポンを作成',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreateCouponView(),
-                      ),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: CustomButton(
+                    text: '新規クーポンを作成',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const CreateCouponView(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -573,7 +582,7 @@ class CouponsView extends ConsumerWidget {
           children: [
             // 新規クーポン作成ボタン
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: CustomButton(
@@ -662,15 +671,18 @@ class CouponsView extends ConsumerWidget {
                 const SizedBox(height: 8),
                 const Text('クーポンを作成すると統計が表示されます'),
                 const SizedBox(height: 16),
-                CustomButton(
-                  text: '新規クーポンを作成',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreateCouponView(),
-                      ),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: CustomButton(
+                    text: '新規クーポンを作成',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const CreateCouponView(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -692,7 +704,7 @@ class CouponsView extends ConsumerWidget {
           children: [
             // 新規クーポン作成ボタン
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: CustomButton(
