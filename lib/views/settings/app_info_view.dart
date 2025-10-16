@@ -209,12 +209,6 @@ class AppInfoView extends StatelessWidget {
           onTap: () => _navigateToTermsOfService(context),
         ),
         _buildActionItem(
-          icon: Icons.copyright,
-          title: 'ライセンス情報',
-          subtitle: 'オープンソースライセンス',
-          onTap: () => _showLicenseInfo(),
-        ),
-        _buildActionItem(
           icon: Icons.security,
           title: 'セキュリティポリシー',
           subtitle: 'データ保護とセキュリティ',

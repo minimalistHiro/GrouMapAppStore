@@ -5,7 +5,9 @@ import '../../providers/post_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../posts/create_post_view.dart';
+import '../posts/edit_post_view.dart';
 import 'create_coupon_view.dart';
+import 'edit_coupon_view.dart';
 
 class CouponsView extends ConsumerWidget {
   const CouponsView({Key? key}) : super(key: key);
@@ -273,9 +275,10 @@ class CouponsView extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        // TODO: 投稿詳細画面への遷移
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${post['title']} の詳細画面は準備中です')),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EditPostView(postData: post),
+          ),
         );
       },
       child: Container(
@@ -884,9 +887,10 @@ class CouponsView extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        // TODO: クーポン詳細画面への遷移
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${coupon['title']} の詳細画面は準備中です')),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EditCouponView(couponData: coupon),
+          ),
         );
       },
       child: Container(
@@ -1040,9 +1044,10 @@ class CouponsView extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        // TODO: クーポン詳細画面への遷移
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${coupon['title']} の詳細画面は準備中です')),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EditCouponView(couponData: coupon),
+          ),
         );
       },
       child: Container(

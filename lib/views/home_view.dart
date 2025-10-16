@@ -452,6 +452,7 @@ class HomeView extends ConsumerWidget {
             builder: (context, ref, child) {
               final todayVisitorsAsync = ref.watch(todayVisitorsProvider(storeId));
               final todayNewCustomersAsync = ref.watch(todayNewCustomersProvider(storeId));
+              final todayCouponUsageAsync = ref.watch(todayCouponUsageCountProvider(storeId));
               
               return todayVisitorsAsync.when(
                 data: (visitorData) {
@@ -466,41 +467,117 @@ class HomeView extends ConsumerWidget {
                   
                   return todayNewCustomersAsync.when(
                     data: (newCustomerCount) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatItem(
-                              '今日の来店者',
-                              visitorCount.toString(),
-                              Icons.people,
-                              const Color(0xFFFF6B35),
+                      return todayCouponUsageAsync.when(
+                        data: (couponUsageCount) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatItem(
+                                  '今日の来店者',
+                                  visitorCount.toString(),
+                                  Icons.people,
+                                  const Color(0xFFFF6B35),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildStatItem(
+                                  '今日の新規顧客',
+                                  newCustomerCount.toString(),
+                                  Icons.person_add,
+                                  const Color(0xFFFF6B35),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildStatItem(
+                                  '今日の配布ポイント',
+                                  totalPointsAwarded.toString(),
+                                  Icons.monetization_on,
+                                  const Color(0xFFFF6B35),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildStatItem(
+                                  '今日のクーポン使用',
+                                  couponUsageCount.toString(),
+                                  Icons.local_offer,
+                                  const Color(0xFFFF6B35),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                        loading: () => Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の来店者',
+                                visitorCount.toString(),
+                                Icons.people,
+                                const Color(0xFFFF6B35),
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: _buildStatItem(
-                              '今日の新規顧客',
-                              newCustomerCount.toString(),
-                              Icons.person_add,
-                              const Color(0xFFFF6B35),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の新規顧客',
+                                newCustomerCount.toString(),
+                                Icons.person_add,
+                                const Color(0xFFFF6B35),
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: _buildStatItem(
-                              '今日の配布ポイント',
-                              totalPointsAwarded.toString(),
-                              Icons.monetization_on,
-                              const Color(0xFFFF6B35),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の配布ポイント',
+                                totalPointsAwarded.toString(),
+                                Icons.monetization_on,
+                                const Color(0xFFFF6B35),
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: _buildStatItem(
-                              '今日のクーポン使用',
-                              '${(visitorCount * 0.3).round()}',
-                              Icons.local_offer,
-                              const Color(0xFFFF6B35),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日のクーポン使用',
+                                '...',
+                                Icons.local_offer,
+                                const Color(0xFFFF6B35),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        error: (_, __) => Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の来店者',
+                                visitorCount.toString(),
+                                Icons.people,
+                                const Color(0xFFFF6B35),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の新規顧客',
+                                newCustomerCount.toString(),
+                                Icons.person_add,
+                                const Color(0xFFFF6B35),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日の配布ポイント',
+                                totalPointsAwarded.toString(),
+                                Icons.monetization_on,
+                                const Color(0xFFFF6B35),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildStatItem(
+                                '今日のクーポン使用',
+                                '0',
+                                Icons.local_offer,
+                                const Color(0xFFFF6B35),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                     loading: () => Row(
@@ -532,7 +609,7 @@ class HomeView extends ConsumerWidget {
                         Expanded(
                           child: _buildStatItem(
                             '今日のクーポン使用',
-                            '${(visitorCount * 0.3).round()}',
+                            '...',
                             Icons.local_offer,
                             const Color(0xFFFF6B35),
                           ),
@@ -568,7 +645,7 @@ class HomeView extends ConsumerWidget {
                         Expanded(
                           child: _buildStatItem(
                             '今日のクーポン使用',
-                            '${(visitorCount * 0.3).round()}',
+                            '0',
                             Icons.local_offer,
                             const Color(0xFFFF6B35),
                           ),

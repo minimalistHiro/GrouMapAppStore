@@ -15,6 +15,7 @@ class StoreUserTrendView extends ConsumerStatefulWidget {
 
 class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
   String _selectedPeriod = 'week';
+  bool _hasInitialized = false;
 
   @override
   void initState() {
@@ -104,14 +105,23 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
             icon: const Icon(Icons.refresh),
             tooltip: 'データを更新',
             onPressed: () {
-              // StateNotifierでデータを再取得
-              final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
-              notifier.fetchTrendData('7zfiARrfsLhEgdtszQXW', 'week');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('データを更新しています...'),
-                  duration: Duration(seconds: 1),
-                ),
+              // 現在のstoreIdと期間でデータを再取得
+              final storeIdAsync = ref.read(userStoreIdProvider);
+              storeIdAsync.when(
+                data: (storeId) {
+                  if (storeId != null) {
+                    final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
+                    notifier.fetchTrendData(storeId, _selectedPeriod);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('データを更新しています...'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                },
+                loading: () {},
+                error: (_, __) {},
               );
             },
           ),
@@ -150,10 +160,13 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
               final trendDataAsync = ref.watch(storeUserTrendNotifierProvider);
               
               // 初回読み込み時のみデータを取得
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
-                notifier.fetchTrendData(storeId, _selectedPeriod);
-              });
+              if (!_hasInitialized) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
+                  notifier.fetchTrendData(storeId, _selectedPeriod);
+                  _hasInitialized = true;
+                });
+              }
               
               return trendDataAsync.when(
                 data: (trendData) {
