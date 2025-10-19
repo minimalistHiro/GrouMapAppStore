@@ -31,6 +31,8 @@ mixin _$PointRequest {
       throw _privateConstructorUsedError; // pending, accepted, rejected
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get respondedAt => throw _privateConstructorUsedError;
+  String? get respondedBy =>
+      throw _privateConstructorUsedError; // リクエストに応答したユーザーのID
   String? get description => throw _privateConstructorUsedError;
   String? get rejectionReason => throw _privateConstructorUsedError;
 
@@ -61,6 +63,7 @@ abstract class $PointRequestCopyWith<$Res> {
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
+      String? respondedBy,
       String? description,
       String? rejectionReason});
 }
@@ -90,6 +93,7 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
+    Object? respondedBy = freezed,
     Object? description = freezed,
     Object? rejectionReason = freezed,
   }) {
@@ -134,6 +138,10 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
           ? _value.respondedAt
           : respondedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      respondedBy: freezed == respondedBy
+          ? _value.respondedBy
+          : respondedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
       description: freezed == description
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
@@ -165,6 +173,7 @@ abstract class _$$PointRequestImplCopyWith<$Res>
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
+      String? respondedBy,
       String? description,
       String? rejectionReason});
 }
@@ -192,6 +201,7 @@ class __$$PointRequestImplCopyWithImpl<$Res>
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
+    Object? respondedBy = freezed,
     Object? description = freezed,
     Object? rejectionReason = freezed,
   }) {
@@ -236,6 +246,10 @@ class __$$PointRequestImplCopyWithImpl<$Res>
           ? _value.respondedAt
           : respondedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      respondedBy: freezed == respondedBy
+          ? _value.respondedBy
+          : respondedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
       description: freezed == description
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
@@ -262,6 +276,7 @@ class _$PointRequestImpl implements _PointRequest {
       required this.status,
       required this.createdAt,
       this.respondedAt,
+      this.respondedBy,
       this.description,
       this.rejectionReason});
 
@@ -291,13 +306,16 @@ class _$PointRequestImpl implements _PointRequest {
   @override
   final DateTime? respondedAt;
   @override
+  final String? respondedBy;
+// リクエストに応答したユーザーのID
+  @override
   final String? description;
   @override
   final String? rejectionReason;
 
   @override
   String toString() {
-    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, userPoints: $userPoints, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, description: $description, rejectionReason: $rejectionReason)';
+    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, userPoints: $userPoints, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, respondedBy: $respondedBy, description: $description, rejectionReason: $rejectionReason)';
   }
 
   @override
@@ -320,6 +338,8 @@ class _$PointRequestImpl implements _PointRequest {
                 other.createdAt == createdAt) &&
             (identical(other.respondedAt, respondedAt) ||
                 other.respondedAt == respondedAt) &&
+            (identical(other.respondedBy, respondedBy) ||
+                other.respondedBy == respondedBy) &&
             (identical(other.description, description) ||
                 other.description == description) &&
             (identical(other.rejectionReason, rejectionReason) ||
@@ -340,6 +360,7 @@ class _$PointRequestImpl implements _PointRequest {
       status,
       createdAt,
       respondedAt,
+      respondedBy,
       description,
       rejectionReason);
 
@@ -371,6 +392,7 @@ abstract class _PointRequest implements PointRequest {
       required final String status,
       required final DateTime createdAt,
       final DateTime? respondedAt,
+      final String? respondedBy,
       final String? description,
       final String? rejectionReason}) = _$PointRequestImpl;
 
@@ -397,6 +419,8 @@ abstract class _PointRequest implements PointRequest {
   DateTime get createdAt;
   @override
   DateTime? get respondedAt;
+  @override
+  String? get respondedBy; // リクエストに応答したユーザーのID
   @override
   String? get description;
   @override

@@ -20,6 +20,7 @@ _$PointRequestImpl _$$PointRequestImplFromJson(Map<String, dynamic> json) =>
       respondedAt: json['respondedAt'] == null
           ? null
           : DateTime.parse(json['respondedAt'] as String),
+      respondedBy: json['respondedBy'] as String?,
       description: json['description'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
     );
@@ -36,6 +37,7 @@ Map<String, dynamic> _$$PointRequestImplToJson(_$PointRequestImpl instance) =>
       'status': instance.status,
       'createdAt': instance.createdAt.toIso8601String(),
       'respondedAt': instance.respondedAt?.toIso8601String(),
+      'respondedBy': instance.respondedBy,
       'description': instance.description,
       'rejectionReason': instance.rejectionReason,
     };

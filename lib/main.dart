@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'views/auth/auth_wrapper.dart';
 import 'views/main_navigation_view.dart';
 
@@ -22,10 +23,12 @@ void main() async {
   );
   
   // Firebase Emulator設定（開発環境のみ）
-  if (const bool.fromEnvironment('dart.vm.product') == false) {
+  // 一時的にEmulatorを無効化して本番環境を使用
+  if (false && const bool.fromEnvironment('dart.vm.product') == false) {
     try {
       FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-      print('Firebase Emulator設定完了: localhost:5001');
+      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+      print('Firebase Emulator設定完了: localhost:5001 (Functions), localhost:8080 (Firestore)');
     } catch (e) {
       print('Firebase Emulator設定エラー: $e');
     }

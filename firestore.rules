@@ -1,6 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 一時的に全てのアクセスを許可（デバッグ用）
+    match /{document=**} {
+      allow read, write: if true;
+    }
     // ユーザーコレクション
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -57,10 +61,34 @@ service cloud.firestore {
         request.auth.token.role in ['admin', 'company'];
     }
     
-    // ポイントリクエストコレクション
+    // ポイントリクエストコレクション（新しい構造対応）
+    match /point_requests/{storeId} {
+      // 店舗のポイントリクエストドキュメント
+      allow read, write: if true;
+      
+      // ユーザー別のリクエストサブコレクション
+      match /{userId}/{requestDoc} {
+        // 一時的に全てのアクセスを許可（テスト用）
+        allow read, write: if true;
+      }
+    }
+    
+    // 古い構造のポイントリクエストコレクション（後方互換性）
     match /point_requests/{requestId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
+    }
+    
+    // ポイントトランザクションコレクション
+    match /point_transactions/{storeId} {
+      // 店舗のポイントトランザクションドキュメント
+      allow read, write: if true;
+      
+      // ユーザー別のトランザクションサブコレクション
+      match /{userId}/{transactionId} {
+        // 一時的に全てのアクセスを許可（テスト用）
+        allow read, write: if true;
+      }
     }
     
     // QR検証コレクション

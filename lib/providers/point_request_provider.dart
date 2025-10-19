@@ -63,13 +63,21 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
       .map((snapshot) {
     if (snapshot.exists) {
       final data = snapshot.data()!;
-      // TimestampをDateTimeに変換
+      // 文字列またはTimestampをDateTimeに変換
       final convertedData = Map<String, dynamic>.from(data);
       if (data['createdAt'] != null) {
-        convertedData['createdAt'] = data['createdAt'].toDate();
+        if (data['createdAt'] is String) {
+          convertedData['createdAt'] = DateTime.parse(data['createdAt']);
+        } else {
+          convertedData['createdAt'] = data['createdAt'].toDate();
+        }
       }
       if (data['respondedAt'] != null) {
-        convertedData['respondedAt'] = data['respondedAt'].toDate();
+        if (data['respondedAt'] is String) {
+          convertedData['respondedAt'] = DateTime.parse(data['respondedAt']);
+        } else {
+          convertedData['respondedAt'] = data['respondedAt'].toDate();
+        }
       }
       
       return PointRequest.fromJson({
@@ -96,8 +104,19 @@ class PointRequestNotifier extends StateNotifier<void> {
     required int userPoints,
     required String description,
   }) async {
+    print('=== PointRequestNotifier.createPointRequest 開始 ===');
+    print('パラメータ:');
+    print('  userId: $userId');
+    print('  storeId: $storeId');
+    print('  storeName: $storeName');
+    print('  amount: $amount');
+    print('  pointsToAward: $pointsToAward');
+    print('  userPoints: $userPoints');
+    print('  description: $description');
+    
     try {
       final requestId = '${storeId}_${userId}';
+      print('生成されたrequestId: $requestId');
       
       // 新しい構造に保存（店舗別のサブコレクション）
       final docRef = _firestore
@@ -105,6 +124,8 @@ class PointRequestNotifier extends StateNotifier<void> {
           .doc(storeId)
           .collection(userId)
           .doc('request');
+      
+      print('Firestore参照パス: ${docRef.path}');
       
       final newRequest = PointRequest(
         id: requestId,
@@ -118,12 +139,39 @@ class PointRequestNotifier extends StateNotifier<void> {
         status: PointRequestStatus.pending.value,
         createdAt: DateTime.now(),
       );
-      await docRef.set(newRequest.toJson());
+      
+      print('PointRequestオブジェクト作成完了');
+      final jsonData = newRequest.toJson();
+      print('JSON変換結果: $jsonData');
+      
+      // Firebase Consoleの実際のデータ構造に合わせて文字列のまま保存
+      print('Firestoreへの保存開始');
+      await docRef.set(jsonData);
+      print('Firestoreへの保存完了');
       
       print('ポイント付与リクエストを作成しました: $requestId');
       return requestId;
-    } catch (e) {
-      print('Error creating point request: $e');
+    } catch (e, stackTrace) {
+      print('=== PointRequestNotifier.createPointRequest エラー ===');
+      print('エラータイプ: ${e.runtimeType}');
+      print('エラーメッセージ: $e');
+      print('エラーの詳細: ${e.toString()}');
+      print('スタックトレース: $stackTrace');
+      
+      // より詳細なエラー情報
+      if (e is FirebaseException) {
+        print('Firebaseエラー詳細:');
+        print('  code: ${e.code}');
+        print('  message: ${e.message}');
+        print('  plugin: ${e.plugin}');
+        print('  stackTrace: ${e.stackTrace}');
+      }
+      
+      // その他のエラーの詳細
+      if (e is Exception) {
+        print('Exception詳細: ${e.toString()}');
+      }
+      
       return null;
     }
   }

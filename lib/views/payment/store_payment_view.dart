@@ -287,35 +287,51 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   }
 
   void _createPointRequest(int amount, int pointsToAward) async {
+    print('=== _createPointRequest 開始 ===');
+    print('引数: amount=$amount, pointsToAward=$pointsToAward');
+    
     setState(() {
       _isProcessing = true;
     });
 
     try {
+      print('ステップ1: 認証状態の確認');
       // 現在の店舗ユーザーを取得
       final authState = ref.read(authStateProvider);
+      print('認証状態: $authState');
+      
       final storeUser = authState.value;
+      print('店舗ユーザー: $storeUser');
+      
       if (storeUser == null) {
         throw Exception('店舗の認証情報が取得できませんでした');
       }
 
+      print('ステップ2: 店舗ユーザーのドキュメント取得');
       // 店舗ユーザーのcurrentStoreIdを取得
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(storeUser.uid)
           .get();
 
+      print('ユーザードキュメント存在: ${userDoc.exists}');
+      print('ユーザードキュメントID: ${userDoc.id}');
+
       if (!userDoc.exists) {
         throw Exception('店舗ユーザーの情報が取得できませんでした');
       }
 
       final userData = userDoc.data()!;
+      print('ユーザーデータ: $userData');
+      
       final currentStoreId = userData['currentStoreId'] as String?;
+      print('currentStoreId: $currentStoreId');
       
       if (currentStoreId == null || currentStoreId.isEmpty) {
         throw Exception('現在選択中の店舗がありません');
       }
 
+      print('ステップ3: 店舗名の取得');
       // 店舗名を取得
       String storeName = '店舗名';
       try {
@@ -324,21 +340,40 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
             .doc(currentStoreId)
             .get();
         
+        print('店舗ドキュメント存在: ${storeDoc.exists}');
+        print('店舗ドキュメントID: ${storeDoc.id}');
+        
         if (storeDoc.exists) {
           final storeData = storeDoc.data()!;
+          print('店舗データ: $storeData');
+          
           if (storeData.containsKey('name') && storeData['name'] is String) {
             storeName = storeData['name'] as String;
+            print('店舗名取得成功: $storeName');
+          } else {
+            print('店舗名フィールドが見つからないか、文字列ではない');
           }
+        } else {
+          print('店舗ドキュメントが存在しません');
         }
       } catch (e) {
         print('店舗名取得エラー: $e');
+        print('店舗名取得エラーの詳細: ${e.toString()}');
         // エラーの場合はデフォルト値を使用
       }
 
-      print('ポイント付与リクエスト作成開始: userId=${widget.userId}, storeId=$currentStoreId, storeName=$storeName, amount=$amount, points=$pointsToAward');
+      print('ステップ4: リクエスト作成パラメータ');
+      print('userId: ${widget.userId}');
+      print('storeId: $currentStoreId');
+      print('storeName: $storeName');
+      print('amount: $amount');
+      print('pointsToAward: $pointsToAward');
 
+      print('ステップ5: ポイント付与リクエストの作成');
       // ポイント付与リクエストを作成
       final requestNotifier = ref.read(pointRequestProvider.notifier);
+      print('リクエストNotifier取得完了');
+      
       final requestId = await requestNotifier.createPointRequest(
         userId: widget.userId,
         storeId: currentStoreId,
@@ -349,31 +384,40 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         description: '店舗からのポイント付与リクエスト',
       );
 
+      print('リクエスト作成結果: $requestId');
+
       if (requestId != null) {
+        print('リクエスト作成成功');
         setState(() {
           _currentRequestId = requestId; // 新しいID形式: "storeId_userId"
         });
         
         if (mounted) {
+          print('ダイアログ表示');
           _showRequestSentDialog(amount, pointsToAward);
         }
       } else {
+        print('リクエスト作成失敗: requestIdがnull');
         throw Exception('ポイント付与リクエストの作成に失敗しました');
       }
-    } catch (e) {
-      print('ポイント付与リクエスト作成エラー: $e');
+    } catch (e, stackTrace) {
+      print('=== エラー発生 ===');
+      print('エラータイプ: ${e.runtimeType}');
+      print('エラーメッセージ: $e');
       print('エラーの詳細: ${e.toString()}');
+      print('スタックトレース: $stackTrace');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('ポイント付与リクエストの作成に失敗しました: ${e.toString()}'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 10),
           ),
         );
       }
     } finally {
+      print('=== _createPointRequest 終了 ===');
       if (mounted) {
         setState(() {
           _isProcessing = false;

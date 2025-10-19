@@ -16,6 +16,7 @@ class PointRequest with _$PointRequest {
     required String status, // pending, accepted, rejected
     required DateTime createdAt,
     DateTime? respondedAt,
+    String? respondedBy, // リクエストに応答したユーザーのID
     String? description,
     String? rejectionReason,
   }) = _PointRequest;
