@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../main_navigation_view.dart';
+import 'password_reset_view.dart';
 import 'store_info_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
@@ -216,7 +217,15 @@ class _LoginViewState extends ConsumerState<LoginView> {
                 
                 // パスワードリセット
                 TextButton(
-                  onPressed: _showPasswordResetDialog,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PasswordResetView(
+                          initialEmail: _emailController.text.trim(),
+                        ),
+                      ),
+                    );
+                  },
                   child: const Text(
                     'パスワードを忘れた場合',
                     style: TextStyle(
@@ -256,70 +265,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showPasswordResetDialog() {
-    final emailController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('パスワードリセット'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('パスワードリセット用のメールを送信します。'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'メールアドレス',
-                prefixIcon: Icon(Icons.email_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (emailController.text.isNotEmpty) {
-                try {
-                  final authService = ref.read(authServiceProvider);
-                  await authService.sendPasswordResetEmail(emailController.text.trim());
-                  
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('パスワードリセット用のメールを送信しました'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('エラーが発生しました: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              }
-            },
-            child: const Text('送信'),
-          ),
-        ],
       ),
     );
   }

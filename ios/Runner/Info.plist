@@ -22,6 +22,14 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>QRコードの読み取りや写真撮影のためにカメラへのアクセスを許可してください。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>地図上で店舗の位置を設定するために位置情報へのアクセスを許可してください。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>投稿やクーポンの画像を選択するために写真ライブラリへのアクセスを許可してください。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>画像を写真ライブラリに保存するためのアクセスを許可してください。</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
