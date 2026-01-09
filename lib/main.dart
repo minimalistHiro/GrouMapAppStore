@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -10,17 +11,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Firebase初期化
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyBFJwEYUZeSaseeJKVu1tDCdM6PawGqGgk",
-      authDomain: "groumap-ea452.firebaseapp.com",
-      projectId: "groumap-ea452",
-      storageBucket: "groumap-ea452.firebasestorage.app",
-      messagingSenderId: "1215704250",
-      appId: "1:1215704250:web:15a8763991afc67d1f6683",
-      measurementId: "G-GG612PT6HQ",
-    ),
-  );
+  if (kIsWeb) {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyBFJwEYUZeSaseeJKVu1tDCdM6PawGqGgk",
+        authDomain: "groumap-ea452.firebaseapp.com",
+        projectId: "groumap-ea452",
+        storageBucket: "groumap-ea452.firebasestorage.app",
+        messagingSenderId: "1215704250",
+        appId: "1:1215704250:web:15a8763991afc67d1f6683",
+        measurementId: "G-GG612PT6HQ",
+      ),
+    );
+  } else {
+    await Firebase.initializeApp();
+  }
   
   // Firebase Emulator設定（開発環境のみ）
   // 一時的にEmulatorを無効化して本番環境を使用
@@ -89,4 +94,3 @@ class GrouMapStoreApp extends StatelessWidget {
     );
   }
 }
-
