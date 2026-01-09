@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh.apps.googleusercontent.com</string>
+	<string>1215704250-e74985rou54d3q64bcnugatl0qifkqpi.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1215704250-0mn7c2av1guahn03ja4t8cjshbecrmlh</string>
+	<string>com.googleusercontent.apps.1215704250-e74985rou54d3q64bcnugatl0qifkqpi</string>
 	<key>API_KEY</key>
 	<string>AIzaSyAmYhGlG7yzTUd-O8DKJKr0oXmQUTbACWE</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.groumap.groumapstore</string>
+	<string>com.groumap.groumapappstore</string>
 	<key>PROJECT_ID</key>
 	<string>groumap-ea452</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1215704250:ios:0552d9f305bb59ba1f6683</string>
+	<string>1:1215704250:ios:8198dff2e818af291f6683</string>
 </dict>
 </plist>

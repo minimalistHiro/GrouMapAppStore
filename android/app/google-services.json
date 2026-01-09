@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1215704250:android:f4d72fdc4cabc4181f6683",
+        "mobilesdk_app_id": "1:1215704250:android:983d02af00751c0b1f6683",
         "android_client_info": {
-          "package_name": "com.groumap.groumap"
+          "package_name": "com.groumap.groumapapp"
         }
       },
       "oauth_client": [
@@ -43,9 +43,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1215704250:android:c8e551ea622ca9361f6683",
+        "mobilesdk_app_id": "1:1215704250:android:4157c5dd246835651f6683",
         "android_client_info": {
-          "package_name": "com.groumap.groumapstore"
+          "package_name": "com.groumap.groumapappstore"
         }
       },
       "oauth_client": [

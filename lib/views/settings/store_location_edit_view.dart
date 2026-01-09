@@ -343,7 +343,7 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
               TileLayer(
                 urlTemplate: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c'],
-                userAgentPackageName: 'com.example.groumapapp_store',
+                userAgentPackageName: 'com.groumap.groumapappstore',
                 additionalOptions: const {
                   'attribution': '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 },
