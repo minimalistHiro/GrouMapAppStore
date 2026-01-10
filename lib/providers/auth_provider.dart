@@ -186,6 +186,7 @@ class AuthService {
                'displayName': storeInfo['name'], // 店舗名をdisplayNameに設定
                'createdAt': FieldValue.serverTimestamp(),
                'isOwner': false, // デフォルトでfalse（一般店舗）
+               'isStoreOwner': true, // 店舗アカウント作成時はオーナーフラグを立てる
                'emailVerified': false, // メール認証状態を初期化
                'emailVerifiedAt': null,
              }, SetOptions(merge: true));
