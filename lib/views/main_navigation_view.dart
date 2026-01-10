@@ -162,6 +162,83 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
 
   @override
   Widget build(BuildContext context) {
+    final storeIdAsync = ref.watch(userStoreIdProvider);
+
+    return storeIdAsync.when(
+      data: (storeId) {
+        if (storeId == null) {
+          return _buildMainScaffold();
+        }
+
+        final storeDataAsync = ref.watch(storeDataProvider(storeId));
+        return storeDataAsync.when(
+          data: (storeData) {
+            final isApproved = (storeData?['isApproved'] as bool?) ?? true;
+            if (!isApproved) {
+              return _buildApprovalPendingView(context, storeId);
+            }
+            return _buildMainScaffold();
+          },
+          loading: () => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, _) => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '店舗情報の取得に失敗しました',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    error.toString(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.invalidate(storeDataProvider(storeId));
+                    },
+                    child: const Text('再試行'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: Center(
+          child: Text(
+            'ユーザー情報の取得に失敗しました: ${error.toString()}',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainScaffold() {
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -192,6 +269,53 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
             label: '設定',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildApprovalPendingView(BuildContext context, String storeId) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.hourglass_top,
+                size: 64,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '店舗の承認待ちです',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '承認が完了するまでしばらくお待ちください。',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(storeDataProvider(storeId));
+                },
+                child: const Text('リロード'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

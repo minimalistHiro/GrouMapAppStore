@@ -75,70 +75,110 @@ class HomeView extends ConsumerWidget {
 
   Widget _buildStoreHomeContent(BuildContext context, WidgetRef ref) {
     final storeIdAsync = ref.watch(userStoreIdProvider);
+    final isOwnerAsync = ref.watch(userIsOwnerProvider);
     
     return storeIdAsync.when(
       data: (storeId) {
         if (storeId == null) {
-          return Scaffold(
-            backgroundColor: Colors.grey[50],
-            body: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.store,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    '店舗が設定されていません',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+          return isOwnerAsync.when(
+            data: (isOwner) {
+              if (!isOwner) {
+                return Scaffold(
+                  backgroundColor: Colors.grey[50],
+                  body: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.store,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          '店舗が設定されていません',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '設定画面から店舗を選択してください',
+                          style: TextStyle(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    '設定画面から店舗を選択してください',
-                    style: TextStyle(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
+                );
+              }
+              return _buildHomeScaffold(context, ref, 'owner_no_store');
+            },
+            loading: () => Scaffold(
+              backgroundColor: Colors.grey[50],
+              body: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (_, __) => Scaffold(
+              backgroundColor: Colors.grey[50],
+              body: const Center(
+                child: Text('ユーザー情報の取得に失敗しました'),
               ),
             ),
           );
         }
-        
-        return Scaffold(
-          backgroundColor: Colors.grey[50],
-          body: SafeArea(
-            child: SingleChildScrollView(
+
+        if (storeId == 'owner_no_store') {
+          return _buildHomeScaffold(context, ref, storeId);
+        }
+
+        final storeDataAsync = ref.watch(storeDataProvider(storeId));
+        return storeDataAsync.when(
+          data: (storeData) {
+            final isApproved = (storeData?['isApproved'] as bool?) ?? true;
+            if (!isApproved) {
+              return _buildApprovalPendingView(context, ref, storeId);
+            }
+            return _buildHomeScaffold(context, ref, storeId);
+          },
+          loading: () => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, _) => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ヘッダー部分
-                  _buildHeader(context, ref, storeId),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // QRスキャンボタン
-                  _buildQRScanButton(context, ref, storeId),
-                  
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
                   const SizedBox(height: 16),
-                  
-                  // 新規作成ボタン
-                  _buildCreateButtons(context, ref, storeId),
-                  
+                  Text(
+                    '店舗情報の取得に失敗しました',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    error.toString(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 24),
-                  
-                  // 統計カード部分
-                  _buildStatsCard(context, ref, storeId),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // その他のコンテンツ
-                  _buildAdditionalContent(context, ref, storeId),
+                  CustomButton(
+                    text: '再試行',
+                    onPressed: () {
+                      ref.invalidate(storeDataProvider(storeId));
+                    },
+                  ),
                 ],
               ),
             ),
@@ -178,6 +218,89 @@ class HomeView extends ConsumerWidget {
                 text: '再試行',
                 onPressed: () {
                   ref.invalidate(userStoreIdProvider);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeScaffold(BuildContext context, WidgetRef ref, String storeId) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // ヘッダー部分
+              _buildHeader(context, ref, storeId),
+              
+              const SizedBox(height: 24),
+              
+              // QRスキャンボタン
+              _buildQRScanButton(context, ref, storeId),
+              
+              const SizedBox(height: 16),
+              
+              // 新規作成ボタン
+              _buildCreateButtons(context, ref, storeId),
+              
+              const SizedBox(height: 24),
+              
+              // 統計カード部分
+              _buildStatsCard(context, ref, storeId),
+              
+              const SizedBox(height: 24),
+              
+              // その他のコンテンツ
+              _buildAdditionalContent(context, ref, storeId),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalPendingView(BuildContext context, WidgetRef ref, String storeId) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.hourglass_top,
+                size: 64,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '店舗の承認待ちです',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '承認が完了するまでしばらくお待ちください。',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              CustomButton(
+                text: 'リロード',
+                onPressed: () {
+                  ref.invalidate(storeDataProvider(storeId));
                 },
               ),
             ],

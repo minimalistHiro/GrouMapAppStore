@@ -18,6 +18,25 @@ final currentUserProvider = Provider<User?>((ref) {
   );
 });
 
+// 現在のユーザーがオーナーかどうか
+final userIsOwnerProvider = StreamProvider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value(false);
+
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return false;
+    final data = snapshot.data();
+    return (data?['isOwner'] as bool?) ?? false;
+  }).handleError((error) {
+    debugPrint('Error fetching user owner flag: $error');
+    return false;
+  });
+});
+
 // 認証サービスプロバイダー
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
