@@ -182,6 +182,7 @@ class AuthService {
              // 作成者の店舗リストにも追加
              await FirebaseFirestore.instance.collection('users').doc(uid).set({
                'createdStores': [storeId],
+               'currentStoreId': storeId,
                'email': _auth.currentUser?.email,
                'displayName': storeInfo['name'], // 店舗名をdisplayNameに設定
                'createdAt': FieldValue.serverTimestamp(),
