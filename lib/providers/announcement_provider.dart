@@ -136,4 +136,17 @@ class AnnouncementService {
       debugPrint('Error updating read count: $e');
     }
   }
+
+  // お知らせを削除
+  Future<void> deleteAnnouncement(String announcementId) async {
+    try {
+      await _firestore
+          .collection('notifications')
+          .doc(announcementId)
+          .delete();
+    } catch (e) {
+      debugPrint('Error deleting announcement: $e');
+      throw Exception('お知らせの削除に失敗しました: $e');
+    }
+  }
 }

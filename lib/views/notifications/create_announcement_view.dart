@@ -65,11 +65,11 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
       }
 
       // お知らせIDを生成
-      final announcementId = _firestore.collection('announcements').doc().id;
+      final notificationId = _firestore.collection('notifications').doc().id;
       
       // Firestoreにお知らせ情報を保存
-      await _firestore.collection('announcements').doc(announcementId).set({
-        'id': announcementId,
+      await _firestore.collection('notifications').doc(notificationId).set({
+        'notificationId': notificationId,
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),
         'category': _selectedCategory,
@@ -119,7 +119,7 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'お知らせID: $announcementId',
+                    'お知らせID: $notificationId',
                     style: const TextStyle(
                       fontSize: 14,
                       fontFamily: 'monospace',

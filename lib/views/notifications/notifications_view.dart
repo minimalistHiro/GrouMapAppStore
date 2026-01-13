@@ -65,6 +65,11 @@ class NotificationsView extends ConsumerWidget {
 
   Widget _buildAnnouncementsList(BuildContext context, WidgetRef ref, String userId) {
     final announcementsAsync = ref.watch(announcementsProvider);
+    final isOwnerAsync = ref.watch(userIsOwnerProvider);
+    final isOwner = isOwnerAsync.maybeWhen(
+      data: (value) => value,
+      orElse: () => false,
+    );
 
     return announcementsAsync.when(
       data: (announcements) {
@@ -92,7 +97,7 @@ class NotificationsView extends ConsumerWidget {
           itemCount: announcements.length,
           itemBuilder: (context, index) {
             final announcement = announcements[index];
-            return _buildAnnouncementItem(context, ref, announcement, userId);
+            return _buildAnnouncementItem(context, ref, announcement, userId, isOwner);
           },
         );
       },
@@ -205,7 +210,13 @@ class NotificationsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildAnnouncementItem(BuildContext context, WidgetRef ref, Map<String, dynamic> announcement, String userId) {
+  Widget _buildAnnouncementItem(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> announcement,
+    String userId,
+    bool isOwner,
+  ) {
     return ref.watch(userDataProvider(userId)).when(
       data: (userData) {
         final readNotifications = List<String>.from(userData?['readNotifications'] ?? []);
@@ -278,6 +289,16 @@ class NotificationsView extends ConsumerWidget {
                           color: Colors.grey[600],
                         ),
                       ),
+                      if (isOwner) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          color: Colors.red[600],
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => _deleteAnnouncement(context, ref, announcement['id']),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -509,6 +530,36 @@ class NotificationsView extends ConsumerWidget {
     ref.read(notificationProvider).deleteNotification(notificationId);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('通知を削除しました')),
+    );
+  }
+
+  Future<void> _deleteAnnouncement(BuildContext context, WidgetRef ref, String announcementId) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('お知らせを削除'),
+        content: const Text('このお知らせを削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    ref.read(announcementProvider).deleteAnnouncement(announcementId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('お知らせを削除しました')),
     );
   }
 
