@@ -11,6 +11,7 @@ import 'store_selection_view.dart';
 import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
+import 'owner_settings_view.dart';
 import '../auth/login_view.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -18,6 +19,7 @@ class SettingsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOwnerAsync = ref.watch(userIsOwnerProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('設定'),
@@ -140,6 +142,36 @@ class SettingsView extends ConsumerWidget {
                   },
                 ),
               ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // オーナー管理セクション（オーナーのみ表示）
+            isOwnerAsync.when(
+              data: (isOwner) {
+                if (!isOwner) {
+                  return const SizedBox.shrink();
+                }
+                return _buildSection(
+                  title: 'オーナー管理',
+                  children: [
+                    _buildSettingsItem(
+                      icon: Icons.admin_panel_settings,
+                      title: 'オーナー設定',
+                      subtitle: '紹介キャンペーンの期間を設定',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const OwnerSettingsView(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             
             const SizedBox(height: 40),

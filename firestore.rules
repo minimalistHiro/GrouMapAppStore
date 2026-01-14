@@ -1,13 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 一時的に全てのアクセスを許可（デバッグ用）
-    match /{document=**} {
-      allow read, write: if true;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isOwner == true;
     }
     // ユーザーコレクション
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // オーナー設定コレクション
+    match /owner_settings/{storeId} {
+      allow read: if true;
+      allow write: if isOwner();
     }
     
     // 店舗コレクション
@@ -99,7 +109,8 @@ service cloud.firestore {
     
     // その他のコレクションは認証が必要
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isSignedIn();
+      allow write: if false;
     }
   }
 }
