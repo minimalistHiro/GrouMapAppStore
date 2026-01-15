@@ -50,7 +50,7 @@ dependencies:
   geolocator: ^12.0.0
 
   # QR Code Scanner
-  mobile_scanner: 5.2.3
+  mobile_scanner: 6.0.2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
