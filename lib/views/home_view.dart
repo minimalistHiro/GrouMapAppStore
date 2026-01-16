@@ -861,40 +861,55 @@ class HomeView extends ConsumerWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // 画面幅に基づいてアイコンサイズとグリッドサイズを動的に調整
-            final screenWidth = constraints.maxWidth;
-            final iconSize = (screenWidth * 0.08).clamp(20.0, 32.0);
-            final fontSize = (screenWidth * 0.03).clamp(8.0, 12.0);
-            
-            // より安定したアスペクト比の計算
-            final itemHeight = 100.0; // 固定の高さを使用
-            final aspectRatio = constraints.maxWidth / (itemHeight * 2); // 4列なので2倍
-            
-            return GridView.count(
-                  crossAxisCount: 4,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: aspectRatio,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  children: menuItems.map((item) => _buildStoreMenuButton(
-                    context,
-                    item['label'] as String,
-                    item['icon'] as IconData,
-                    iconSize: iconSize,
-                    fontSize: fontSize,
-                  )).toList(),
-                );
-          },
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const iconSize = 32.0;
+          const fontSize = 12.0;
+          const itemHeight = 80.0;
+          const mainAxisSpacing = 8.0;
+          const crossAxisSpacing = 8.0;
+          const rows = 3;
+          final itemWidth = (constraints.maxWidth - (crossAxisSpacing * 3)) / 4;
+          final aspectRatio = itemWidth / itemHeight;
+          final gridHeight = (itemHeight * rows) + (mainAxisSpacing * (rows - 1));
+          final backgroundHeight = gridHeight + 32;
+
+          return SizedBox(
+            height: backgroundHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: backgroundHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    child: GridView.count(
+                      crossAxisCount: 4,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      childAspectRatio: aspectRatio,
+                      mainAxisSpacing: mainAxisSpacing,
+                      crossAxisSpacing: crossAxisSpacing,
+                      children: menuItems.map((item) => _buildStoreMenuButton(
+                        context,
+                        item['label'] as String,
+                        item['icon'] as IconData,
+                        iconSize: iconSize,
+                        fontSize: fontSize,
+                      )).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1080,32 +1095,31 @@ class HomeView extends ConsumerWidget {
       },
       child: Container(
         padding: const EdgeInsets.all(4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Icon(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
                 icon,
                 size: iconSize ?? 24,
                 color: const Color(0xFFFF6B35),
               ),
-            ),
-            SizedBox(height: (iconSize ?? 24) * 0.3),
-            Flexible(
-              child: Text(
+              SizedBox(height: (iconSize ?? 24) * 0.2),
+              Text(
                 title,
                 style: TextStyle(
                   fontSize: fontSize ?? 10,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: const Color(0xFFFF6B35),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
