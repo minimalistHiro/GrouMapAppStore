@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import 'store_user_trend_view.dart';
+import 'new_customer_trend_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -558,6 +559,14 @@ class AnalyticsView extends ConsumerWidget {
           context,
           MaterialPageRoute(
             builder: (context) => const StoreUserTrendView(),
+          ),
+        );
+        break;
+      case '新規顧客推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const NewCustomerTrendView(),
           ),
         );
         break;

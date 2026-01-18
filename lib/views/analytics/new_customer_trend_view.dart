@@ -4,34 +4,29 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 
-class StoreUserTrendView extends ConsumerStatefulWidget {
-  const StoreUserTrendView({Key? key}) : super(key: key);
+class NewCustomerTrendView extends ConsumerStatefulWidget {
+  const NewCustomerTrendView({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<StoreUserTrendView> createState() => _StoreUserTrendViewState();
+  ConsumerState<NewCustomerTrendView> createState() => _NewCustomerTrendViewState();
 }
 
-class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
+class _NewCustomerTrendViewState extends ConsumerState<NewCustomerTrendView> {
   String _selectedPeriod = 'week';
   bool _hasInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('店舗利用者推移'),
+        title: const Text('新規顧客推移'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
       ),
       body: Consumer(
         builder: (context, ref, child) {
           final storeIdAsync = ref.watch(userStoreIdProvider);
-          
+
           return storeIdAsync.when(
             data: (storeId) {
               if (storeId == null) {
@@ -56,19 +51,17 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
                   ),
                 );
               }
-              
-              // StateNotifierを使用してデータを取得
-              final trendDataAsync = ref.watch(storeUserTrendNotifierProvider);
-              
-              // 初回読み込み時のみデータを取得
+
+              final trendDataAsync = ref.watch(newCustomerTrendNotifierProvider);
+
               if (!_hasInitialized) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
+                  final notifier = ref.read(newCustomerTrendNotifierProvider.notifier);
                   notifier.fetchTrendData(storeId, _selectedPeriod);
                   _hasInitialized = true;
                 });
               }
-              
+
               return trendDataAsync.when(
                 data: (trendData) {
                   return SingleChildScrollView(
@@ -76,17 +69,10 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 期間選択セクション
                         _buildPeriodSelector(storeId),
-                        
                         const SizedBox(height: 24),
-                        
-                        // グラフセクション
                         _buildChartSectionWithData(trendData),
-                        
                         const SizedBox(height: 24),
-                        
-                        // 統計情報セクション
                         _buildStatsSectionWithData(trendData),
                       ],
                     ),
@@ -219,8 +205,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
             setState(() {
               _selectedPeriod = period;
             });
-            // 期間変更時にStateNotifierでデータを再取得
-            final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
+            final notifier = ref.read(newCustomerTrendNotifierProvider.notifier);
             notifier.fetchTrendData(storeId, period);
           }
         },
@@ -272,7 +257,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
               Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
-                '利用者推移グラフ',
+                '新規顧客推移グラフ',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -282,23 +267,23 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
             ],
           ),
           const SizedBox(height: 20),
-          trendData.isEmpty 
-              ? _buildEmptyChart()
-              : _buildLineChart(trendData),
+          trendData.isEmpty ? _buildEmptyChart() : _buildLineChart(trendData),
         ],
       ),
     );
   }
 
   Widget _buildLineChart(List<Map<String, dynamic>> trendData) {
-    final maxValue = trendData.isNotEmpty 
-        ? trendData.map((e) => e['userCount'] as int).reduce((a, b) => a > b ? a : b)
+    final maxValue = trendData.isNotEmpty
+        ? trendData
+            .map((e) => e['newCustomerCount'] as int)
+            .reduce((a, b) => a > b ? a : b)
         : 1;
-    
+
     final spots = trendData.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), (entry.value['userCount'] as int).toDouble());
+      return FlSpot(entry.key.toDouble(), (entry.value['newCustomerCount'] as int).toDouble());
     }).toList();
-    
+
     return SizedBox(
       height: 300,
       child: LineChart(
@@ -427,7 +412,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
       default:
         displayText = date;
     }
-    
+
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: Text(
@@ -456,7 +441,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
       default:
         periodText = '選択した期間';
     }
-    
+
     return SizedBox(
       height: 300,
       child: Center(
@@ -487,7 +472,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
               ),
             ),
             Text(
-              'ポイント付与の履歴がありません',
+              '新規顧客の履歴がありません',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -546,7 +531,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
               Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
-                '利用者推移グラフ',
+                '新規顧客推移グラフ',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -593,7 +578,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
               Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
-                '利用者推移グラフ',
+                '新規顧客推移グラフ',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -636,8 +621,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // StateNotifierでデータを再取得
-                      final notifier = ref.read(storeUserTrendNotifierProvider.notifier);
+                      final notifier = ref.read(newCustomerTrendNotifierProvider.notifier);
                       notifier.fetchTrendData(storeId, _selectedPeriod);
                     },
                     style: ElevatedButton.styleFrom(
@@ -691,24 +675,29 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
             ],
           ),
           const SizedBox(height: 20),
-          trendData.isEmpty 
-              ? _buildEmptyStats()
-              : _buildStatsCards(trendData),
+          trendData.isEmpty ? _buildEmptyStats() : _buildStatsCards(trendData),
         ],
       ),
     );
   }
 
   Widget _buildStatsCards(List<Map<String, dynamic>> trendData) {
-    final totalUsers = trendData.fold<int>(0, (sum, data) => sum + (data['userCount'] as int));
-    final maxUsers = trendData.isNotEmpty 
-        ? trendData.map((e) => e['userCount'] as int).reduce((a, b) => a > b ? a : b)
+    final totalCustomers = trendData.fold<int>(
+      0,
+      (sum, data) => sum + (data['newCustomerCount'] as int),
+    );
+    final maxCustomers = trendData.isNotEmpty
+        ? trendData
+            .map((e) => e['newCustomerCount'] as int)
+            .reduce((a, b) => a > b ? a : b)
         : 0;
-    final minUsers = trendData.isNotEmpty 
-        ? trendData.map((e) => e['userCount'] as int).reduce((a, b) => a < b ? a : b)
+    final minCustomers = trendData.isNotEmpty
+        ? trendData
+            .map((e) => e['newCustomerCount'] as int)
+            .reduce((a, b) => a < b ? a : b)
         : 0;
-    final avgUsers = trendData.isNotEmpty ? (totalUsers / trendData.length).round() : 0;
-    
+    final avgCustomers = trendData.isNotEmpty ? (totalCustomers / trendData.length).round() : 0;
+
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -717,10 +706,10 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
       mainAxisSpacing: 16,
       childAspectRatio: 1.5,
       children: [
-        _buildStatCard('総利用者数', totalUsers.toString(), Icons.people, Colors.blue),
-        _buildStatCard('最大利用者数', maxUsers.toString(), Icons.trending_up, Colors.green),
-        _buildStatCard('最小利用者数', minUsers.toString(), Icons.trending_down, Colors.orange),
-        _buildStatCard('平均利用者数', avgUsers.toString(), Icons.analytics, Colors.purple),
+        _buildStatCard('総新規顧客数', totalCustomers.toString(), Icons.person_add, Colors.blue),
+        _buildStatCard('最大新規顧客数', maxCustomers.toString(), Icons.trending_up, Colors.green),
+        _buildStatCard('最小新規顧客数', minCustomers.toString(), Icons.trending_down, Colors.orange),
+        _buildStatCard('平均新規顧客数', avgCustomers.toString(), Icons.analytics, Colors.purple),
       ],
     );
   }
@@ -781,7 +770,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
       default:
         periodText = '選択した期間';
     }
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),

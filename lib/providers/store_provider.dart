@@ -399,6 +399,137 @@ final storeUserTrendNotifierProvider = StateNotifierProvider<StoreUserTrendNotif
   return StoreUserTrendNotifier();
 });
 
+// 新規顧客推移の状態管理
+class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  NewCustomerTrendNotifier() : super(const AsyncValue.loading());
+
+  Future<void> fetchTrendData(String storeId, String period) async {
+    try {
+      debugPrint('=== NewCustomerTrendNotifier START ===');
+      debugPrint('StoreId: $storeId, Period: $period');
+
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      final endDate = DateTime.now();
+
+      switch (period) {
+        case 'week':
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          if (endDate.month == 1) {
+            startDate = DateTime(endDate.year - 1, 12, endDate.day);
+          } else {
+            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+          }
+          break;
+        case 'year':
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      debugPrint('Date Range: ${startDate.toLocal()} to ${endDate.toLocal()}');
+
+      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      debugPrint('Found ${usersSnapshot.docs.length} users');
+
+      final Map<String, DateTime> firstVisitByUser = {};
+
+      for (final userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final transactionsSnapshot = await FirebaseFirestore.instance
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .where('description', isEqualTo: 'ポイント付与')
+            .get();
+
+        for (final transDoc in transactionsSnapshot.docs) {
+          final data = transDoc.data();
+          final createdAt = data['createdAt'];
+          if (createdAt == null) continue;
+
+          DateTime docDate;
+          if (createdAt is DateTime) {
+            docDate = createdAt;
+          } else if (createdAt is Timestamp) {
+            docDate = createdAt.toDate();
+          } else if (createdAt is String) {
+            try {
+              docDate = DateTime.parse(createdAt);
+            } catch (_) {
+              continue;
+            }
+          } else {
+            continue;
+          }
+
+          final existing = firstVisitByUser[userId];
+          if (existing == null || docDate.isBefore(existing)) {
+            firstVisitByUser[userId] = docDate;
+          }
+        }
+      }
+
+      debugPrint('First visits: ${firstVisitByUser.length}');
+
+      final Map<String, int> groupedData = {};
+      for (final entry in firstVisitByUser.entries) {
+        final visitDate = entry.value;
+        if (!(visitDate.isAfter(startDate) && visitDate.isBefore(endDate))) {
+          continue;
+        }
+
+        String groupKey;
+        switch (period) {
+          case 'week':
+            groupKey = '${visitDate.year}-${visitDate.month.toString().padLeft(2, '0')}-${visitDate.day.toString().padLeft(2, '0')}';
+            break;
+          case 'month':
+            groupKey = '${visitDate.year}-${visitDate.month.toString().padLeft(2, '0')}';
+            break;
+          case 'year':
+            groupKey = '${visitDate.year}';
+            break;
+          default:
+            groupKey = '${visitDate.year}-${visitDate.month.toString().padLeft(2, '0')}-${visitDate.day.toString().padLeft(2, '0')}';
+        }
+
+        groupedData[groupKey] = (groupedData[groupKey] ?? 0) + 1;
+      }
+
+      final result = groupedData.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'newCustomerCount': entry.value,
+        };
+      }).toList();
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      debugPrint('Result: ${result.length} data points');
+      if (result.isNotEmpty) {
+        debugPrint('Sample data: ${result.take(3)}');
+      }
+      debugPrint('=== NewCustomerTrendNotifier END ===');
+
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching new customer trend data: $e');
+      debugPrint('StackTrace: $stackTrace');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+// 新規顧客推移プロバイダー（StateNotifier版）
+final newCustomerTrendNotifierProvider = StateNotifierProvider<NewCustomerTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return NewCustomerTrendNotifier();
+});
+
 // 週間統計プロバイダー
 final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>((ref, storeId) {
   try {
@@ -429,7 +560,7 @@ final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>(
         }
       }
       
-      // 週間のデータのみをフィルタリング
+      // 週間のデータのみをフィルタリング（来店=ポイント付与）
       final weeklyTransactions = allTransactions.where((data) {
         final createdAt = data['createdAt'];
         if (createdAt == null) return false;
@@ -443,37 +574,31 @@ final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>(
           return false;
         }
         
-        return docDate.isAfter(startOfWeek) && docDate.isBefore(now);
+        if (!(docDate.isAfter(startOfWeek) && docDate.isBefore(now))) {
+          return false;
+        }
+
+        return data['description'] == 'ポイント付与';
       }).toList();
       
-      // ポイント付与の取引のみ
-      final pointAwardTransactions = weeklyTransactions
-          .where((t) => t['description'] == 'ポイント付与')
-          .toList();
-      
-      // ポイント支払いの取引のみ
-      final pointPaymentTransactions = weeklyTransactions
-          .where((t) => t['description'] == 'ポイント支払い')
-          .toList();
-      
       // 来店者数（ポイント付与の取引数）
-      final visitorCount = pointAwardTransactions.length;
+      final visitorCount = weeklyTransactions.length;
       
       // ユニークユーザー数
-      final uniqueUsers = pointAwardTransactions
+      final uniqueUsers = weeklyTransactions
           .map((t) => t['userId'] as String?)
           .where((id) => id != null)
           .toSet();
       
-      // 使用ポイント総数
-      final totalPointsUsed = pointPaymentTransactions.fold<int>(
+      // 配布ポイント総数
+      final totalPointsAwarded = weeklyTransactions.fold<int>(
         0,
-        (sum, t) => sum + ((t['amount'] ?? 0) as int).abs(),
+        (sum, t) => sum + ((t['amount'] ?? 0) as int),
       );
       
       // リピート率（複数回来店したユーザーの割合）
       final userVisitCounts = <String, int>{};
-      for (final transaction in pointAwardTransactions) {
+      for (final transaction in weeklyTransactions) {
         final userId = transaction['userId'] as String?;
         if (userId != null) {
           userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
@@ -484,14 +609,14 @@ final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>(
           ? (repeatUsers / uniqueUsers.length * 100).toInt() 
           : 0;
       
-      // 平均客単価（使用ポイント ÷ 来店者数）
+      // 平均客単価（配布ポイント ÷ 来店者数）
       final avgSpending = visitorCount > 0 
-          ? (totalPointsUsed / visitorCount).round() 
+          ? (totalPointsAwarded / visitorCount).round() 
           : 0;
       
       return {
         'visitorCount': visitorCount,
-        'totalSales': totalPointsUsed,
+        'totalSales': totalPointsAwarded,
         'avgSpending': avgSpending,
         'repeatRate': repeatRate,
       };
@@ -545,7 +670,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
         }
       }
       
-      // 月間のデータのみをフィルタリング
+      // 月間のデータのみをフィルタリング（来店=ポイント付与）
       final monthlyTransactions = allTransactions.where((data) {
         final createdAt = data['createdAt'];
         if (createdAt == null) return false;
@@ -559,32 +684,26 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
           return false;
         }
         
-        return docDate.isAfter(startOfMonth) && docDate.isBefore(now);
+        if (!(docDate.isAfter(startOfMonth) && docDate.isBefore(now))) {
+          return false;
+        }
+
+        return data['description'] == 'ポイント付与';
       }).toList();
       
-      // ポイント付与の取引のみ
-      final pointAwardTransactions = monthlyTransactions
-          .where((t) => t['description'] == 'ポイント付与')
-          .toList();
-      
-      // ポイント支払いの取引のみ
-      final pointPaymentTransactions = monthlyTransactions
-          .where((t) => t['description'] == 'ポイント支払い')
-          .toList();
-      
       // 来店者数（ポイント付与の取引数）
-      final visitorCount = pointAwardTransactions.length;
+      final visitorCount = monthlyTransactions.length;
       
       // ユニークユーザー数
-      final uniqueUsers = pointAwardTransactions
+      final uniqueUsers = monthlyTransactions
           .map((t) => t['userId'] as String?)
           .where((id) => id != null)
           .toSet();
       
-      // 使用ポイント総数
-      final totalPointsUsed = pointPaymentTransactions.fold<int>(
+      // 配布ポイント総数
+      final totalPointsAwarded = monthlyTransactions.fold<int>(
         0,
-        (sum, t) => sum + ((t['amount'] ?? 0) as int).abs(),
+        (sum, t) => sum + ((t['amount'] ?? 0) as int),
       );
       
       // 先月のデータを取得して新規顧客数を計算
@@ -619,7 +738,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
       
       return {
         'visitorCount': visitorCount,
-        'totalSales': totalPointsUsed,
+        'totalSales': totalPointsAwarded,
         'newCustomers': newCustomers,
       };
     }).handleError((error) {
