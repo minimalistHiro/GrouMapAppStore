@@ -200,6 +200,30 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'imageUrl': imageUrl,
       });
 
+      // 公開クーポンを作成（ユーザーアプリ参照用）
+      await FirebaseFirestore.instance
+          .collection('public_coupons')
+          .doc('${_selectedStoreId}::$couponId')
+          .set({
+        'key': '${_selectedStoreId}::$couponId',
+        'couponId': couponId,
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'storeId': _selectedStoreId,
+        'storeName': _selectedStoreName,
+        'discountType': _selectedDiscountType,
+        'discountValue': double.parse(_discountValueController.text),
+        'validUntil': _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
+        'usageLimit': int.parse(_usageLimitController.text),
+        'usedCount': 0,
+        'viewCount': 0,
+        'createdBy': user.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'isActive': true,
+        'imageUrl': imageUrl,
+      });
+
       if (mounted) {
         // 成功ダイアログを表示
         await showDialog(

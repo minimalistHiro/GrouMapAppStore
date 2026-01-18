@@ -174,7 +174,14 @@ class CouponService {
     Map<String, dynamic>? conditions,
   }) async {
     try {
+      final couponDoc = _firestore
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc();
+      final couponId = couponDoc.id;
       final couponData = {
+        'couponId': couponId,
         'storeId': storeId,
         'title': title,
         'description': description,
@@ -196,11 +203,16 @@ class CouponService {
       };
 
       // ネストされた構造で保存: coupons/{storeId}/coupons/{couponId}
+      await couponDoc.set(couponData);
+
+      // 公開クーポンも作成
       await _firestore
-          .collection('coupons')
-          .doc(storeId)
-          .collection('coupons')
-          .add(couponData);
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
+          .set({
+        'key': '$storeId::$couponId',
+        ...couponData,
+      });
     } catch (e) {
       debugPrint('Error creating coupon: $e');
       throw Exception('クーポンの作成に失敗しました: $e');
@@ -254,6 +266,11 @@ class CouponService {
           .collection('coupons')
           .doc(couponId)
           .update(updateData);
+
+      await _firestore
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
+          .update(updateData);
     } catch (e) {
       debugPrint('Error updating coupon: $e');
       throw Exception('クーポンの更新に失敗しました: $e');
@@ -271,6 +288,10 @@ class CouponService {
           .doc(storeId)
           .collection('coupons')
           .doc(couponId)
+          .delete();
+      await _firestore
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
           .delete();
     } catch (e) {
       debugPrint('Error deleting coupon: $e');
@@ -290,6 +311,13 @@ class CouponService {
           .doc(storeId)
           .collection('coupons')
           .doc(couponId)
+          .update({
+        'isActive': isActive,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await _firestore
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
           .update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),

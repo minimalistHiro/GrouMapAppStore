@@ -1112,7 +1112,7 @@ class HomeView extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: fontSize ?? 10,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFFFF6B35),
+                  color: Colors.black,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,

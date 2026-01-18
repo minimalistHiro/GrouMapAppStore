@@ -581,6 +581,10 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
           .collection('coupons')
           .doc(couponId)
           .delete();
+      await FirebaseFirestore.instance
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
+          .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('クーポンを削除しました')),
@@ -602,6 +606,13 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
           .doc(storeId)
           .collection('coupons')
           .doc(couponId)
+          .update({
+        'isActive': isActive,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await FirebaseFirestore.instance
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
           .update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),

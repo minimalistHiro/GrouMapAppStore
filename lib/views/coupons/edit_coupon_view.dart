@@ -194,6 +194,23 @@ class _EditCouponViewState extends State<EditCouponView> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      // 公開クーポンも更新
+      await FirebaseFirestore.instance
+          .collection('public_coupons')
+          .doc('$storeId::$couponId')
+          .update({
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'discountType': _selectedDiscountType,
+        'discountValue': double.parse(_discountValueController.text),
+        'couponType': _selectedCouponType,
+        'usageLimit': int.parse(_usageLimitController.text),
+        'validFrom': Timestamp.fromDate(_validFrom),
+        'validUntil': Timestamp.fromDate(_validUntil),
+        'imageUrl': imageUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
       if (mounted) {
         // 成功ダイアログを表示
         await showDialog(

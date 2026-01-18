@@ -232,6 +232,32 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
         'isActive': true,
         'isPublished': true,
         'views': 0,
+        'viewCount': 0,
+        'comments': [],
+        'imageUrls': imageUrls,
+        'imageCount': imageUrls.length,
+      });
+
+      // 公開投稿を作成（ユーザーアプリ参照用）
+      await FirebaseFirestore.instance
+          .collection('public_posts')
+          .doc('${_selectedStoreId}::$postId')
+          .set({
+        'key': '${_selectedStoreId}::$postId',
+        'postId': postId,
+        'title': _titleController.text.trim(),
+        'content': _contentController.text.trim(),
+        'storeId': _selectedStoreId,
+        'storeName': _selectedStoreName,
+        'storeIconImageUrl': storeIconImageUrl,
+        'category': _selectedCategory,
+        'createdBy': user.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'isActive': true,
+        'isPublished': true,
+        'views': 0,
+        'viewCount': 0,
         'comments': [],
         'imageUrls': imageUrls,
         'imageCount': imageUrls.length,

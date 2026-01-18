@@ -200,6 +200,19 @@ class _EditPostViewState extends State<EditPostView> {
         'imageCount': allImageUrls.length,
       });
 
+      // 公開投稿も更新
+      await FirebaseFirestore.instance
+          .collection('public_posts')
+          .doc('$storeId::$postId')
+          .update({
+        'title': _titleController.text.trim(),
+        'content': _contentController.text.trim(),
+        'category': _selectedCategory,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'imageUrls': allImageUrls,
+        'imageCount': allImageUrls.length,
+      });
+
       if (mounted) {
         // 成功ダイアログを表示
         await showDialog(

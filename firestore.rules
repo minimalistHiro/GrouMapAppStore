@@ -42,10 +42,26 @@ service cloud.firestore {
         (request.auth.uid == resource.data.createdBy || 
          request.auth.token.role in ['admin', 'company']);
     }
+
+    // 公開クーポンコレクション（ユーザー表示用）
+    match /public_coupons/{couponId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.createdBy ||
+         request.auth.token.role in ['admin', 'company']);
+    }
     
     // 投稿コレクション
     match /posts/{postId} {
       allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.uid == resource.data.createdBy || 
+         request.auth.token.role in ['admin', 'company']);
+    }
+
+    // 公開投稿コレクション（ユーザー表示用）
+    match /public_posts/{postId} {
+      allow read: if true;
       allow write: if request.auth != null && 
         (request.auth.uid == resource.data.createdBy || 
          request.auth.token.role in ['admin', 'company']);

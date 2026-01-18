@@ -502,6 +502,10 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
           .collection('posts')
           .doc(postId)
           .delete();
+      await FirebaseFirestore.instance
+          .collection('public_posts')
+          .doc('$storeId::$postId')
+          .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('投稿を削除しました')),
