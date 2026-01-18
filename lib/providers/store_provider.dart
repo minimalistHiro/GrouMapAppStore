@@ -399,6 +399,37 @@ final storeUserTrendNotifierProvider = StateNotifierProvider<StoreUserTrendNotif
   return StoreUserTrendNotifier();
 });
 
+DateTime? _parseCreatedAt(dynamic createdAt) {
+  if (createdAt == null) return null;
+  if (createdAt is DateTime) return createdAt;
+  if (createdAt is Timestamp) return createdAt.toDate();
+  if (createdAt is String) {
+    try {
+      return DateTime.parse(createdAt);
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+bool _isWithinRange(DateTime date, DateTime start, DateTime end) {
+  return date.isAfter(start) && date.isBefore(end);
+}
+
+String _buildGroupKey(DateTime date, String period) {
+  switch (period) {
+    case 'week':
+      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    case 'month':
+      return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    case 'year':
+      return '${date.year}';
+    default:
+      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+}
+
 // 新規顧客推移の状態管理
 class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   NewCustomerTrendNotifier() : super(const AsyncValue.loading());
@@ -528,6 +559,321 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
 // 新規顧客推移プロバイダー（StateNotifier版）
 final newCustomerTrendNotifierProvider = StateNotifierProvider<NewCustomerTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
   return NewCustomerTrendNotifier();
+});
+
+// ポイント発行推移の状態管理
+class PointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  PointIssueTrendNotifier() : super(const AsyncValue.loading());
+
+  Future<void> fetchTrendData(String storeId, String period) async {
+    try {
+      debugPrint('=== PointIssueTrendNotifier START ===');
+      debugPrint('StoreId: $storeId, Period: $period');
+
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      final endDate = DateTime.now();
+
+      switch (period) {
+        case 'week':
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          if (endDate.month == 1) {
+            startDate = DateTime(endDate.year - 1, 12, endDate.day);
+          } else {
+            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+          }
+          break;
+        case 'year':
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      final Map<String, int> groupedData = {};
+
+      for (final userDoc in usersSnapshot.docs) {
+        final transactionsSnapshot = await FirebaseFirestore.instance
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userDoc.id)
+            .where('description', isEqualTo: 'ポイント付与')
+            .get();
+
+        for (final transDoc in transactionsSnapshot.docs) {
+          final data = transDoc.data();
+          final createdAt = _parseCreatedAt(data['createdAt']);
+          if (createdAt == null) continue;
+          if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+
+          final groupKey = _buildGroupKey(createdAt, period);
+          final amount = (data['amount'] as num?)?.toInt() ?? 0;
+          groupedData[groupKey] = (groupedData[groupKey] ?? 0) + amount;
+        }
+      }
+
+      final result = groupedData.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'pointsIssued': entry.value,
+        };
+      }).toList();
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      debugPrint('Result: ${result.length} data points');
+      debugPrint('=== PointIssueTrendNotifier END ===');
+
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching point issue trend data: $e');
+      debugPrint('StackTrace: $stackTrace');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+final pointIssueTrendNotifierProvider = StateNotifierProvider<PointIssueTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return PointIssueTrendNotifier();
+});
+
+// ポイント利用者推移の状態管理
+class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  PointUsageUserTrendNotifier() : super(const AsyncValue.loading());
+
+  Future<void> fetchTrendData(String storeId, String period) async {
+    try {
+      debugPrint('=== PointUsageUserTrendNotifier START ===');
+      debugPrint('StoreId: $storeId, Period: $period');
+
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      final endDate = DateTime.now();
+
+      switch (period) {
+        case 'week':
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          if (endDate.month == 1) {
+            startDate = DateTime(endDate.year - 1, 12, endDate.day);
+          } else {
+            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+          }
+          break;
+        case 'year':
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      final Map<String, Set<String>> groupedUsers = {};
+
+      for (final userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final transactionsSnapshot = await FirebaseFirestore.instance
+            .collection('point_transactions')
+            .doc(storeId)
+            .collection(userId)
+            .where('description', isEqualTo: 'ポイント支払い')
+            .get();
+
+        for (final transDoc in transactionsSnapshot.docs) {
+          final data = transDoc.data();
+          final createdAt = _parseCreatedAt(data['createdAt']);
+          if (createdAt == null) continue;
+          if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+
+          final groupKey = _buildGroupKey(createdAt, period);
+          groupedUsers.putIfAbsent(groupKey, () => <String>{});
+          groupedUsers[groupKey]!.add(userId);
+        }
+      }
+
+      final result = groupedUsers.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'pointUsageUsers': entry.value.length,
+        };
+      }).toList();
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      debugPrint('Result: ${result.length} data points');
+      debugPrint('=== PointUsageUserTrendNotifier END ===');
+
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching point usage user trend data: $e');
+      debugPrint('StackTrace: $stackTrace');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+final pointUsageUserTrendNotifierProvider = StateNotifierProvider<PointUsageUserTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return PointUsageUserTrendNotifier();
+});
+
+// 全ユーザー推移の状態管理
+class AllUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  AllUserTrendNotifier() : super(const AsyncValue.loading());
+
+  Future<void> fetchTrendData(String storeId, String period) async {
+    try {
+      debugPrint('=== AllUserTrendNotifier START ===');
+      debugPrint('Period: $period');
+
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      final endDate = DateTime.now();
+
+      switch (period) {
+        case 'week':
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          if (endDate.month == 1) {
+            startDate = DateTime(endDate.year - 1, 12, endDate.day);
+          } else {
+            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+          }
+          break;
+        case 'year':
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      final Map<String, int> groupedUsers = {};
+
+      for (final userDoc in usersSnapshot.docs) {
+        final data = userDoc.data();
+        final createdAt = _parseCreatedAt(data['createdAt']);
+        if (createdAt == null) continue;
+        if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+
+        final groupKey = _buildGroupKey(createdAt, period);
+        groupedUsers[groupKey] = (groupedUsers[groupKey] ?? 0) + 1;
+      }
+
+      final result = groupedUsers.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'totalUsers': entry.value,
+        };
+      }).toList();
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      debugPrint('Result: ${result.length} data points');
+      debugPrint('=== AllUserTrendNotifier END ===');
+
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching all user trend data: $e');
+      debugPrint('StackTrace: $stackTrace');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+final allUserTrendNotifierProvider = StateNotifierProvider<AllUserTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return AllUserTrendNotifier();
+});
+
+// 全ポイント発行数推移の状態管理
+class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  TotalPointIssueTrendNotifier() : super(const AsyncValue.loading());
+
+  Future<void> fetchTrendData(String storeId, String period) async {
+    try {
+      debugPrint('=== TotalPointIssueTrendNotifier START ===');
+      debugPrint('Period: $period');
+
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      final endDate = DateTime.now();
+
+      switch (period) {
+        case 'week':
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          if (endDate.month == 1) {
+            startDate = DateTime(endDate.year - 1, 12, endDate.day);
+          } else {
+            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
+          }
+          break;
+        case 'year':
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      final storesSnapshot = await FirebaseFirestore.instance.collection('stores').get();
+      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      final Map<String, int> groupedData = {};
+
+      for (final storeDoc in storesSnapshot.docs) {
+        final storeDocId = storeDoc.id;
+        for (final userDoc in usersSnapshot.docs) {
+          final transactionsSnapshot = await FirebaseFirestore.instance
+              .collection('point_transactions')
+              .doc(storeDocId)
+              .collection(userDoc.id)
+              .where('description', isEqualTo: 'ポイント付与')
+              .get();
+
+          for (final transDoc in transactionsSnapshot.docs) {
+            final data = transDoc.data();
+            final createdAt = _parseCreatedAt(data['createdAt']);
+            if (createdAt == null) continue;
+            if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+
+            final groupKey = _buildGroupKey(createdAt, period);
+            final amount = (data['amount'] as num?)?.toInt() ?? 0;
+            groupedData[groupKey] = (groupedData[groupKey] ?? 0) + amount;
+          }
+        }
+      }
+
+      final result = groupedData.entries.map((entry) {
+        return {
+          'date': entry.key,
+          'totalPointsIssued': entry.value,
+        };
+      }).toList();
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      debugPrint('Result: ${result.length} data points');
+      debugPrint('=== TotalPointIssueTrendNotifier END ===');
+
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching total point issue trend data: $e');
+      debugPrint('StackTrace: $stackTrace');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+final totalPointIssueTrendNotifierProvider = StateNotifierProvider<TotalPointIssueTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return TotalPointIssueTrendNotifier();
 });
 
 // 週間統計プロバイダー

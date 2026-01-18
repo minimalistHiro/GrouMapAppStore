@@ -4,6 +4,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import 'store_user_trend_view.dart';
 import 'new_customer_trend_view.dart';
+import 'point_issue_trend_view.dart';
+import 'point_usage_user_trend_view.dart';
+import 'all_user_trend_view.dart';
+import 'total_point_issue_trend_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -487,7 +491,7 @@ class AnalyticsView extends ConsumerWidget {
                   'color': Colors.green,
                 },
                 {
-                  'title': 'ポイント利用推移',
+                  'title': 'ポイント利用者推移',
                   'icon': Icons.shopping_cart_outlined,
                   'color': Colors.orange,
                 },
@@ -567,6 +571,38 @@ class AnalyticsView extends ConsumerWidget {
           context,
           MaterialPageRoute(
             builder: (context) => const NewCustomerTrendView(),
+          ),
+        );
+        break;
+      case 'ポイント発行推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PointIssueTrendView(),
+          ),
+        );
+        break;
+      case 'ポイント利用者推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PointUsageUserTrendView(),
+          ),
+        );
+        break;
+      case '全ユーザー数推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AllUserTrendView(),
+          ),
+        );
+        break;
+      case '全ポイント発行数推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TotalPointIssueTrendView(),
           ),
         );
         break;
