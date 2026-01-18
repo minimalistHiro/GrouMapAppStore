@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/announcement_provider.dart';
@@ -30,11 +31,54 @@ final userDataProvider = StreamProvider.family<Map<String, dynamic>?, String>((r
   }
 });
 
-class NotificationsView extends ConsumerWidget {
+class NotificationsView extends ConsumerStatefulWidget {
   const NotificationsView({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsView> createState() => _NotificationsViewState();
+}
+
+class _NotificationsViewState extends ConsumerState<NotificationsView> {
+  final Set<String> _knownAnnouncementIds = <String>{};
+  bool _hasAnnouncementsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+      announcementsProvider,
+      (previous, next) {
+        next.whenData(_handleAnnouncementsUpdate);
+      },
+    );
+  }
+
+  void _handleAnnouncementsUpdate(List<Map<String, dynamic>> announcements) {
+    final ids = announcements
+        .map((announcement) => announcement['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    if (!_hasAnnouncementsLoaded) {
+      _knownAnnouncementIds
+        ..clear()
+        ..addAll(ids);
+      _hasAnnouncementsLoaded = true;
+      return;
+    }
+
+    final newIds = ids.difference(_knownAnnouncementIds);
+    if (newIds.isNotEmpty) {
+      SystemSound.play(SystemSoundType.alert);
+    }
+
+    _knownAnnouncementIds
+      ..clear()
+      ..addAll(ids);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     
     return Scaffold(

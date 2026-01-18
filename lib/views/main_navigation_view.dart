@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
+import '../services/push_notification_service.dart';
 import 'home_view.dart';
 import 'analytics/analytics_view.dart';
 import 'qr/qr_scanner_view.dart';
@@ -48,10 +49,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
           await storeIdAsync.when(
             data: (storeId) async {
               if (storeId != null) {
-                await Future.wait([
-                  _loadStoreData(storeId),
-                  _loadCouponData(storeId),
-                ]);
+                await _loadHomeData(user.uid, storeId);
               }
             },
             loading: () async {},
@@ -112,7 +110,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
 
             switch (tabIndex) {
               case 0: // ホーム
-                await _loadHomeData(storeId);
+                await _loadHomeData(user.uid, storeId);
                 break;
               case 1: // 分析
                 await _loadAnalyticsData(storeId);
@@ -138,10 +136,12 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
   }
 
   // 各タブのデータ読み込みメソッド
-  Future<void> _loadHomeData(String storeId) async {
+  Future<void> _loadHomeData(String userId, String storeId) async {
     // ホーム画面のデータ読み込み
     await _loadStoreData(storeId);
     await _loadCouponData(storeId);
+    final pushService = ref.read(pushNotificationServiceProvider);
+    await pushService.syncForUser(userId);
   }
 
   Future<void> _loadAnalyticsData(String storeId) async {
