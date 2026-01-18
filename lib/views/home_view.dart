@@ -1238,7 +1238,7 @@ class HomeView extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         SizedBox(
-          height: 200,
+          height: 270,
           child: ref.watch(activeCouponsProvider(storeId)).when(
             data: (coupons) {
               if (coupons.isEmpty) {
@@ -1437,120 +1437,132 @@ class HomeView extends ConsumerWidget {
         //   const SnackBar(content: Text('クーポン詳細画面は準備中です')),
         // );
       },
-      child: Container(
-        width: 170,
-        height: 200,
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // 画像
-            Container(
-              width: 150,
-              height: 80,
-              margin: const EdgeInsets.only(top: 5, bottom: 5),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(7),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Container(
+          height: 270,
+          width: 170,
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: const Offset(0, 1),
               ),
-              child: coupon['imageUrl'] != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(7),
-                      child: Image.network(
-                        coupon['imageUrl'],
-                        width: 150,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.image,
-                            size: 40,
-                            color: Colors.grey,
-                          );
-                        },
+            ],
+          ),
+          child: Column(
+            children: [
+              // 画像
+              Container(
+                width: 150,
+                height: 150,
+                margin: const EdgeInsets.only(top: 7, bottom: 7),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: coupon['imageUrl'] != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(7),
+                        child: Image.network(
+                          coupon['imageUrl'],
+                          width: 150,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.image,
+                              size: 50,
+                              color: Colors.grey,
+                            );
+                          },
+                        ),
+                      )
+                    : const Icon(
+                        Icons.image,
+                        size: 50,
+                        color: Colors.grey,
                       ),
-                    )
-                  : const Icon(
-                      Icons.image,
-                      size: 40,
-                      color: Colors.grey,
-                    ),
-            ),
-            
-            // 期限
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.red[100],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
               ),
-              child: Text(
-                formatEndDate(),
-                style: const TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
-            const SizedBox(height: 4),
-            
-            // タイトル
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                coupon['title'] ?? 'タイトルなし',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            
-            const SizedBox(height: 4),
-            
-            // 割引情報
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFFFF6B35).withOpacity(0.3),
+              
+              // 期限
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  formatEndDate(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              child: Text(
-                getDiscountText(),
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF6B35),
+              
+              const SizedBox(height: 6),
+              
+              // タイトル
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  coupon['title'] ?? 'タイトルなし',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
-            
-            const Spacer(),
-          ],
+              
+              const SizedBox(height: 4),
+              
+              // 割引情報
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B35).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFFF6B35).withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  getDiscountText(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFF6B35),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              
+              const SizedBox(height: 4),
+              const Divider(height: 1),
+              
+              // 店舗名
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  coupon['storeName'] ?? '店舗名なし',
+                  style: const TextStyle(fontSize: 9),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              
+              const SizedBox(height: 3),
+            ],
+          ),
         ),
       ),
     );
