@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../providers/auth_provider.dart';
 import 'create_post_view.dart';
 import 'edit_post_view.dart';
@@ -455,7 +456,11 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       IconButton(
                         icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                         onPressed: () {
-                          _showDeleteDialog(post['postId'], storeId);
+                          final imageUrls = (post['imageUrls'] as List?)
+                                  ?.whereType<String>()
+                                  .toList() ??
+                              [];
+                          _showDeleteDialog(post['postId'], storeId, imageUrls);
                         },
                       ),
                     ],
@@ -469,7 +474,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  void _showDeleteDialog(String postId, String storeId) {
+  void _showDeleteDialog(String postId, String storeId, List<String> imageUrls) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -484,7 +489,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _deletePost(postId, storeId);
+                await _deletePost(postId, storeId, imageUrls);
               },
               child: const Text('削除', style: TextStyle(color: Colors.red)),
             ),
@@ -494,8 +499,30 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  Future<void> _deletePost(String postId, String storeId) async {
+  Future<int> _deletePostImages(List<String> imageUrls) async {
+    if (imageUrls.isEmpty) return 0;
+
+    int failedCount = 0;
+    final storage = FirebaseStorage.instance;
+
+    for (final imageUrl in imageUrls) {
+      if (imageUrl.startsWith('data:') || imageUrl.startsWith('error:')) {
+        continue;
+      }
+      try {
+        await storage.refFromURL(imageUrl).delete();
+      } catch (e) {
+        failedCount += 1;
+        debugPrint('画像削除エラー: $e');
+      }
+    }
+
+    return failedCount;
+  }
+
+  Future<void> _deletePost(String postId, String storeId, List<String> imageUrls) async {
     try {
+      final failedImageDeletes = await _deletePostImages(imageUrls);
       await FirebaseFirestore.instance
           .collection('posts')
           .doc(storeId)
@@ -508,7 +535,13 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
           .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('投稿を削除しました')),
+          SnackBar(
+            content: Text(
+              failedImageDeletes > 0
+                  ? '投稿を削除しました（画像${failedImageDeletes}件の削除に失敗）'
+                  : '投稿を削除しました',
+            ),
+          ),
         );
       }
     } catch (e) {

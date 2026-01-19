@@ -6,7 +6,6 @@ import '../providers/coupon_provider.dart';
 import '../providers/announcement_provider.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
-import 'feedback/feedback_manage_view.dart';
 import 'posts/create_post_view.dart';
 import 'coupons/create_coupon_view.dart';
 import 'posts/posts_manage_view.dart';
@@ -15,7 +14,6 @@ import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
 import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
-import 'badges/badge_manage_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -848,9 +846,7 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.history, 'label': 'ポイント履歴'},
       {'icon': Icons.local_offer, 'label': 'クーポン管理'},
       {'icon': Icons.article, 'label': '投稿管理'},
-      {'icon': Icons.manage_accounts, 'label': 'フィードバック管理'},
       {'icon': Icons.announcement, 'label': 'お知らせ作成'},
-      {'icon': Icons.workspace_premium, 'label': 'バッジ管理'},
     ];
 
     return Container(
@@ -1027,13 +1023,7 @@ class HomeView extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         // 各メニュー項目の処理
-        if (title == 'フィードバック管理') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const FeedbackManageView(),
-            ),
-          );
-        } else if (title == '投稿管理') {
+        if (title == '投稿管理') {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const PostsManageView(),
@@ -1055,12 +1045,6 @@ class HomeView extends ConsumerWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const CreateAnnouncementView(),
-            ),
-          );
-        } else if (title == 'バッジ管理') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const BadgeManageView(),
             ),
           );
         } else {

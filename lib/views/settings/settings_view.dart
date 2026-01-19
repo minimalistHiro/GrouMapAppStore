@@ -16,6 +16,8 @@ import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
 import '../stores/pending_stores_view.dart';
 import '../feedback/feedback_send_view.dart';
+import '../feedback/feedback_manage_view.dart';
+import '../badges/badge_manage_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -182,6 +184,30 @@ class SettingsView extends ConsumerWidget {
                 return _buildSection(
                   title: 'オーナー管理',
                   children: [
+                    _buildSettingsItem(
+                      icon: Icons.manage_accounts,
+                      title: 'フィードバック管理',
+                      subtitle: 'お客様のフィードバックを確認',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const FeedbackManageView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.workspace_premium,
+                      title: 'バッジ管理',
+                      subtitle: 'バッジの作成・編集',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const BadgeManageView(),
+                          ),
+                        );
+                      },
+                    ),
                     _buildSettingsItem(
                       icon: Icons.storefront,
                       title: '未承認店舗一覧',
