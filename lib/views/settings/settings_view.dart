@@ -12,7 +12,10 @@ import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
 import 'owner_settings_view.dart';
+import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
+import '../stores/pending_stores_view.dart';
+import '../feedback/feedback_send_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -118,6 +121,30 @@ class SettingsView extends ConsumerWidget {
               title: 'アカウント',
               children: [
                 _buildSettingsItem(
+                  icon: Icons.business,
+                  title: 'プラン・契約情報',
+                  subtitle: 'プランと契約内容を確認',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PlanContractView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.feedback,
+                  title: 'フィードバック送信',
+                  subtitle: 'ご意見・不具合の報告',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const FeedbackSendView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
                   icon: Icons.help_outline,
                   title: 'ヘルプ・サポート',
                   subtitle: 'よくある質問やサポート',
@@ -155,6 +182,18 @@ class SettingsView extends ConsumerWidget {
                 return _buildSection(
                   title: 'オーナー管理',
                   children: [
+                    _buildSettingsItem(
+                      icon: Icons.storefront,
+                      title: '未承認店舗一覧',
+                      subtitle: '未承認の店舗申請を確認',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const PendingStoresView(),
+                          ),
+                        );
+                      },
+                    ),
                     _buildSettingsItem(
                       icon: Icons.admin_panel_settings,
                       title: 'オーナー設定',

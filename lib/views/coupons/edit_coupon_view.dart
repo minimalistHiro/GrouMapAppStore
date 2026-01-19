@@ -197,7 +197,7 @@ class _EditCouponViewState extends State<EditCouponView> {
       // 公開クーポンも更新
       await FirebaseFirestore.instance
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .update({
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),

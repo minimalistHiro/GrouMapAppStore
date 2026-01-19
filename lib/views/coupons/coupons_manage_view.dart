@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../providers/auth_provider.dart';
 import 'create_coupon_view.dart';
 import 'edit_coupon_view.dart';
@@ -575,6 +576,21 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
 
   Future<void> _deleteCoupon(String couponId, String storeId) async {
     try {
+      final couponDoc = await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc(couponId)
+          .get();
+      final imageUrl = couponDoc.data()?['imageUrl'] as String?;
+      if (imageUrl != null && !imageUrl.startsWith('data:')) {
+        try {
+          await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+        } catch (e) {
+          debugPrint('Failed to delete coupon image: $e');
+        }
+      }
+
       await FirebaseFirestore.instance
           .collection('coupons')
           .doc(storeId)
@@ -583,7 +599,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
           .delete();
       await FirebaseFirestore.instance
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -612,7 +628,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       });
       await FirebaseFirestore.instance
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),

@@ -6,18 +6,15 @@ import '../providers/coupon_provider.dart';
 import '../providers/announcement_provider.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
-import 'feedback/feedback_send_view.dart';
 import 'feedback/feedback_manage_view.dart';
 import 'posts/create_post_view.dart';
 import 'coupons/create_coupon_view.dart';
 import 'posts/posts_manage_view.dart';
 import 'coupons/coupons_manage_view.dart';
-import 'stores/pending_stores_view.dart';
 import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
 import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
-import 'plans/plan_contract_view.dart';
 import 'badges/badge_manage_view.dart';
 
 class HomeView extends ConsumerWidget {
@@ -851,9 +848,6 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.history, 'label': 'ポイント履歴'},
       {'icon': Icons.local_offer, 'label': 'クーポン管理'},
       {'icon': Icons.article, 'label': '投稿管理'},
-      {'icon': Icons.business, 'label': 'プラン・契約情報'},
-      {'icon': Icons.feedback, 'label': 'フィードバック送信'},
-      {'icon': Icons.storefront, 'label': '未承認店舗一覧'},
       {'icon': Icons.manage_accounts, 'label': 'フィードバック管理'},
       {'icon': Icons.announcement, 'label': 'お知らせ作成'},
       {'icon': Icons.workspace_premium, 'label': 'バッジ管理'},
@@ -868,7 +862,7 @@ class HomeView extends ConsumerWidget {
           const itemHeight = 80.0;
           const mainAxisSpacing = 8.0;
           const crossAxisSpacing = 8.0;
-          const rows = 3;
+          final rows = (menuItems.length / 4).ceil();
           final itemWidth = (constraints.maxWidth - (crossAxisSpacing * 3)) / 4;
           final aspectRatio = itemWidth / itemHeight;
           final gridHeight = (itemHeight * rows) + (mainAxisSpacing * (rows - 1));
@@ -1033,13 +1027,7 @@ class HomeView extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         // 各メニュー項目の処理
-        if (title == 'フィードバック送信') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const FeedbackSendView(),
-            ),
-          );
-        } else if (title == 'フィードバック管理') {
+        if (title == 'フィードバック管理') {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const FeedbackManageView(),
@@ -1057,12 +1045,6 @@ class HomeView extends ConsumerWidget {
               builder: (context) => const CouponsManageView(),
             ),
           );
-        } else if (title == '未承認店舗一覧') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const PendingStoresView(),
-            ),
-          );
         } else if (title == 'ポイント履歴') {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -1073,12 +1055,6 @@ class HomeView extends ConsumerWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const CreateAnnouncementView(),
-            ),
-          );
-        } else if (title == 'プラン・契約情報') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const PlanContractView(),
             ),
           );
         } else if (title == 'バッジ管理') {

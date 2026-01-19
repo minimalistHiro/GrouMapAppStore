@@ -208,7 +208,7 @@ class CouponService {
       // 公開クーポンも作成
       await _firestore
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .set({
         'key': '$storeId::$couponId',
         ...couponData,
@@ -269,7 +269,7 @@ class CouponService {
 
       await _firestore
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .update(updateData);
     } catch (e) {
       debugPrint('Error updating coupon: $e');
@@ -291,7 +291,7 @@ class CouponService {
           .delete();
       await _firestore
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .delete();
     } catch (e) {
       debugPrint('Error deleting coupon: $e');
@@ -317,7 +317,7 @@ class CouponService {
       });
       await _firestore
           .collection('public_coupons')
-          .doc('$storeId::$couponId')
+          .doc(couponId)
           .update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),

@@ -504,7 +504,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
           .delete();
       await FirebaseFirestore.instance
           .collection('public_posts')
-          .doc('$storeId::$postId')
+          .doc(postId)
           .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

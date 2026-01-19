@@ -203,7 +203,7 @@ class _EditPostViewState extends State<EditPostView> {
       // 公開投稿も更新
       await FirebaseFirestore.instance
           .collection('public_posts')
-          .doc('$storeId::$postId')
+          .doc(postId)
           .update({
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),

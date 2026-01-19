@@ -203,7 +203,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       // 公開クーポンを作成（ユーザーアプリ参照用）
       await FirebaseFirestore.instance
           .collection('public_coupons')
-          .doc('${_selectedStoreId}::$couponId')
+          .doc(couponId)
           .set({
         'key': '${_selectedStoreId}::$couponId',
         'couponId': couponId,

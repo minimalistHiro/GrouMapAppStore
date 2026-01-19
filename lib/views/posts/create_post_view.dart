@@ -241,7 +241,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
       // 公開投稿を作成（ユーザーアプリ参照用）
       await FirebaseFirestore.instance
           .collection('public_posts')
-          .doc('${_selectedStoreId}::$postId')
+          .doc(postId)
           .set({
         'key': '${_selectedStoreId}::$postId',
         'postId': postId,
