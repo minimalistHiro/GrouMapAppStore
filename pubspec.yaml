@@ -67,6 +67,12 @@ dependencies:
   # URL Launcher
   url_launcher: ^6.3.0
 
+  # QR Code Generator
+  qr_flutter: ^4.1.0
+
+  # Save images to gallery
+  image_gallery_saver: ^2.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

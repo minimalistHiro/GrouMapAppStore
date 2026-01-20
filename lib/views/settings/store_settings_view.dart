@@ -1,5 +1,10 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../models/qr_verification_model.dart';
 import '../../widgets/custom_button.dart';
@@ -18,6 +23,7 @@ class _StoreSettingsViewState extends ConsumerState<StoreSettingsView> {
   final _storeNameController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isLoading = false;
+  bool _isSavingQr = false;
 
   @override
   void initState() {
@@ -90,6 +96,77 @@ class _StoreSettingsViewState extends ConsumerState<StoreSettingsView> {
     }
   }
 
+  Future<void> _saveStoreQrCode() async {
+    final storeId = _storeIdController.text.trim();
+    if (storeId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('店舗IDを入力してください'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isSavingQr = true;
+    });
+
+    try {
+      final painter = QrPainter(
+        data: storeId,
+        version: QrVersions.auto,
+        gapless: true,
+        color: Colors.black,
+        emptyColor: Colors.white,
+      );
+      final byteData = await painter.toImageData(
+        1024,
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData == null) {
+        throw Exception('QRコードの生成に失敗しました');
+      }
+      final pngBytes = byteData.buffer.asUint8List();
+      final safeStoreId = storeId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final result = await ImageGallerySaver.saveImage(
+        Uint8List.fromList(pngBytes),
+        quality: 100,
+        name: 'store_qr_$safeStoreId',
+      );
+      final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isSuccess
+                  ? 'QRコードを保存しました'
+                  : 'QRコードの保存に失敗しました',
+            ),
+            backgroundColor: isSuccess ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('QRコードの保存に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingQr = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,6 +234,16 @@ class _StoreSettingsViewState extends ConsumerState<StoreSettingsView> {
                   }
                   return null;
                 },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // QRコード保存ボタン
+              CustomButton(
+                text: 'QRコードを保存する',
+                onPressed: _isSavingQr ? null : _saveStoreQrCode,
+                backgroundColor: const Color(0xFFFF6B35),
+                isLoading: _isSavingQr,
               ),
               
               const SizedBox(height: 16),
