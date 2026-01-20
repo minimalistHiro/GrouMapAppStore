@@ -1061,31 +1061,28 @@ class HomeView extends ConsumerWidget {
       },
       child: Container(
         padding: const EdgeInsets.all(4),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: iconSize ?? 24,
-                color: const Color(0xFFFF6B35),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: iconSize ?? 24,
+              color: const Color(0xFFFF6B35),
+            ),
+            SizedBox(height: (iconSize ?? 24) * 0.2),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: fontSize ?? 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
-              SizedBox(height: (iconSize ?? 24) * 0.2),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: fontSize ?? 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
