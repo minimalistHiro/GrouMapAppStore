@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/point_request_provider.dart';
 import '../../models/point_request_model.dart';
+import '../../models/owner_settings_model.dart';
 
 class StorePaymentView extends ConsumerStatefulWidget {
   final String userId;
@@ -75,13 +76,15 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           profileImageUrl = userData['profileImageUrl'] as String;
         }
         
-        // ポイント還元率を取得（お客様の設定値）
-        double pointReturnRate = 1.0;
-        if (userData.containsKey('pointReturnRate')) {
-          if (userData['pointReturnRate'] is num) {
-            pointReturnRate = (userData['pointReturnRate'] as num).toDouble();
-          }
-        }
+        // ポイント還元率を取得（オーナー設定/レベル範囲を優先）
+        final userLevel = _extractUserLevel(userData);
+        final userOverrideRate = _extractUserPointReturnRate(userData);
+        final ownerSettings = await _loadOwnerSettings();
+        final pointReturnRate = _resolvePointReturnRate(
+          userLevel: userLevel,
+          ownerSettings: ownerSettings,
+          userOverrideRate: userOverrideRate,
+        );
         
         setState(() {
           _actualUserName = displayName;
@@ -109,6 +112,98 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         });
       }
     }
+  }
+
+  Future<OwnerSettings?> _loadOwnerSettings() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('owner_settings')
+          .doc('current')
+          .get();
+      if (!doc.exists) {
+        return null;
+      }
+      final data = doc.data();
+      if (data == null) {
+        return null;
+      }
+      return OwnerSettings.fromMap(data);
+    } catch (e) {
+      print('オーナー設定取得エラー: $e');
+      return null;
+    }
+  }
+
+  int? _extractUserLevel(Map<String, dynamic> userData) {
+    final candidates = [
+      userData['level'],
+      userData['userLevel'],
+      userData['user_level'],
+    ];
+    for (final value in candidates) {
+      if (value is int) {
+        return value > 0 ? value : null;
+      }
+      if (value is num) {
+        final level = value.toInt();
+        return level > 0 ? level : null;
+      }
+      if (value is String) {
+        final level = int.tryParse(value);
+        if (level != null && level > 0) {
+          return level;
+        }
+      }
+    }
+    return null;
+  }
+
+  double? _extractUserPointReturnRate(Map<String, dynamic> userData) {
+    final value = userData['pointReturnRate'];
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
+  }
+
+  double _resolvePointReturnRate({
+    required int? userLevel,
+    required OwnerSettings? ownerSettings,
+    required double? userOverrideRate,
+  }) {
+    final ranges = ownerSettings?.levelPointReturnRateRanges;
+    final rangeRate = _findRangeRate(ranges, userLevel);
+    if (rangeRate != null) {
+      return rangeRate;
+    }
+    final baseRate = ownerSettings?.basePointReturnRate;
+    final hasOwnerRate =
+        baseRate != null || (ranges != null && ranges.isNotEmpty);
+    if (hasOwnerRate) {
+      return baseRate ?? 1.0;
+    }
+    return userOverrideRate ?? 1.0;
+  }
+
+  double? _findRangeRate(
+    List<LevelPointReturnRateRange>? ranges,
+    int? userLevel,
+  ) {
+    if (ranges == null || ranges.isEmpty || userLevel == null) {
+      return null;
+    }
+    final sorted = [...ranges]..sort((a, b) => a.minLevel.compareTo(b.minLevel));
+    for (final range in sorted) {
+      final maxLevel = range.maxLevel;
+      if (userLevel >= range.minLevel &&
+          (maxLevel == null || userLevel <= maxLevel)) {
+        return range.rate;
+      }
+    }
+    return null;
   }
 
   /// 店舗情報を読み込み
