@@ -148,6 +148,17 @@ class PointRequestNotifier extends StateNotifier<void> {
       print('Firestoreへの保存開始');
       await docRef.set(jsonData);
       print('Firestoreへの保存完了');
+
+      // 売上データを記録（ポイント付与ボタン押下時点）
+      final now = DateTime.now();
+      await _firestore.collection('sales').add({
+        'storeId': storeId,
+        'amount': amount,
+        'requestId': requestId,
+        'source': 'point_request',
+        'timestamp': FieldValue.serverTimestamp(),
+        'createdAt': now,
+      });
       
       print('ポイント付与リクエストを作成しました: $requestId');
       return requestId;
