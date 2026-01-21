@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/point_request_provider.dart';
 import '../../models/point_request_model.dart';
+import '../main_navigation_view.dart';
 
 class PointRequestConfirmationView extends ConsumerStatefulWidget {
   final String requestId;
@@ -24,30 +24,43 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('ポイント付与確認'),
+        title: const Text('ポイント付与承認'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainNavigationView(initialIndex: 2),
+              ),
+              (route) => false,
+            );
+          },
+        ),
       ),
-      body: StreamBuilder<PointRequest?>(
-        stream: FirebaseFirestore.instance
-            .collection('point_requests')
-            .doc(widget.requestId)
-            .snapshots()
-            .map((snapshot) {
-          if (snapshot.exists) {
-            return PointRequest.fromJson({
-              'id': snapshot.id,
-              ...snapshot.data()!,
-            });
-          }
-          return null;
-        }),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError || !snapshot.hasData) {
+      body: ref.watch(pointRequestStatusProvider(widget.requestId)).when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'リクエストが見つかりません',
+                style: TextStyle(fontSize: 18, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('戻る'),
+              ),
+            ],
+          ),
+        ),
+        data: (request) {
+          if (request == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -68,8 +81,6 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
             );
           }
 
-          final request = snapshot.data!;
-          
           // 既に処理済みの場合
           if (request.status != PointRequestStatus.pending.value) {
             return _buildProcessedView(request);
@@ -214,7 +225,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               border: Border.all(color: Colors.orange[200]!),
             ),
             child: const Text(
-              'このポイント付与を受け入れますか？\n受け入れると、あなたのアカウントにポイントが付与されます。',
+              'このポイント付与を承認しますか？\n承認するとお客様のアカウントにポイントが付与されます。',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.orange,
@@ -253,7 +264,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _isProcessing ? null : () => _acceptRequest(request.id),
+                  onPressed: _isProcessing ? null : () => _acceptRequest(request),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF6B35),
                     foregroundColor: Colors.white,
@@ -337,7 +348,14 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
             ],
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => const MainNavigationView(initialIndex: 2),
+                  ),
+                  (route) => false,
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF6B35),
                 foregroundColor: Colors.white,
@@ -360,20 +378,20 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
     );
   }
 
-  Future<void> _acceptRequest(String requestId) async {
+  Future<void> _acceptRequest(PointRequest request) async {
     setState(() {
       _isProcessing = true;
     });
 
     try {
       final requestNotifier = ref.read(pointRequestProvider.notifier);
-      final success = await requestNotifier.acceptPointRequest(requestId);
+      final success = await requestNotifier.acceptPointRequestAsStore(request);
       
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('ポイント付与を受け入れました'),
+              content: Text('ポイント付与を承認しました'),
               backgroundColor: Colors.green,
             ),
           );

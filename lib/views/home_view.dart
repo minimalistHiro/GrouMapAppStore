@@ -569,20 +569,14 @@ class HomeView extends ConsumerWidget {
           // 店舗統計情報
           Consumer(
             builder: (context, ref, child) {
-              final todayVisitorsAsync = ref.watch(todayVisitorsProvider(storeId));
+              final todayStatsAsync = ref.watch(todayStoreStatsProvider(storeId));
               final todayNewCustomersAsync = ref.watch(todayNewCustomersProvider(storeId));
               final todayCouponUsageAsync = ref.watch(todayCouponUsageCountProvider(storeId));
               
-              return todayVisitorsAsync.when(
-                data: (visitorData) {
-                  // visitorDataから来店者数を取得（transactionsコレクションのデータ）
-                  final visitorCount = visitorData.length;
-                  
-                  // 配布ポイントの合計を計算
-                  final totalPointsAwarded = visitorData.fold<int>(
-                    0,
-                    (sum, visitor) => sum + ((visitor['pointsEarned'] as int?) ?? 0),
-                  );
+              return todayStatsAsync.when(
+                data: (stats) {
+                  final visitorCount = stats['visitorCount'] ?? 0;
+                  final totalPointsAwarded = stats['pointsIssued'] ?? 0;
                   
                   return todayNewCustomersAsync.when(
                     data: (newCustomerCount) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/point_request_model.dart';
 
 // ポイント付与リクエストのプロバイダー
@@ -65,25 +66,47 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
       final data = snapshot.data()!;
       // 文字列またはTimestampをDateTimeに変換
       final convertedData = Map<String, dynamic>.from(data);
+      convertedData['userId'] = userId;
+      convertedData['storeId'] = storeId;
+      convertedData['storeName'] = data['storeName'] ?? '';
+      if (data['amount'] != null) {
+        convertedData['amount'] = data['amount'];
+      }
+      if (data['pointsToAward'] != null) {
+        convertedData['pointsToAward'] = data['pointsToAward'];
+      }
+      if (data['userPoints'] != null) {
+        convertedData['userPoints'] = data['userPoints'];
+      }
       if (data['createdAt'] != null) {
         if (data['createdAt'] is String) {
-          convertedData['createdAt'] = DateTime.parse(data['createdAt']);
+          convertedData['createdAt'] = data['createdAt'];
+        } else if (data['createdAt'] is DateTime) {
+          convertedData['createdAt'] = (data['createdAt'] as DateTime).toIso8601String();
         } else {
-          convertedData['createdAt'] = data['createdAt'].toDate();
+          convertedData['createdAt'] = (data['createdAt'] as Timestamp).toDate().toIso8601String();
         }
       }
       if (data['respondedAt'] != null) {
         if (data['respondedAt'] is String) {
-          convertedData['respondedAt'] = DateTime.parse(data['respondedAt']);
+          convertedData['respondedAt'] = data['respondedAt'];
+        } else if (data['respondedAt'] is DateTime) {
+          convertedData['respondedAt'] = (data['respondedAt'] as DateTime).toIso8601String();
         } else {
-          convertedData['respondedAt'] = data['respondedAt'].toDate();
+          convertedData['respondedAt'] = (data['respondedAt'] as Timestamp).toDate().toIso8601String();
         }
       }
       
-      return PointRequest.fromJson({
-        'id': '${storeId}_${userId}',
-        ...convertedData,
-      });
+      try {
+        return PointRequest.fromJson({
+          'id': '${storeId}_${userId}',
+          ...convertedData,
+        });
+      } catch (e) {
+        debugPrint('PointRequest parse error: $e');
+        debugPrint('PointRequest data: $convertedData');
+        rethrow;
+      }
     }
     return null;
   });
@@ -93,6 +116,7 @@ class PointRequestNotifier extends StateNotifier<void> {
   PointRequestNotifier() : super(null);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ポイント付与リクエストを作成
   Future<String?> createPointRequest({
@@ -239,6 +263,57 @@ class PointRequestNotifier extends StateNotifier<void> {
     }
   }
 
+  Future<bool> acceptPointRequestAsStore(PointRequest request) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('ログインが必要です');
+      }
+
+      final storeId = request.storeId;
+      final userId = request.userId;
+      final requestRef = _firestore
+          .collection('point_requests')
+          .doc(storeId)
+          .collection(userId)
+          .doc('request');
+      final userRef = _firestore.collection('users').doc(userId);
+
+      await _firestore.runTransaction((txn) async {
+        final reqSnap = await txn.get(requestRef);
+        if (!reqSnap.exists) {
+          throw Exception('リクエストが存在しません');
+        }
+
+        final current = (reqSnap.data() ?? const {}) as Map<String, dynamic>;
+        if ((current['status'] ?? '').toString() != PointRequestStatus.pending.value) {
+          return;
+        }
+
+        txn.update(requestRef, {
+          'status': PointRequestStatus.accepted.value,
+          'respondedAt': FieldValue.serverTimestamp(),
+          'respondedBy': user.uid,
+        });
+
+        txn.update(userRef, {
+          'points': FieldValue.increment(request.pointsToAward),
+          'paid': FieldValue.increment(request.amount),
+          'lastUpdated': FieldValue.serverTimestamp(),
+          'lastUpdatedByStoreId': storeId,
+        });
+      });
+
+      await _recordAwardTransaction(request, approverId: user.uid);
+
+      debugPrint('店舗側でポイント付与を承認しました: ${request.id}');
+      return true;
+    } catch (e) {
+      debugPrint('店舗側のポイント付与承認エラー: $e');
+      return false;
+    }
+  }
+
   // ポイント付与リクエストを拒否
   Future<bool> rejectPointRequest(String requestId, {String? reason}) async {
     try {
@@ -253,6 +328,71 @@ class PointRequestNotifier extends StateNotifier<void> {
       debugPrint('ポイント付与リクエスト拒否エラー: $e');
       return false;
     }
+  }
+
+  Future<void> _recordAwardTransaction(PointRequest request, {required String approverId}) async {
+    final transactionId = _firestore.collection('point_transactions').doc().id;
+    final now = DateTime.now();
+    final storeId = request.storeId;
+    final userId = request.userId;
+
+    final pointTransactionData = {
+      'transactionId': transactionId,
+      'userId': userId,
+      'storeId': storeId,
+      'storeName': request.storeName,
+      'amount': request.pointsToAward,
+      'paymentAmount': request.amount,
+      'status': 'completed',
+      'paymentMethod': 'points',
+      'createdAt': now,
+      'updatedAt': now,
+      'description': request.description ?? 'ポイント付与',
+    };
+
+    await _firestore
+        .collection('point_transactions')
+        .doc(storeId)
+        .collection(userId)
+        .doc(transactionId)
+        .set(pointTransactionData);
+
+    await _firestore
+        .collection('stores')
+        .doc(storeId)
+        .collection('transactions')
+        .doc(transactionId)
+        .set({
+      'transactionId': transactionId,
+      'storeId': storeId,
+      'storeName': request.storeName,
+      'userId': userId,
+      'type': 'award',
+      'amountYen': request.amount,
+      'points': request.pointsToAward,
+      'paymentMethod': 'points',
+      'status': 'completed',
+      'source': 'point_request',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdAtClient': now,
+      'approvedBy': approverId,
+    });
+
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    await _firestore
+        .collection('store_stats')
+        .doc(storeId)
+        .collection('daily')
+        .doc(todayStr)
+        .set({
+      'date': todayStr,
+      'pointsIssued': FieldValue.increment(request.pointsToAward),
+      'totalPointsAwarded': FieldValue.increment(request.pointsToAward),
+      'totalSales': FieldValue.increment(request.amount),
+      'totalTransactions': FieldValue.increment(1),
+      'visitorCount': FieldValue.increment(1),
+      'lastUpdated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   // リクエストを削除

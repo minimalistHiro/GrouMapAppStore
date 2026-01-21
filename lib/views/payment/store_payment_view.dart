@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/point_request_provider.dart';
 import '../../models/point_request_model.dart';
+import '../user/point_request_confirmation_view.dart';
+import '../main_navigation_view.dart';
 import '../../models/owner_settings_model.dart';
 
 class StorePaymentView extends ConsumerStatefulWidget {
@@ -489,7 +491,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         
         if (mounted) {
           print('ダイアログ表示');
-          _showRequestSentDialog(amount, pointsToAward);
+          _showRequestSentDialog(amount, pointsToAward, requestId);
         }
       } else {
         print('リクエスト作成失敗: requestIdがnull');
@@ -522,7 +524,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   }
 
 
-  void _showRequestSentDialog(int amount, int pointsToAward) {
+  void _showRequestSentDialog(int amount, int pointsToAward, String requestId) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -560,7 +562,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
                 border: Border.all(color: Colors.blue[200]!),
               ),
               child: const Text(
-                'お客様の確認をお待ちしています\n確認後、ポイントが付与されます',
+                '店舗側で承認してポイントを付与してください',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.blue,
@@ -574,17 +576,17 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る（MainNavigationViewのホームタブ）
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
-                (route) => false,
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PointRequestConfirmationView(requestId: requestId),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B35),
               foregroundColor: Colors.white,
             ),
-            child: const Text('完了'),
+            child: const Text('承認画面へ'),
           ),
         ],
       ),
@@ -642,9 +644,10 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る（MainNavigationViewのホームタブ）
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const MainNavigationView(initialIndex: 2),
+                ),
                 (route) => false,
               );
             },
@@ -720,9 +723,10 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // ホーム画面に戻る（MainNavigationViewのホームタブ）
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const MainNavigationView(initialIndex: 2),
+                ),
                 (route) => false,
               );
             },
@@ -739,30 +743,6 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
 
   @override
   Widget build(BuildContext context) {
-    // リクエストの状態を監視
-    if (_currentRequestId != null) {
-      ref.listen<AsyncValue<PointRequest?>>(
-        pointRequestStatusProvider(_currentRequestId!),
-        (previous, next) {
-          next.when(
-            data: (request) {
-              if (request != null) {
-                if (request.status == PointRequestStatus.accepted.value) {
-                  _showRequestAcceptedDialog(request);
-                } else if (request.status == PointRequestStatus.rejected.value) {
-                  _showRequestRejectedDialog(request);
-                }
-              }
-            },
-            loading: () {},
-            error: (error, _) {
-              print('リクエスト状態監視エラー: $error');
-            },
-          );
-        },
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(

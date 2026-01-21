@@ -88,6 +88,38 @@ final storeStatsProvider = StreamProvider.family<Map<String, dynamic>?, String>(
   }
 });
 
+// 今日の店舗統計（store_stats/daily から取得）
+final todayStoreStatsProvider = StreamProvider.family<Map<String, dynamic>, String>((ref, storeId) {
+  try {
+    final todayKey = _buildDateKey(DateTime.now());
+    return FirebaseFirestore.instance
+        .collection('store_stats')
+        .doc(storeId)
+        .collection('daily')
+        .doc(todayKey)
+        .snapshots()
+        .map((snapshot) {
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      return {
+        'visitorCount': (data['visitorCount'] as num?)?.toInt() ?? 0,
+        'pointsIssued': (data['pointsIssued'] as num?)?.toInt() ?? 0,
+      };
+    }).handleError((error) {
+      debugPrint('Error fetching today store stats: $error');
+      return {
+        'visitorCount': 0,
+        'pointsIssued': 0,
+      };
+    });
+  } catch (e) {
+    debugPrint('Error creating today store stats stream: $e');
+    return Stream.value({
+      'visitorCount': 0,
+      'pointsIssued': 0,
+    });
+  }
+});
+
 // 今日の訪問者プロバイダー（point_transactionsから取得）
 final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
   final firestore = FirebaseFirestore.instance;

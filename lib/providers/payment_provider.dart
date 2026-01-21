@@ -168,7 +168,9 @@ class PaymentProvider extends StateNotifier<PaymentState> {
       'date': todayStr,
       'totalSales': FieldValue.increment(amount),
       'totalPointsAwarded': FieldValue.increment(pointsAwarded),
+      'pointsIssued': FieldValue.increment(pointsAwarded),
       'totalTransactions': FieldValue.increment(1),
+      'visitorCount': FieldValue.increment(1),
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

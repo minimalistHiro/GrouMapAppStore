@@ -103,7 +103,9 @@ class PointProvider extends StateNotifier<PointState> {
         .set({
       'date': todayStr,
       'totalPointsAwarded': FieldValue.increment(points),
+      'pointsIssued': FieldValue.increment(points),
       'totalVisits': FieldValue.increment(1),
+      'visitorCount': FieldValue.increment(1),
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
