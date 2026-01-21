@@ -417,6 +417,10 @@ bool _isWithinRange(DateTime date, DateTime start, DateTime end) {
   return date.isAfter(start) && date.isBefore(end);
 }
 
+String _buildDateKey(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
 String _buildGroupKey(DateTime date, String period) {
   switch (period) {
     case 'week':
@@ -879,98 +883,68 @@ final totalPointIssueTrendNotifierProvider = StateNotifierProvider<TotalPointIss
 // 週間統計プロバイダー
 final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>((ref, storeId) {
   try {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(const Duration(days: 7));
-    
     return FirebaseFirestore.instance
-        .collection('point_transactions')
+        .collection('store_stats')
         .doc(storeId)
+        .collection('daily')
         .snapshots()
-        .asyncMap((storeDoc) async {
-      // ユーザーのサブコレクションからデータを取得
-      final usersSnap = await FirebaseFirestore.instance.collection('users').get();
-      final List<Map<String, dynamic>> allTransactions = [];
-      
-      for (final userDoc in usersSnap.docs) {
-        final transactionsSnap = await FirebaseFirestore.instance
-            .collection('point_transactions')
-            .doc(storeId)
-            .collection(userDoc.id)
-            .get();
-        
-        for (final transDoc in transactionsSnap.docs) {
-          final data = transDoc.data();
-          data['userId'] = userDoc.id;
-          data['transactionId'] = transDoc.id;
-          allTransactions.add(data);
-        }
-      }
-      
-      // 週間のデータのみをフィルタリング（来店=ポイント付与）
-      final weeklyTransactions = allTransactions.where((data) {
-        final docDate = _parseCreatedAt(data['createdAt']);
-        if (docDate == null) return false;
-        if (!(docDate.isAfter(startOfWeek) && docDate.isBefore(now))) {
-          return false;
-        }
-        return data['description'] == 'ポイント付与';
-      }).toList();
-      
-      // 来店者数（ポイント付与の取引数）
-      final visitorCount = weeklyTransactions.length;
-      
-      // ユニークユーザー数
-      final uniqueUsers = weeklyTransactions
-          .map((t) => t['userId'] as String?)
-          .where((id) => id != null)
-          .toSet();
+        .asyncMap((_) async {
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(const Duration(days: 7));
+      final startKey = _buildDateKey(startOfWeek);
+      final endKey = _buildDateKey(now);
 
-      // 新規来店者数（初回のポイント付与が今週のユーザー）
-      final firstVisitByUser = <String, DateTime>{};
-      for (final transaction in allTransactions) {
-        if (transaction['description'] != 'ポイント付与') continue;
-        final userId = transaction['userId'] as String?;
-        final docDate = _parseCreatedAt(transaction['createdAt']);
-        if (userId == null || docDate == null) continue;
-        final current = firstVisitByUser[userId];
-        if (current == null || docDate.isBefore(current)) {
-          firstVisitByUser[userId] = docDate;
-        }
+      final dailySnapshot = await FirebaseFirestore.instance
+          .collection('store_stats')
+          .doc(storeId)
+          .collection('daily')
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .where('date', isLessThanOrEqualTo: endKey)
+          .get();
+
+      int totalSales = 0;
+      int visitorCount = 0;
+      for (final doc in dailySnapshot.docs) {
+        final data = doc.data();
+        totalSales += (data['totalSales'] as num?)?.toInt() ?? 0;
+        visitorCount += (data['visitorCount'] as num?)?.toInt() ?? 0;
       }
-      final newCustomers = firstVisitByUser.values
-          .where((date) => date.isAfter(startOfWeek) && date.isBefore(now))
-          .length;
-      
-      // 週間売上を取得
-      final salesSnapshot = await FirebaseFirestore.instance
-          .collection('sales')
-          .where('storeId', isEqualTo: storeId)
+
+      final transactionsSnapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .collection('transactions')
+          .where('type', isEqualTo: 'award')
           .where('createdAt', isGreaterThanOrEqualTo: startOfWeek)
           .where('createdAt', isLessThanOrEqualTo: now)
           .get();
-      final totalSales = salesSnapshot.docs.fold<int>(
-        0,
-        (sum, doc) => sum + ((doc.data()['amount'] ?? 0) as int),
-      );
-      
-      // リピート率（複数回来店したユーザーの割合）
+
       final userVisitCounts = <String, int>{};
-      for (final transaction in weeklyTransactions) {
-        final userId = transaction['userId'] as String?;
-        if (userId != null) {
-          userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
-        }
+      for (final doc in transactionsSnapshot.docs) {
+        final data = doc.data();
+        final userId = data['userId'] as String?;
+        if (userId == null) continue;
+        userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
       }
+      final uniqueUsers = userVisitCounts.keys.toSet();
       final repeatUsers = userVisitCounts.values.where((count) => count > 1).length;
-      final repeatRate = uniqueUsers.isNotEmpty 
-          ? (repeatUsers / uniqueUsers.length * 100).toInt() 
+      final repeatRate = uniqueUsers.isNotEmpty
+          ? (repeatUsers / uniqueUsers.length * 100).toInt()
           : 0;
-      
-      // 平均客単価（売上 ÷ 来店者数）
+
+      final newCustomersSnapshot = await FirebaseFirestore.instance
+          .collection('store_users')
+          .doc(storeId)
+          .collection('users')
+          .where('firstVisitAt', isGreaterThanOrEqualTo: startOfWeek)
+          .where('firstVisitAt', isLessThanOrEqualTo: now)
+          .get();
+      final newCustomers = newCustomersSnapshot.docs.length;
+
       final avgSpending = visitorCount > 0
           ? (totalSales / visitorCount).round()
           : 0;
-      
+
       return {
         'visitorCount': visitorCount,
         'newCustomers': newCustomers,
@@ -1003,115 +977,72 @@ final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>(
 // 月間統計プロバイダー
 final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>((ref, storeId) {
   try {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    
     return FirebaseFirestore.instance
-        .collection('point_transactions')
+        .collection('store_stats')
         .doc(storeId)
+        .collection('daily')
         .snapshots()
-        .asyncMap((storeDoc) async {
-      // ユーザーのサブコレクションからデータを取得
-      final usersSnap = await FirebaseFirestore.instance.collection('users').get();
-      final List<Map<String, dynamic>> allTransactions = [];
-      
-      for (final userDoc in usersSnap.docs) {
-        final transactionsSnap = await FirebaseFirestore.instance
-            .collection('point_transactions')
-            .doc(storeId)
-            .collection(userDoc.id)
-            .get();
-        
-        for (final transDoc in transactionsSnap.docs) {
-          final data = transDoc.data();
-          data['userId'] = userDoc.id;
-          data['transactionId'] = transDoc.id;
-          allTransactions.add(data);
-        }
-      }
-      
-      // 月間のデータのみをフィルタリング（来店=ポイント付与）
-      final monthlyTransactions = allTransactions.where((data) {
-        final docDate = _parseCreatedAt(data['createdAt']);
-        if (docDate == null) return false;
-        if (!(docDate.isAfter(startOfMonth) && docDate.isBefore(now))) {
-          return false;
-        }
-        return data['description'] == 'ポイント付与';
-      }).toList();
+        .asyncMap((_) async {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final startKey = _buildDateKey(startOfMonth);
+      final endKey = _buildDateKey(now);
 
-      // 月間ポイント付与数と利用数を集計
+      final dailySnapshot = await FirebaseFirestore.instance
+          .collection('store_stats')
+          .doc(storeId)
+          .collection('daily')
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .where('date', isLessThanOrEqualTo: endKey)
+          .get();
+
+      int totalSales = 0;
+      int visitorCount = 0;
       int monthlyPointsIssued = 0;
       int monthlyPointsUsed = 0;
-      for (final data in allTransactions) {
-        final docDate = _parseCreatedAt(data['createdAt']);
-        if (docDate == null) continue;
-        if (!(docDate.isAfter(startOfMonth) && docDate.isBefore(now))) {
-          continue;
-        }
-        final amount = (data['amount'] ?? 0) as int;
-        if (data['description'] == 'ポイント付与') {
-          monthlyPointsIssued += amount;
-        } else if (data['description'] == 'ポイント支払い') {
-          monthlyPointsUsed += amount;
-        }
+      for (final doc in dailySnapshot.docs) {
+        final data = doc.data();
+        totalSales += (data['totalSales'] as num?)?.toInt() ?? 0;
+        visitorCount += (data['visitorCount'] as num?)?.toInt() ?? 0;
+        monthlyPointsIssued += (data['pointsIssued'] as num?)?.toInt() ?? 0;
+        monthlyPointsUsed += (data['pointsUsed'] as num?)?.toInt() ?? 0;
       }
-      
-      // 来店者数（ポイント付与の取引数）
-      final visitorCount = monthlyTransactions.length;
-      
-      // ユニークユーザー数
-      final uniqueUsers = monthlyTransactions
-          .map((t) => t['userId'] as String?)
-          .where((id) => id != null)
-          .toSet();
-      
-      // 月間売上を取得
-      final salesSnapshot = await FirebaseFirestore.instance
-          .collection('sales')
-          .where('storeId', isEqualTo: storeId)
+
+      final transactionsSnapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .collection('transactions')
+          .where('type', isEqualTo: 'award')
           .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
           .where('createdAt', isLessThanOrEqualTo: now)
           .get();
-      final totalSales = salesSnapshot.docs.fold<int>(
-        0,
-        (sum, doc) => sum + ((doc.data()['amount'] ?? 0) as int),
-      );
 
-      // 新規来店者数（初回のポイント付与が今月のユーザー）
-      final firstVisitByUser = <String, DateTime>{};
-      for (final transaction in allTransactions) {
-        if (transaction['description'] != 'ポイント付与') continue;
-        final userId = transaction['userId'] as String?;
-        final docDate = _parseCreatedAt(transaction['createdAt']);
-        if (userId == null || docDate == null) continue;
-        final current = firstVisitByUser[userId];
-        if (current == null || docDate.isBefore(current)) {
-          firstVisitByUser[userId] = docDate;
-        }
-      }
-      final newCustomers = firstVisitByUser.values
-          .where((date) => date.isAfter(startOfMonth) && date.isBefore(now))
-          .length;
-
-      // リピート率（複数回来店したユーザーの割合）
       final userVisitCounts = <String, int>{};
-      for (final transaction in monthlyTransactions) {
-        final userId = transaction['userId'] as String?;
-        if (userId != null) {
-          userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
-        }
+      for (final doc in transactionsSnapshot.docs) {
+        final data = doc.data();
+        final userId = data['userId'] as String?;
+        if (userId == null) continue;
+        userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
       }
+      final uniqueUsers = userVisitCounts.keys.toSet();
       final repeatUsers = userVisitCounts.values.where((count) => count > 1).length;
       final repeatRate = uniqueUsers.isNotEmpty
           ? (repeatUsers / uniqueUsers.length * 100).toInt()
           : 0;
 
-      // 平均客単価（売上 ÷ 来店者数）
+      final newCustomersSnapshot = await FirebaseFirestore.instance
+          .collection('store_users')
+          .doc(storeId)
+          .collection('users')
+          .where('firstVisitAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('firstVisitAt', isLessThanOrEqualTo: now)
+          .get();
+      final newCustomers = newCustomersSnapshot.docs.length;
+
       final avgSpending = visitorCount > 0
           ? (totalSales / visitorCount).round()
           : 0;
-      
+
       return {
         'visitorCount': visitorCount,
         'newCustomers': newCustomers,

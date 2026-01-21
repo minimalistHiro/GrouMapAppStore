@@ -96,6 +96,19 @@ class PaymentProvider extends StateNotifier<PaymentState> {
       // 売上データを記録
       await _recordSalesData(storeId, amount, transactionId);
 
+      // 統一取引ログを記録
+      await _recordStoreTransaction(
+        transactionId: transactionId,
+        userId: userId,
+        userName: userName,
+        storeId: storeId,
+        storeName: storeName,
+        amountYen: amount,
+        pointsAwarded: pointsToAward,
+        paymentMethod: paymentMethod,
+        source: 'store_payment',
+      );
+
       state = state.copyWith(
         isLoading: false,
         lastTransactionId: transactionId,
@@ -170,6 +183,39 @@ class PaymentProvider extends StateNotifier<PaymentState> {
       'transactionId': transactionId,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': DateTime.now(),
+    });
+  }
+
+  Future<void> _recordStoreTransaction({
+    required String transactionId,
+    required String userId,
+    required String userName,
+    required String storeId,
+    required String storeName,
+    required int amountYen,
+    required int pointsAwarded,
+    required String paymentMethod,
+    required String source,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('stores')
+        .doc(storeId)
+        .collection('transactions')
+        .doc(transactionId)
+        .set({
+      'transactionId': transactionId,
+      'storeId': storeId,
+      'storeName': storeName,
+      'userId': userId,
+      'userName': userName,
+      'type': 'sale',
+      'amountYen': amountYen,
+      'points': pointsAwarded,
+      'paymentMethod': paymentMethod,
+      'status': 'completed',
+      'source': source,
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdAtClient': DateTime.now(),
     });
   }
 
