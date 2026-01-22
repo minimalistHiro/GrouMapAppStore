@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
+import 'email_verification_pending_view.dart';
 import '../main_navigation_view.dart';
 import 'password_reset_view.dart';
 import 'store_info_view.dart';
@@ -42,6 +43,23 @@ class _LoginViewState extends ConsumerState<LoginView> {
       );
 
       if (mounted) {
+        final isVerified = await authService.isEmailVerified();
+        if (!isVerified) {
+          try {
+            await authService.sendEmailVerification();
+          } catch (_) {
+            // 送信失敗でも遷移は続行
+          }
+
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const EmailVerificationPendingView(autoSendOnLoad: false),
+            ),
+            (route) => false,
+          );
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ログインしました'),

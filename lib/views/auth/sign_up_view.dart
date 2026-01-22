@@ -201,11 +201,11 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
         // 少し待機してからメール送信
         await Future.delayed(const Duration(milliseconds: 500));
         
-        // メール認証メールを送信
-        print('メール認証メール送信開始');
+        // メール認証コードを送信
+        print('メール認証コード送信開始');
         try {
           await authService.sendEmailVerification();
-          print('メール認証メール送信完了');
+          print('メール認証コード送信完了');
         } catch (emailError) {
           print('メール送信エラー: $emailError');
           // メール送信エラーでも画面遷移は行う
@@ -215,7 +215,7 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('アカウントと店舗情報を作成しました。認証メールを送信しました。'),
+              content: Text('アカウントと店舗情報を作成しました。認証コードを送信しました。'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -223,7 +223,9 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
           
           // メール認証待ち画面に遷移
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const EmailVerificationPendingView()),
+            MaterialPageRoute(
+              builder: (context) => const EmailVerificationPendingView(autoSendOnLoad: false),
+            ),
             (route) => false,
           );
         }

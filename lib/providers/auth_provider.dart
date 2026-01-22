@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 // 認証状態プロバイダー
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -16,6 +17,25 @@ final currentUserProvider = Provider<User?>((ref) {
     loading: () => null,
     error: (_, __) => null,
   );
+});
+
+// メール認証ステータス
+final emailVerificationStatusProvider = StreamProvider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value(true);
+
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return false;
+    final data = snapshot.data();
+    return (data?['emailVerified'] as bool?) == true;
+  }).handleError((error) {
+    debugPrint('Error fetching email verification status: $error');
+    return false;
+  });
 });
 
 // 現在のユーザーがオーナーかどうか
@@ -208,41 +228,29 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
-  // メール認証メールを送信
+  // メール認証コードを送信
   Future<void> sendEmailVerification() async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         throw Exception('ユーザーがログインしていません');
       }
-      
-      debugPrint('=== メール認証送信開始 ===');
-      debugPrint('ユーザーID: ${user.uid}');
-      debugPrint('メールアドレス: ${user.email}');
-      debugPrint('現在の認証状態: ${user.emailVerified}');
-      
-      if (user.emailVerified) {
-        debugPrint('既にメール認証済みです');
-        return;
-      }
-      
-      // ActionCodeSettingsを設定（Web用）
-      final actionCodeSettings = ActionCodeSettings(
-        url: 'https://groumap-ea452.firebaseapp.com',
-        handleCodeInApp: false,
-      );
-      
-      debugPrint('送信リクエスト実行中...');
-      await user.sendEmailVerification(actionCodeSettings);
-      debugPrint('✅ メール認証メール送信成功: ${user.email}');
-      debugPrint('=== メール認証送信完了 ===');
+
+      final functions = FirebaseFunctions.instanceFor(region: 'asia-northeast1');
+      final callable = functions.httpsCallable('requestEmailOtp');
+      await callable();
     } catch (e) {
-      debugPrint('❌ メール認証メール送信エラー: $e');
-      debugPrint('エラータイプ: ${e.runtimeType}');
-      if (e is FirebaseException) {
-        debugPrint('Firebaseエラーコード: ${e.code}');
-        debugPrint('Firebaseエラーメッセージ: ${e.message}');
-      }
+      rethrow;
+    }
+  }
+
+  // メール認証コードを検証
+  Future<void> verifyEmailOtp(String code) async {
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: 'asia-northeast1');
+      final callable = functions.httpsCallable('verifyEmailOtp');
+      await callable.call({'code': code});
+    } catch (e) {
       rethrow;
     }
   }
@@ -250,11 +258,10 @@ class AuthService {
   // メール認証状態を確認
   Future<bool> isEmailVerified() async {
     final user = _auth.currentUser;
-    if (user != null) {
-      await user.reload();
-      return user.emailVerified;
-    }
-    return false;
+    if (user == null) return false;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final data = doc.data();
+    return (data?['emailVerified'] as bool?) == true;
   }
 
   // ユーザーのメール認証状態をFirestoreに保存
