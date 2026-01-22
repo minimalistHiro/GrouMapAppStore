@@ -8,7 +8,7 @@ import '../../widgets/custom_button.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/qr_verification_model.dart';
-import '../payment/store_payment_view.dart';
+import '../points/point_usage_confirmation_view.dart';
 
 class QRScannerView extends ConsumerStatefulWidget {
   const QRScannerView({Key? key}) : super(key: key);
@@ -671,13 +671,10 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         return;
       }
 
-      // 支払い画面に遷移（ユーザー情報は画面内で取得）
+      // ポイント利用確認画面に遷移
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => StorePaymentView(
-            userId: uid,
-            userName: 'お客様', // デフォルト名、画面内で実際の名前を取得
-          ),
+          builder: (context) => PointUsageConfirmationView(userId: uid),
         ),
       );
       
@@ -706,10 +703,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           // 支払い画面に遷移（ユーザー情報は画面内で取得）
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => StorePaymentView(
-                userId: uid,
-                userName: 'お客様', // デフォルト名、画面内で実際の名前を取得
-              ),
+              builder: (context) => PointUsageConfirmationView(userId: uid),
             ),
           );
           
@@ -774,10 +768,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       // 支払い画面に遷移
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => StorePaymentView(
-            userId: uid,
-            userName: userName,
-          ),
+          builder: (context) => PointUsageConfirmationView(userId: uid),
         ),
       );
     } catch (e) {

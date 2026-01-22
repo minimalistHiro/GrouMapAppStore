@@ -11,11 +11,13 @@ import '../../models/owner_settings_model.dart';
 class StorePaymentView extends ConsumerStatefulWidget {
   final String userId;
   final String userName;
+  final int usedPoints;
   
   const StorePaymentView({
     Key? key,
     required this.userId,
     required this.userName,
+    this.usedPoints = 0,
   }) : super(key: key);
 
   @override
@@ -386,6 +388,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   void _createPointRequest(int amount, int pointsToAward) async {
     print('=== _createPointRequest 開始 ===');
     print('引数: amount=$amount, pointsToAward=$pointsToAward');
+    print('利用ポイント: ${widget.usedPoints}');
     
     setState(() {
       _isProcessing = true;
@@ -479,6 +482,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         pointsToAward: pointsToAward,
         userPoints: pointsToAward, // ユーザーに付与されるポイント
         description: '店舗からのポイント付与リクエスト',
+        usedPoints: widget.usedPoints,
       );
 
       print('リクエスト作成結果: $requestId');
