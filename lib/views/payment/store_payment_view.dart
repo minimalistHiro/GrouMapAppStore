@@ -351,7 +351,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'お客様の確認が必要です',
+                    '送信後すぐにポイントを付与します',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.blue,
@@ -489,9 +489,30 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           _currentRequestId = requestId; // 新しいID形式: "storeId_userId"
         });
         
-        if (mounted) {
-          print('ダイアログ表示');
-          _showRequestSentDialog(amount, pointsToAward, requestId);
+        final request = PointRequest(
+          id: requestId,
+          userId: widget.userId,
+          storeId: currentStoreId,
+          storeName: storeName,
+          amount: amount,
+          pointsToAward: pointsToAward,
+          userPoints: pointsToAward,
+          description: '店舗からのポイント付与リクエスト',
+          status: PointRequestStatus.pending.value,
+          createdAt: DateTime.now(),
+        );
+
+        final approved = await requestNotifier.acceptPointRequestAsStore(request);
+        if (approved) {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => PointRequestConfirmationView(requestId: requestId),
+              ),
+            );
+          }
+        } else {
+          throw Exception('ポイント付与の承認に失敗しました');
         }
       } else {
         print('リクエスト作成失敗: requestIdがnull');
@@ -523,223 +544,6 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     }
   }
 
-
-  void _showRequestSentDialog(int amount, int pointsToAward, String requestId) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('リクエスト送信完了'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.send, size: 64, color: Colors.blue),
-            const SizedBox(height: 16),
-            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
-            const SizedBox(height: 8),
-            Text(
-              'ポイント付与リクエストを送信しました',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '付与予定ポイント: ${pointsToAward}pt',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: const Text(
-                '店舗側で承認してポイントを付与してください',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PointRequestConfirmationView(requestId: requestId),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B35),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('承認画面へ'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRequestAcceptedDialog(PointRequest request) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ポイント付与完了'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 64, color: Colors.green),
-            const SizedBox(height: 16),
-            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
-            const SizedBox(height: 8),
-            Text(
-              'ポイント付与が完了しました！',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '付与ポイント: ${request.userPoints}pt',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green[200]!),
-              ),
-              child: Text(
-                'お客様のポイントが正常に更新されました\nリクエストID: ${request.id}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.green,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => const MainNavigationView(initialIndex: 2),
-                ),
-                (route) => false,
-              );
-            },
-            child: const Text('完了'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // 再度スキャン
-              Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B35),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('もう一度スキャン'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRequestRejectedDialog(PointRequest request) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ポイント付与拒否'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cancel, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('${_isLoadingUserInfo ? '読み込み中...' : _actualUserName}さん'),
-            const SizedBox(height: 8),
-            Text(
-              'ポイント付与が拒否されました',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-            if (request.rejectionReason != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                '理由: ${request.rejectionReason}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[200]!),
-              ),
-              child: const Text(
-                'お客様がポイント付与を拒否しました\nリクエストはキャンセルされました',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => const MainNavigationView(initialIndex: 2),
-                ),
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B35),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('完了'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
