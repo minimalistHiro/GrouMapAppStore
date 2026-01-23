@@ -1110,87 +1110,27 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
   }
 });
 
-// 今日の新規顧客プロバイダー（今日初めて利用したユーザー数を取得）
+// 今日の新規顧客プロバイダー（store_users の firstVisitAt を基準に取得）
 final todayNewCustomersProvider = StreamProvider.family<int, String>((ref, storeId) {
-  final firestore = FirebaseFirestore.instance;
-  final today = DateTime.now();
-  final startOfDay = DateTime(today.year, today.month, today.day);
-  final endOfDay = startOfDay.add(const Duration(days: 1));
-  
-  final controller = StreamController<int>();
-  StreamSubscription<QuerySnapshot>? usersListener;
+  try {
+    final firestore = FirebaseFirestore.instance;
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
 
-  void calculateNewCustomers() async {
-    try {
-      final usersSnapshot = await firestore.collection('users').get();
-      int newCustomerCount = 0;
-      
-      for (var userDoc in usersSnapshot.docs) {
-        final userId = userDoc.id;
-        
-        // このユーザーの全取引履歴を取得
-        final transactionsSnapshot = await firestore
-            .collection('point_transactions')
-            .doc(storeId)
-            .collection(userId)
-            .where('description', isEqualTo: 'ポイント付与')
-            .get();
-        
-        if (transactionsSnapshot.docs.isEmpty) continue;
-        
-        // 今日の取引があるかチェック
-        final todayTransactions = transactionsSnapshot.docs.where((doc) {
-          final data = doc.data();
-          final createdAt = data['createdAt'];
-          if (createdAt == null) return false;
-          
-          DateTime docDate;
-          if (createdAt is DateTime) {
-            docDate = createdAt;
-          } else if (createdAt is Timestamp) {
-            docDate = createdAt.toDate();
-          } else if (createdAt is String) {
-            try {
-              docDate = DateTime.parse(createdAt);
-            } catch (e) {
-              return false;
-            }
-          } else {
-            return false;
-          }
-          
-          return docDate.isAfter(startOfDay) && docDate.isBefore(endOfDay);
-        }).toList();
-        
-        // 今日の取引がない場合はスキップ
-        if (todayTransactions.isEmpty) continue;
-        
-        // 全取引が今日のもののみか確認（= 今日が初めての利用）
-        if (transactionsSnapshot.docs.length == todayTransactions.length) {
-          newCustomerCount++;
-        }
-      }
-      
-      if (!controller.isClosed) {
-        controller.add(newCustomerCount);
-      }
-    } catch (e) {
-      debugPrint('Error calculating new customers: $e');
-      if (!controller.isClosed) {
-        controller.add(0);
-      }
-    }
+    return firestore
+        .collection('store_users')
+        .doc(storeId)
+        .collection('users')
+        .where('firstVisitAt', isGreaterThanOrEqualTo: startOfDay)
+        .where('firstVisitAt', isLessThan: endOfDay)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length)
+        .handleError((error) {
+      debugPrint('Error fetching today new customers: $error');
+    });
+  } catch (e) {
+    debugPrint('Error creating today new customers stream: $e');
+    return Stream.value(0);
   }
-
-  // ユーザーの変更を監視
-  usersListener = firestore.collection('users').snapshots().listen((_) {
-    calculateNewCustomers();
-  });
-
-  ref.onDispose(() {
-    usersListener?.cancel();
-    controller.close();
-  });
-
-  return controller.stream;
 });
