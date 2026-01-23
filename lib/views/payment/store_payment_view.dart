@@ -324,7 +324,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ポイント付与確認'),
+        title: const Text('確定'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -579,8 +579,8 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
       ),
       body: Column(
         children: [
-          // お客様情報セクション
-          _buildCustomerInfo(),
+          // お会計入力の案内
+          _buildPaymentPrompt(),
           
           // 金額表示セクション
           _buildAmountDisplay(),
@@ -594,7 +594,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
     );
   }
 
-  Widget _buildCustomerInfo() {
+  Widget _buildPaymentPrompt() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -608,101 +608,13 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // お客様アイコン
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF6B35),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: _isLoadingUserInfo
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                      ? Image.network(
-                          _profileImageUrl!,
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Text(
-                                _actualUserName.isNotEmpty 
-                                    ? _actualUserName.substring(0, 1).toUpperCase()
-                                    : '客',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            );
-                          },
-                        )
-                      : Center(
-                          child: Text(
-                            _actualUserName.isNotEmpty 
-                                ? _actualUserName.substring(0, 1).toUpperCase()
-                                : '客',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // お客様情報
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isLoadingUserInfo ? '読み込み中...' : _actualUserName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'ユーザーID: ${widget.userId}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '支払い待ち',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: Text(
+        '今回の${_isLoadingUserInfo ? 'お客様' : _actualUserName}様のお会計金額を入力してください。',
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -789,7 +701,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               ],
             ),
           ),
-          // ポイント付与確認ボタン
+          // 確定ボタン
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -807,7 +719,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
               child: _isProcessing
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text(
-                      'ポイント付与確認',
+                      '確定',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

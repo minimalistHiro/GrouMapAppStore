@@ -360,7 +360,7 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         'paymentMethod': 'points',
         'createdAt': now,
         'updatedAt': now,
-        'description': 'ポイント利用',
+        'description': 'ポイント支払い',
       });
 
       txn.set(storeTransactionRef, {
@@ -607,9 +607,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
               ),
               child: _isProcessing
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      '次へ',
-                      style: TextStyle(
+                  : Text(
+                      '${_amount}ポイント利用する',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),

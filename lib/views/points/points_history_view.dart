@@ -258,9 +258,10 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
 
     return transactionsAsync.when(
       data: (transactions) {
-        // ポイント利用履歴をフィルタリング（descriptionが「ポイント支払い」のデータ）
+        // ポイント利用履歴をフィルタリング（旧データの「ポイント利用」も対象）
         final points = transactions.where((transaction) {
-          return transaction['description'] == 'ポイント支払い';
+          final description = transaction['description'];
+          return description == 'ポイント支払い' || description == 'ポイント利用';
         }).toList();
 
         if (points.isEmpty) {

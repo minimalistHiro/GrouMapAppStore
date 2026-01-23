@@ -35,7 +35,7 @@ final storeStatsProvider = StreamProvider.family<Map<String, dynamic>?, String>(
     return FirebaseFirestore.instance
         .collection('point_transactions')
         .where('storeId', isEqualTo: storeId)
-        .where('description', isEqualTo: 'ポイント支払い')
+        .where('description', whereIn: ['ポイント支払い', 'ポイント利用'])
         .snapshots()
         .map((snapshot) {
       // 今日のデータのみをフィルタリング
@@ -718,7 +718,7 @@ class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<Stri
             .collection('point_transactions')
             .doc(storeId)
             .collection(userId)
-            .where('description', isEqualTo: 'ポイント支払い')
+            .where('description', whereIn: ['ポイント支払い', 'ポイント利用'])
             .get();
 
         for (final transDoc in transactionsSnapshot.docs) {
