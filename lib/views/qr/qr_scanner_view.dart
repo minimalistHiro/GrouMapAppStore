@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/custom_button.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/qr_verification_model.dart';
@@ -19,7 +18,7 @@ class QRScannerView extends ConsumerStatefulWidget {
 
 class _QRScannerViewState extends ConsumerState<QRScannerView> {
   MobileScannerController? _scannerController;
-  bool _isScanning = false;
+  bool _isScanning = true;
   final TextEditingController _manualInputController = TextEditingController();
 
   @override
@@ -52,96 +51,13 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   }
 
   Widget _buildScannerContent(BuildContext context) {
-    if (!_isScanning) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // QRスキャンアイコン
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B35).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(60),
-                  border: Border.all(
-                    color: const Color(0xFFFF6B35).withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.qr_code_scanner,
-                  size: 60,
-                  color: Color(0xFFFF6B35),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // タイトル
-              const Text(
-                'QRコードをスキャン',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF6B35),
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 説明テキスト
-              const Text(
-                'お客様のQRコードをカメラに向けて\nスキャンしてください',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  height: 1.5,
-                ),
-              ),
-              
-              const SizedBox(height: 48),
-              
-              // スキャン開始ボタン
-              CustomButton(
-                text: 'スキャンを開始',
-                onPressed: () {
-                  _startScanning();
-                },
-                backgroundColor: const Color(0xFFFF6B35),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 手動入力ボタン
-              TextButton(
-                onPressed: () {
-                  _showManualInputDialog(context);
-                },
-                child: const Text(
-                  '手動でQRコードを入力',
-                  style: TextStyle(
-                    color: Color(0xFFFF6B35),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Stack(
       children: [
         // カメラビュー
         MobileScanner(
           controller: _scannerController!,
           onDetect: (capture) {
+            if (!_isScanning) return;
             final List<Barcode> barcodes = capture.barcodes;
             if (barcodes.isNotEmpty) {
               final String? code = barcodes.first.rawValue;
@@ -179,17 +95,22 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
             ),
           ),
         ),
-        
-        // 停止ボタン
+
+        // 手動入力アイコン
         Positioned(
           top: 50,
           right: 20,
-          child: FloatingActionButton(
-            onPressed: () {
-              _stopScanning();
-            },
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.stop, color: Colors.white),
+          child: Material(
+            color: Colors.black.withOpacity(0.6),
+            shape: const CircleBorder(),
+            child: IconButton(
+              onPressed: () {
+                _stopScanning();
+                _showManualInputDialog(context);
+              },
+              icon: const Icon(Icons.edit, color: Colors.white),
+              tooltip: '手動入力',
+            ),
           ),
         ),
         
@@ -380,7 +301,10 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _startScanning();
+            },
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
