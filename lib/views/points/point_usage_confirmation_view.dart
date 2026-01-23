@@ -5,6 +5,7 @@ import '../payment/store_payment_view.dart';
 import 'point_usage_request_waiting_view.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/custom_button.dart';
 
 class PointUsageConfirmationView extends ConsumerStatefulWidget {
   final String userId;
@@ -312,35 +313,21 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
               ),
             ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _navigateToPointUsage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B35),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                ),
-                child: const Text(
-                  '利用する',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
+            CustomButton(
+              text: '利用する',
+              onPressed: _navigateToPointUsage,
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 48,
               child: OutlinedButton(
                 onPressed: _skipPointUsage,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFFF6B35),
                   side: const BorderSide(color: Color(0xFFFF6B35)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 child: const Text(

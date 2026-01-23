@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/qr_verification_provider.dart';
+import '../../widgets/custom_button.dart';
 import '../payment/store_payment_view.dart';
 
 class PointUsageInputView extends ConsumerStatefulWidget {
@@ -592,29 +593,10 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _onNextPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 4,
-              ),
-              child: _isProcessing
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      '${_amount}ポイント利用する',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
+          CustomButton(
+            text: '${_amount}ポイント利用する',
+            onPressed: _isProcessing ? null : _onNextPressed,
+            isLoading: _isProcessing,
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/point_request_provider.dart';
 import '../../models/point_request_model.dart';
 import '../main_navigation_view.dart';
+import '../../widgets/custom_button.dart';
 
 class PointRequestConfirmationView extends ConsumerStatefulWidget {
   final String requestId;
@@ -263,25 +264,10 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: ElevatedButton(
+                child: CustomButton(
+                  text: '受け入れる',
                   onPressed: _isProcessing ? null : () => _acceptRequest(request),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isProcessing
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          '受け入れる',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  isLoading: _isProcessing,
                 ),
               ),
             ],
@@ -347,7 +333,8 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               ),
             ],
             const SizedBox(height: 32),
-            ElevatedButton(
+            CustomButton(
+              text: '完了',
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
@@ -356,21 +343,6 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                   (route) => false,
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                '完了',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         ),

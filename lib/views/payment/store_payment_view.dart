@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/point_request_provider.dart';
 import '../../models/point_request_model.dart';
+import '../../widgets/custom_button.dart';
 import '../user/point_request_confirmation_view.dart';
 import '../main_navigation_view.dart';
 import '../../models/owner_settings_model.dart';
@@ -703,29 +704,10 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           ),
           // 確定ボタン
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _onPointAwardPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 4,
-              ),
-              child: _isProcessing
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      '確定',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
+          CustomButton(
+            text: '確定',
+            onPressed: _isProcessing ? null : _onPointAwardPressed,
+            isLoading: _isProcessing,
           ),
         ],
       ),
