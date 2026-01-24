@@ -47,6 +47,10 @@ class TrendBaseView extends ConsumerStatefulWidget {
     required this.onFetch,
     required this.statsConfig,
     this.valueFormatter,
+    this.secondaryChartTitle,
+    this.secondaryEmptyDetail,
+    this.secondaryValueKey,
+    this.secondaryDataBuilder,
   }) : super(key: key);
 
   final String title;
@@ -57,6 +61,10 @@ class TrendBaseView extends ConsumerStatefulWidget {
   final TrendFetch onFetch;
   final TrendStatsConfig statsConfig;
   final String Function(int value)? valueFormatter;
+  final String? secondaryChartTitle;
+  final String? secondaryEmptyDetail;
+  final String? secondaryValueKey;
+  final List<Map<String, dynamic>> Function(List<Map<String, dynamic>> trendData)? secondaryDataBuilder;
 
   @override
   ConsumerState<TrendBaseView> createState() => _TrendBaseViewState();
@@ -65,6 +73,8 @@ class TrendBaseView extends ConsumerStatefulWidget {
 class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   String _selectedPeriod = 'week';
   bool _hasInitialized = false;
+
+  bool get _hasSecondaryChart => widget.secondaryChartTitle != null && widget.secondaryValueKey != null;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +131,21 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                       children: [
                         _buildPeriodSelector(storeId),
                         const SizedBox(height: 24),
-                        _buildChartSectionWithData(trendData),
+                        _buildChartSectionWithData(
+                          trendData,
+                          chartTitle: widget.chartTitle,
+                          emptyDetail: widget.emptyDetail,
+                          valueKey: widget.valueKey,
+                        ),
+                        if (_hasSecondaryChart) ...[
+                          const SizedBox(height: 24),
+                          _buildChartSectionWithData(
+                            widget.secondaryDataBuilder?.call(trendData) ?? trendData,
+                            chartTitle: widget.secondaryChartTitle!,
+                            emptyDetail: widget.secondaryEmptyDetail ?? widget.emptyDetail,
+                            valueKey: widget.secondaryValueKey!,
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         _buildStatsSectionWithData(trendData),
                       ],
@@ -135,7 +159,11 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                     children: [
                       _buildPeriodSelector(storeId),
                       const SizedBox(height: 24),
-                      _buildLoadingChart(),
+                      _buildLoadingChart(widget.chartTitle),
+                      if (_hasSecondaryChart) ...[
+                        const SizedBox(height: 24),
+                        _buildLoadingChart(widget.secondaryChartTitle!),
+                      ],
                       const SizedBox(height: 24),
                       _buildLoadingStatsCard(),
                     ],
@@ -148,7 +176,11 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                     children: [
                       _buildPeriodSelector(storeId),
                       const SizedBox(height: 24),
-                      _buildErrorChart(storeId),
+                      _buildErrorChart(storeId, widget.chartTitle),
+                      if (_hasSecondaryChart) ...[
+                        const SizedBox(height: 24),
+                        _buildErrorChart(storeId, widget.secondaryChartTitle!),
+                      ],
                       const SizedBox(height: 24),
                       _buildErrorStatsCard(),
                     ],
@@ -282,7 +314,12 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  Widget _buildChartSectionWithData(List<Map<String, dynamic>> trendData) {
+  Widget _buildChartSectionWithData(
+    List<Map<String, dynamic>> trendData, {
+    required String chartTitle,
+    required String emptyDetail,
+    required String valueKey,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -306,7 +343,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               const SizedBox(width: 8),
               Text(
-                widget.chartTitle,
+                chartTitle,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -316,19 +353,22 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
             ],
           ),
           const SizedBox(height: 20),
-          trendData.isEmpty ? _buildEmptyChart() : _buildLineChart(trendData),
+          trendData.isEmpty ? _buildEmptyChart(emptyDetail) : _buildLineChart(trendData, valueKey: valueKey),
         ],
       ),
     );
   }
 
-  Widget _buildLineChart(List<Map<String, dynamic>> trendData) {
+  Widget _buildLineChart(
+    List<Map<String, dynamic>> trendData, {
+    required String valueKey,
+  }) {
     final maxValue = trendData.isNotEmpty
-        ? trendData.map(_getValue).reduce((a, b) => a > b ? a : b)
+        ? trendData.map((data) => _getValue(data, valueKey)).reduce((a, b) => a > b ? a : b)
         : 1;
 
     final spots = trendData.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), _getValue(entry.value).toDouble());
+      return FlSpot(entry.key.toDouble(), _getValue(entry.value, valueKey).toDouble());
     }).toList();
 
     return SizedBox(
@@ -473,7 +513,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  Widget _buildEmptyChart() {
+  Widget _buildEmptyChart(String emptyDetail) {
     String periodText;
     switch (_selectedPeriod) {
       case 'week':
@@ -519,7 +559,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               ),
             ),
             Text(
-              widget.emptyDetail,
+              emptyDetail,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -554,7 +594,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  Widget _buildLoadingChart() {
+  Widget _buildLoadingChart(String chartTitle) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -578,7 +618,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               const SizedBox(width: 8),
               Text(
-                widget.chartTitle,
+                chartTitle,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -601,7 +641,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  Widget _buildErrorChart(String storeId) {
+  Widget _buildErrorChart(String storeId, String chartTitle) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -625,7 +665,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
               const SizedBox(width: 8),
               Text(
-                widget.chartTitle,
+                chartTitle,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -728,12 +768,12 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   }
 
   Widget _buildStatsCards(List<Map<String, dynamic>> trendData) {
-    final total = trendData.fold<int>(0, (sum, data) => sum + _getValue(data));
+    final total = trendData.fold<int>(0, (sum, data) => sum + _getValue(data, widget.valueKey));
     final maxValue = trendData.isNotEmpty
-        ? trendData.map(_getValue).reduce((a, b) => a > b ? a : b)
+        ? trendData.map((data) => _getValue(data, widget.valueKey)).reduce((a, b) => a > b ? a : b)
         : 0;
     final minValue = trendData.isNotEmpty
-        ? trendData.map(_getValue).reduce((a, b) => a < b ? a : b)
+        ? trendData.map((data) => _getValue(data, widget.valueKey)).reduce((a, b) => a < b ? a : b)
         : 0;
     final avgValue = trendData.isNotEmpty ? (total / trendData.length).round() : 0;
 
@@ -970,8 +1010,8 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  int _getValue(Map<String, dynamic> data) {
-    final value = data[widget.valueKey];
+  int _getValue(Map<String, dynamic> data, String valueKey) {
+    final value = data[valueKey];
     if (value is int) return value;
     if (value is double) return value.round();
     if (value is num) return value.toInt();
