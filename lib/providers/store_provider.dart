@@ -126,71 +126,70 @@ final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
   final today = DateTime.now();
   final startOfDay = DateTime(today.year, today.month, today.day);
   final endOfDay = startOfDay.add(const Duration(days: 1));
-  
-  final controller = StreamController<List<Map<String, dynamic>>>();
-  final Map<String, StreamSubscription<QuerySnapshot>> userSubs = {};
-  StreamSubscription<QuerySnapshot>? usersRootSub;
 
-  void emitCombined() async {
+  final controller = StreamController<List<Map<String, dynamic>>>();
+  final Map<String, Map<String, dynamic>> userCache = {};
+  StreamSubscription<QuerySnapshot>? usersRootSub;
+  StreamSubscription<QuerySnapshot>? transactionsSub;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> latestTransactions = [];
+
+  void emitCombined() {
     try {
-      // Combine all current snapshots into a single sorted list
       final List<Map<String, dynamic>> all = [];
-      await Future.wait(userSubs.entries.map((e) async {
-        // Read latest once from each subcollection
-        final snap = await firestore
-            .collection('point_transactions')
-            .doc(storeId)
-            .collection(e.key)
-            .get();
-        for (final d in snap.docs) {
-          final data = d.data();
-          // ポイント付与のみをフィルタリング
-          if (data['description'] == 'ポイント付与') {
-            // 今日のデータのみをフィルタリング
-            final createdAt = data['createdAt'];
-            if (createdAt != null) {
-              DateTime docDate;
-              if (createdAt is DateTime) {
-                docDate = createdAt;
-              } else if (createdAt is Timestamp) {
-                docDate = createdAt.toDate();
-              } else if (createdAt is String) {
-                try {
-                  docDate = DateTime.parse(createdAt);
-                } catch (_) {
-                  continue;
-                }
-              } else {
-                continue;
-              }
-              
-              if (docDate.isAfter(startOfDay) && docDate.isBefore(endOfDay)) {
-                all.add({
-                  ...data,
-                  'transactionId': d.id,
-                  'userName': data['userName'] ?? 'ゲストユーザー',
-                  'pointsEarned': data['amount'] ?? 0,
-                  'timestamp': data['createdAt'],
-                  'storeName': data['storeName'] ?? '店舗名不明',
-                });
-              }
-            }
-          }
+      for (final doc in latestTransactions) {
+        final data = doc.data();
+        final type = data['type'];
+        if (type != 'award' && type != 'sale') continue;
+        final createdAt = data['createdAtClient'] ?? data['createdAt'];
+        final docDate = _parseCreatedAt(createdAt);
+        if (docDate == null) continue;
+        if (!docDate.isAfter(startOfDay) || !docDate.isBefore(endOfDay)) continue;
+
+        final userId = data['userId'] as String?;
+        final userData = userId != null ? userCache[userId] ?? const <String, dynamic>{} : const <String, dynamic>{};
+
+        String resolveUserName() {
+          final displayName = userData['displayName'];
+          if (displayName is String && displayName.isNotEmpty) return displayName;
+          final email = userData['email'];
+          if (email is String && email.isNotEmpty) return email;
+          final fallbackName = data['userName'];
+          if (fallbackName is String && fallbackName.isNotEmpty) return fallbackName;
+          return 'ゲストユーザー';
         }
-      }));
-      
-      // 作成日時で降順ソート
+
+        String? resolvePhotoUrl() {
+          final profileImageUrl = userData['profileImageUrl'];
+          if (profileImageUrl is String && profileImageUrl.isNotEmpty) return profileImageUrl;
+          final photoUrl = userData['photoUrl'];
+          if (photoUrl is String && photoUrl.isNotEmpty) return photoUrl;
+          final photoURL = userData['photoURL'];
+          if (photoURL is String && photoURL.isNotEmpty) return photoURL;
+          return null;
+        }
+
+        final pointsEarned = (data['points'] ?? data['pointsAwarded'] ?? data['amount'] ?? 0) as num;
+
+        all.add({
+          ...data,
+          'transactionId': doc.id,
+          'userId': userId,
+          'userName': resolveUserName(),
+          'userEmail': userData['email'],
+          'userPhotoUrl': resolvePhotoUrl(),
+          'pointsEarned': pointsEarned.toInt(),
+          'timestamp': createdAt,
+          'storeName': data['storeName'] ?? '店舗名不明',
+        });
+      }
+
       all.sort((a, b) {
-        final aTime = a['createdAt'];
-        final bTime = b['createdAt'];
-        if (aTime is DateTime && bTime is DateTime) {
-          return bTime.compareTo(aTime);
-        } else if (aTime is Timestamp && bTime is Timestamp) {
-          return bTime.compareTo(aTime);
-        }
-        return 0;
+        final aTime = _parseCreatedAt(a['timestamp']);
+        final bTime = _parseCreatedAt(b['timestamp']);
+        if (aTime == null || bTime == null) return 0;
+        return bTime.compareTo(aTime);
       });
-      
+
       if (!controller.isClosed) controller.add(all);
     } catch (e) {
       debugPrint('Error in emitCombined: $e');
@@ -198,38 +197,26 @@ final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
     }
   }
 
-  // Watch users and attach per-user listeners
   usersRootSub = firestore.collection('users').snapshots().listen((usersSnap) {
-    final incoming = usersSnap.docs.map((d) => d.id).toSet();
-    final current = userSubs.keys.toSet();
-
-    // Add new user listeners
-    for (final userId in incoming.difference(current)) {
-      final sub = firestore
-          .collection('point_transactions')
-          .doc(storeId)
-          .collection(userId)
-          .snapshots()
-          .listen((_) {
-        emitCombined();
-      });
-      userSubs[userId] = sub;
+    for (final doc in usersSnap.docs) {
+      userCache[doc.id] = doc.data();
     }
+    emitCombined();
+  });
 
-    // Remove obsolete listeners
-    for (final userId in current.difference(incoming)) {
-      userSubs.remove(userId)?.cancel();
-    }
-
-    // Emit after topology change
+  transactionsSub = firestore
+      .collection('stores')
+      .doc(storeId)
+      .collection('transactions')
+      .snapshots()
+      .listen((snapshot) {
+    latestTransactions = snapshot.docs;
     emitCombined();
   });
 
   ref.onDispose(() {
     usersRootSub?.cancel();
-    for (final s in userSubs.values) {
-      s.cancel();
-    }
+    transactionsSub?.cancel();
     controller.close();
   });
 

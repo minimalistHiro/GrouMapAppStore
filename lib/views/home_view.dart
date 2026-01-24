@@ -15,6 +15,7 @@ import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
 import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
+import 'visitors/today_visitors_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -1100,8 +1101,10 @@ class HomeView extends ConsumerWidget {
               GestureDetector(
                 onTap: () {
                   // 訪問者一覧画面に遷移
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('訪問者一覧画面は準備中です')),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => TodayVisitorsView(storeId: storeId),
+                    ),
                   );
                 },
                 child: const Text(
@@ -1552,19 +1555,7 @@ class HomeView extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // ユーザーアイコン
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.blue[100],
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.blue,
-                size: 24,
-              ),
-            ),
+            _buildVisitorAvatar(visitor),
             
             const SizedBox(height: 4),
             
@@ -1611,6 +1602,50 @@ class HomeView extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisitorAvatar(Map<String, dynamic> visitor) {
+    final photoUrl = visitor['userPhotoUrl'];
+    if (photoUrl is String && photoUrl.isNotEmpty) {
+      return ClipOval(
+        child: Container(
+          width: 40,
+          height: 40,
+          color: Colors.grey[200],
+          child: Image.network(
+            photoUrl,
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 40,
+                height: 40,
+                color: Colors.blue[100],
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.blue,
+                  size: 24,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.blue[100],
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.person,
+        color: Colors.blue,
+        size: 24,
       ),
     );
   }
