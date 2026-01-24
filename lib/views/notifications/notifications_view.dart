@@ -41,16 +41,23 @@ class NotificationsView extends ConsumerStatefulWidget {
 class _NotificationsViewState extends ConsumerState<NotificationsView> {
   final Set<String> _knownAnnouncementIds = <String>{};
   bool _hasAnnouncementsLoaded = false;
+  ProviderSubscription<AsyncValue<List<Map<String, dynamic>>>>? _announcementsSubscription;
 
   @override
   void initState() {
     super.initState();
-    ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+    _announcementsSubscription = ref.listenManual<AsyncValue<List<Map<String, dynamic>>>>(
       announcementsProvider,
       (previous, next) {
         next.whenData(_handleAnnouncementsUpdate);
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _announcementsSubscription?.close();
+    super.dispose();
   }
 
   void _handleAnnouncementsUpdate(List<Map<String, dynamic>> announcements) {
