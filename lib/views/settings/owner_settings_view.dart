@@ -23,6 +23,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   DateTime? _friendCampaignEndDate;
   DateTime? _storeCampaignStartDate;
   DateTime? _storeCampaignEndDate;
+  DateTime? _maintenanceStartDate;
+  DateTime? _maintenanceEndDate;
+  String? _maintenanceStartTime;
+  String? _maintenanceEndTime;
   bool _isSaving = false;
   bool _hasInitialized = false;
   bool _hasLocalEdits = false;
@@ -219,6 +223,48 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'メンテナンス時間',
+                  subtitle: '開始日/終了日と開始時間/終了時間を設定してください',
+                  icon: Icons.build,
+                  children: [
+                    _buildDateTimePickerRow(
+                      label: '開始',
+                      date: _maintenanceStartDate,
+                      time: _maintenanceStartTime,
+                      onTap: () => _pickDateTime(
+                        context: context,
+                        initialDate: _maintenanceStartDate,
+                        initialTime: _maintenanceStartTime,
+                        onSelected: (date, time) {
+                          setState(() {
+                            _maintenanceStartDate = date;
+                            _maintenanceStartTime = time;
+                            _hasLocalEdits = true;
+                          });
+                        },
+                      ),
+                    ),
+                    _buildDateTimePickerRow(
+                      label: '終了',
+                      date: _maintenanceEndDate,
+                      time: _maintenanceEndTime,
+                      onTap: () => _pickDateTime(
+                        context: context,
+                        initialDate: _maintenanceEndDate,
+                        initialTime: _maintenanceEndTime,
+                        onSelected: (date, time) {
+                          setState(() {
+                            _maintenanceEndDate = date;
+                            _maintenanceEndTime = time;
+                            _hasLocalEdits = true;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 CustomButton(
                   text: '設定を保存',
@@ -254,6 +300,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           _friendCampaignEndDate = null;
           _storeCampaignStartDate = null;
           _storeCampaignEndDate = null;
+          _maintenanceStartDate = null;
+          _maintenanceEndDate = null;
+          _maintenanceStartTime = null;
+          _maintenanceEndTime = null;
           _friendCampaignPointsController.text = '';
           _storeCampaignPointsController.text = '';
           _basePointReturnRateController.text = '';
@@ -282,6 +332,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         _basePointReturnRateController.text =
             settings.basePointReturnRate?.toString() ?? '';
         _setLevelRateRanges(settings.levelPointReturnRateRanges);
+        _maintenanceStartDate = settings.maintenanceStartDate;
+        _maintenanceEndDate = settings.maintenanceEndDate;
+        _maintenanceStartTime = settings.maintenanceStartTime;
+        _maintenanceEndTime = settings.maintenanceEndTime;
         _hasInitialized = true;
       });
     });
@@ -305,6 +359,47 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     }
   }
 
+  Future<void> _pickDateTime({
+    required BuildContext context,
+    required DateTime? initialDate,
+    required String? initialTime,
+    required void Function(DateTime date, String time) onSelected,
+  }) async {
+    final now = DateTime.now();
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate ?? DateTime(now.year, now.month, now.day),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (selectedDate == null) {
+      return;
+    }
+
+    final parsedTime = _parseTime(initialTime);
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: parsedTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFFF6B35),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (selectedTime == null) {
+      return;
+    }
+
+    onSelected(selectedDate, _formatTime(selectedTime));
+  }
+
   Future<void> _saveSettings(BuildContext context) async {
     if (_hasInvalidDateRange(_friendCampaignStartDate, _friendCampaignEndDate)) {
       _showSnackBar(context, '友達紹介キャンペーンの終了日は開始日以降にしてください');
@@ -312,6 +407,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     }
     if (_hasInvalidDateRange(_storeCampaignStartDate, _storeCampaignEndDate)) {
       _showSnackBar(context, '店舗紹介キャンペーンの終了日は開始日以降にしてください');
+      return;
+    }
+    if (_hasInvalidMaintenanceRange()) {
+      _showSnackBar(context, 'メンテナンス終了は開始以降にしてください');
       return;
     }
 
@@ -351,6 +450,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         basePointReturnRate: basePointReturnRate,
         levelPointReturnRateRanges:
             levelRateRanges.isEmpty ? null : levelRateRanges,
+        maintenanceStartDate: _maintenanceStartDate,
+        maintenanceEndDate: _maintenanceEndDate,
+        maintenanceStartTime: _maintenanceStartTime,
+        maintenanceEndTime: _maintenanceEndTime,
       );
 
       final service = ref.read(ownerSettingsServiceProvider);
@@ -374,6 +477,27 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   }
 
   bool _hasInvalidDateRange(DateTime? start, DateTime? end) {
+    if (start == null || end == null) {
+      return false;
+    }
+    return end.isBefore(start);
+  }
+
+  bool _hasInvalidMaintenanceRange() {
+    if (_maintenanceStartDate == null ||
+        _maintenanceEndDate == null ||
+        _maintenanceStartTime == null ||
+        _maintenanceEndTime == null) {
+      return false;
+    }
+    final start = _combineDateTime(
+      _maintenanceStartDate!,
+      _maintenanceStartTime!,
+    );
+    final end = _combineDateTime(
+      _maintenanceEndDate!,
+      _maintenanceEndTime!,
+    );
     if (start == null || end == null) {
       return false;
     }
@@ -653,11 +777,69 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     );
   }
 
+  Widget _buildDateTimePickerRow({
+    required String label,
+    required DateTime? date,
+    required String? time,
+    required VoidCallback onTap,
+  }) {
+    final value = (date != null && time != null) ? _formatDateTime(date, time) : '未設定';
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      subtitle: Text(
+        value,
+        style: TextStyle(
+          color: value == '未設定' ? Colors.grey[500] : Colors.black87,
+        ),
+      ),
+      trailing: const Icon(Icons.schedule, color: Color(0xFFFF6B35)),
+      onTap: onTap,
+    );
+  }
+
   String _formatDate(DateTime date) {
     final year = date.year.toString();
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$year/$month/$day';
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _formatDateTime(DateTime date, String time) {
+    return '${_formatDate(date)} $time';
+  }
+
+  TimeOfDay? _parseTime(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+    final parts = value.split(':');
+    if (parts.length != 2) {
+      return null;
+    }
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) {
+      return null;
+    }
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return null;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  DateTime? _combineDateTime(DateTime date, String time) {
+    final parsed = _parseTime(time);
+    if (parsed == null) {
+      return null;
+    }
+    return DateTime(date.year, date.month, date.day, parsed.hour, parsed.minute);
   }
 
   void _setLevelRateRanges(List<LevelPointReturnRateRange>? ranges) {

@@ -5,6 +5,7 @@ import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/announcement_provider.dart';
 import '../providers/post_provider.dart';
+import '../providers/owner_settings_provider.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
 import 'posts/create_post_view.dart';
@@ -225,6 +226,11 @@ class HomeView extends ConsumerWidget {
   }
 
   Widget _buildHomeScaffold(BuildContext context, WidgetRef ref, String storeId) {
+    final maintenanceGate = _buildMaintenanceGate(context, ref);
+    if (maintenanceGate != null) {
+      return maintenanceGate;
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -233,6 +239,8 @@ class HomeView extends ConsumerWidget {
             children: [
               // ヘッダー部分
               _buildHeader(context, ref, storeId),
+
+              _buildMaintenanceNoticeBar(context, ref),
               
               const SizedBox(height: 24),
               
@@ -406,6 +414,153 @@ class HomeView extends ConsumerWidget {
     );
   }
 
+  Widget? _buildMaintenanceGate(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(ownerSettingsProvider).maybeWhen(
+          data: (value) => value,
+          orElse: () => null,
+        );
+    if (settings == null) {
+      return null;
+    }
+    final isOwner = ref.watch(userIsOwnerProvider).maybeWhen(
+          data: (value) => value,
+          orElse: () => null,
+        );
+    if (isOwner == null || isOwner) {
+      return null;
+    }
+    final startAt = _combineDateTime(
+      settings.maintenanceStartDate,
+      settings.maintenanceStartTime,
+    );
+    final endAt = _combineDateTime(
+      settings.maintenanceEndDate,
+      settings.maintenanceEndTime,
+    );
+    if (startAt == null || endAt == null) {
+      return null;
+    }
+    final now = DateTime.now();
+    if (now.isBefore(startAt) || now.isAfter(endAt)) {
+      return null;
+    }
+    return _buildMaintenanceScreen(context, startAt, endAt);
+  }
+
+  Widget _buildMaintenanceScreen(
+    BuildContext context,
+    DateTime startAt,
+    DateTime endAt,
+  ) {
+    final displayText = _isSameDate(startAt, endAt)
+        ? '${_formatDate(startAt)} ${_formatTime(startAt)}〜${_formatTime(endAt)}'
+        : '${_formatDateTime(startAt)} 〜 ${_formatDateTime(endAt)}';
+    return Scaffold(
+      backgroundColor: const Color(0xFFE3F2FD),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.build_circle_outlined,
+                  size: 72,
+                  color: Color(0xFF1E88E5),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'メンテナンス中',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '現在メンテナンスを実施しています。',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  displayText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E88E5),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMaintenanceNoticeBar(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.watch(ownerSettingsProvider);
+
+    return settingsAsync.when(
+      data: (settings) {
+        final startDate = settings?.maintenanceStartDate;
+        final startTime = settings?.maintenanceStartTime;
+        final startAt = _combineDateTime(startDate, startTime);
+        if (startAt == null) {
+          return const SizedBox.shrink();
+        }
+        final now = DateTime.now();
+        final oneWeekBefore = startAt.subtract(const Duration(days: 7));
+        final shouldShow = !now.isBefore(oneWeekBefore) && !now.isAfter(startAt);
+        if (!shouldShow) {
+          return const SizedBox.shrink();
+        }
+        final endAt = _combineDateTime(
+          settings?.maintenanceEndDate,
+          settings?.maintenanceEndTime,
+        );
+        final displayText = endAt == null
+            ? 'メンテナンスのお知らせ: ${_formatDateTime(startAt)}'
+            : _isSameDate(startAt, endAt)
+                ? 'メンテナンスのお知らせ: ${_formatDate(startAt)} ${_formatTime(startAt)}〜${_formatTime(endAt)}'
+                : 'メンテナンスのお知らせ: ${_formatDateTime(startAt)} 〜 ${_formatDateTime(endAt)}';
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E88E5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  displayText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildQRScanButton(BuildContext context, WidgetRef ref, String storeId) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -536,6 +691,59 @@ class HomeView extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  DateTime? _combineDateTime(DateTime? date, String? time) {
+    if (date == null || time == null || time.trim().isEmpty) {
+      return null;
+    }
+    final parsed = _parseTime(time);
+    if (parsed == null) {
+      return null;
+    }
+    return DateTime(date.year, date.month, date.day, parsed.hour, parsed.minute);
+  }
+
+  TimeOfDay? _parseTime(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) {
+      return null;
+    }
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) {
+      return null;
+    }
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return null;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final year = dateTime.year.toString();
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$year/$month/$day $hour:$minute';
+  }
+
+  String _formatDate(DateTime dateTime) {
+    final year = dateTime.year.toString();
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final day = dateTime.day.toString().padLeft(2, '0');
+    return '$year/$month/$day';
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  bool _isSameDate(DateTime start, DateTime end) {
+    return start.year == end.year && start.month == end.month && start.day == end.day;
   }
 
   Widget _buildStatsCard(BuildContext context, WidgetRef ref, String storeId) {

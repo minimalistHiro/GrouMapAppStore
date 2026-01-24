@@ -9,6 +9,10 @@ class OwnerSettings {
   final int? storeCampaignPoints;
   final double? basePointReturnRate;
   final List<LevelPointReturnRateRange>? levelPointReturnRateRanges;
+  final DateTime? maintenanceStartDate;
+  final DateTime? maintenanceEndDate;
+  final String? maintenanceStartTime;
+  final String? maintenanceEndTime;
 
   const OwnerSettings({
     this.friendCampaignStartDate,
@@ -19,6 +23,10 @@ class OwnerSettings {
     this.storeCampaignPoints,
     this.basePointReturnRate,
     this.levelPointReturnRateRanges,
+    this.maintenanceStartDate,
+    this.maintenanceEndDate,
+    this.maintenanceStartTime,
+    this.maintenanceEndTime,
   });
 
   factory OwnerSettings.fromMap(Map<String, dynamic> data) {
@@ -31,6 +39,10 @@ class OwnerSettings {
       storeCampaignPoints: _parseInt(data['storeCampaignPoints']),
       basePointReturnRate: _parseDouble(data['basePointReturnRate']),
       levelPointReturnRateRanges: _parseLevelRateRanges(data['levelPointReturnRateRanges']),
+      maintenanceStartDate: _parseDate(data['maintenanceStartDate']),
+      maintenanceEndDate: _parseDate(data['maintenanceEndDate']),
+      maintenanceStartTime: _parseString(data['maintenanceStartTime']),
+      maintenanceEndTime: _parseString(data['maintenanceEndTime']),
     );
   }
 
@@ -44,6 +56,10 @@ class OwnerSettings {
       'storeCampaignPoints': storeCampaignPoints,
       'basePointReturnRate': basePointReturnRate,
       'levelPointReturnRateRanges': _toLevelRateRanges(levelPointReturnRateRanges),
+      'maintenanceStartDate': _toTimestamp(maintenanceStartDate),
+      'maintenanceEndDate': _toTimestamp(maintenanceEndDate),
+      'maintenanceStartTime': maintenanceStartTime,
+      'maintenanceEndTime': maintenanceEndTime,
     };
   }
 
@@ -92,6 +108,13 @@ class OwnerSettings {
     }
     if (value is String) {
       return double.tryParse(value);
+    }
+    return null;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
     }
     return null;
   }
