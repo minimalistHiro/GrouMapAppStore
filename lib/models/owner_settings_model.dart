@@ -13,6 +13,14 @@ class OwnerSettings {
   final DateTime? maintenanceEndDate;
   final String? maintenanceStartTime;
   final String? maintenanceEndTime;
+  final String? minRequiredVersion;
+  final String? latestVersion;
+  final String? iosStoreUrl;
+  final String? androidStoreUrl;
+  final String? userMinRequiredVersion;
+  final String? userLatestVersion;
+  final String? userIosStoreUrl;
+  final String? userAndroidStoreUrl;
 
   const OwnerSettings({
     this.friendCampaignStartDate,
@@ -27,6 +35,14 @@ class OwnerSettings {
     this.maintenanceEndDate,
     this.maintenanceStartTime,
     this.maintenanceEndTime,
+    this.minRequiredVersion,
+    this.latestVersion,
+    this.iosStoreUrl,
+    this.androidStoreUrl,
+    this.userMinRequiredVersion,
+    this.userLatestVersion,
+    this.userIosStoreUrl,
+    this.userAndroidStoreUrl,
   });
 
   factory OwnerSettings.fromMap(Map<String, dynamic> data) {
@@ -43,6 +59,14 @@ class OwnerSettings {
       maintenanceEndDate: _parseDate(data['maintenanceEndDate']),
       maintenanceStartTime: _parseString(data['maintenanceStartTime']),
       maintenanceEndTime: _parseString(data['maintenanceEndTime']),
+      minRequiredVersion: _parseString(data['minRequiredVersion']),
+      latestVersion: _parseString(data['latestVersion']),
+      iosStoreUrl: _parseString(data['iosStoreUrl']),
+      androidStoreUrl: _parseString(data['androidStoreUrl']),
+      userMinRequiredVersion: _parseString(data['userMinRequiredVersion']),
+      userLatestVersion: _parseString(data['userLatestVersion']),
+      userIosStoreUrl: _parseString(data['userIosStoreUrl']),
+      userAndroidStoreUrl: _parseString(data['userAndroidStoreUrl']),
     );
   }
 
@@ -60,6 +84,14 @@ class OwnerSettings {
       'maintenanceEndDate': _toTimestamp(maintenanceEndDate),
       'maintenanceStartTime': maintenanceStartTime,
       'maintenanceEndTime': maintenanceEndTime,
+      'minRequiredVersion': minRequiredVersion,
+      'latestVersion': latestVersion,
+      'iosStoreUrl': iosStoreUrl,
+      'androidStoreUrl': androidStoreUrl,
+      'userMinRequiredVersion': userMinRequiredVersion,
+      'userLatestVersion': userLatestVersion,
+      'userIosStoreUrl': userIosStoreUrl,
+      'userAndroidStoreUrl': userAndroidStoreUrl,
     };
   }
 

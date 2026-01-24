@@ -5,6 +5,7 @@ import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/owner_settings_provider.dart';
 import '../services/push_notification_service.dart';
+import '../widgets/app_update_gate.dart';
 import 'home_view.dart';
 import 'analytics/analytics_view.dart';
 import 'qr/qr_scanner_view.dart';
@@ -166,6 +167,12 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
 
   @override
   Widget build(BuildContext context) {
+    return AppUpdateGate(
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final maintenanceGate = _buildMaintenanceGate(context, ref);
     if (maintenanceGate != null) {
       return maintenanceGate;

@@ -17,6 +17,14 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   final _friendCampaignPointsController = TextEditingController();
   final _storeCampaignPointsController = TextEditingController();
   final _basePointReturnRateController = TextEditingController();
+  final _minRequiredVersionController = TextEditingController();
+  final _latestVersionController = TextEditingController();
+  final _iosStoreUrlController = TextEditingController();
+  final _androidStoreUrlController = TextEditingController();
+  final _userMinRequiredVersionController = TextEditingController();
+  final _userLatestVersionController = TextEditingController();
+  final _userIosStoreUrlController = TextEditingController();
+  final _userAndroidStoreUrlController = TextEditingController();
   final List<_LevelRateRangeControllers> _levelRateRanges = [];
   final List<_LevelRateRangeControllers> _pendingDisposals = [];
   DateTime? _friendCampaignStartDate;
@@ -36,6 +44,14 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     _friendCampaignPointsController.dispose();
     _storeCampaignPointsController.dispose();
     _basePointReturnRateController.dispose();
+    _minRequiredVersionController.dispose();
+    _latestVersionController.dispose();
+    _iosStoreUrlController.dispose();
+    _androidStoreUrlController.dispose();
+    _userMinRequiredVersionController.dispose();
+    _userLatestVersionController.dispose();
+    _userIosStoreUrlController.dispose();
+    _userAndroidStoreUrlController.dispose();
     _clearLevelRateRanges(deferDispose: false);
     _disposePendingRanges();
     super.dispose();
@@ -265,6 +281,100 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'アプリアップデート（店舗用）',
+                  subtitle: '古いバージョンをブロックする最小バージョンを設定します',
+                  icon: Icons.system_update,
+                  children: [
+                    CustomTextField(
+                      controller: _minRequiredVersionController,
+                      labelText: '必須バージョン',
+                      hintText: '例: 1.2.0',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _latestVersionController,
+                      labelText: '最新バージョン（表示用）',
+                      hintText: '例: 1.3.0',
+                      prefixIcon: const Icon(Icons.new_releases_outlined),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _iosStoreUrlController,
+                      labelText: 'App Store URL',
+                      hintText: 'https://apps.apple.com/...',
+                      prefixIcon: const Icon(Icons.phone_iphone),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _androidStoreUrlController,
+                      labelText: 'Google Play URL',
+                      hintText: 'https://play.google.com/...',
+                      prefixIcon: const Icon(Icons.android),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'アプリアップデート（ユーザー用）',
+                  subtitle: 'ユーザーアプリの強制アップデートを設定します',
+                  icon: Icons.system_update_alt,
+                  children: [
+                    CustomTextField(
+                      controller: _userMinRequiredVersionController,
+                      labelText: '必須バージョン',
+                      hintText: '例: 1.2.0',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _userLatestVersionController,
+                      labelText: '最新バージョン（表示用）',
+                      hintText: '例: 1.3.0',
+                      prefixIcon: const Icon(Icons.new_releases_outlined),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _userIosStoreUrlController,
+                      labelText: 'App Store URL',
+                      hintText: 'https://apps.apple.com/...',
+                      prefixIcon: const Icon(Icons.phone_iphone),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _userAndroidStoreUrlController,
+                      labelText: 'Google Play URL',
+                      hintText: 'https://play.google.com/...',
+                      prefixIcon: const Icon(Icons.android),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 CustomButton(
                   text: '設定を保存',
@@ -307,6 +417,14 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           _friendCampaignPointsController.text = '';
           _storeCampaignPointsController.text = '';
           _basePointReturnRateController.text = '';
+          _minRequiredVersionController.text = '';
+          _latestVersionController.text = '';
+          _iosStoreUrlController.text = '';
+          _androidStoreUrlController.text = '';
+          _userMinRequiredVersionController.text = '';
+          _userLatestVersionController.text = '';
+          _userIosStoreUrlController.text = '';
+          _userAndroidStoreUrlController.text = '';
           _setLevelRateRanges(null);
           _hasInitialized = true;
         });
@@ -336,6 +454,15 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         _maintenanceEndDate = settings.maintenanceEndDate;
         _maintenanceStartTime = settings.maintenanceStartTime;
         _maintenanceEndTime = settings.maintenanceEndTime;
+        _minRequiredVersionController.text = settings.minRequiredVersion ?? '';
+        _latestVersionController.text = settings.latestVersion ?? '';
+        _iosStoreUrlController.text = settings.iosStoreUrl ?? '';
+        _androidStoreUrlController.text = settings.androidStoreUrl ?? '';
+        _userMinRequiredVersionController.text =
+            settings.userMinRequiredVersion ?? '';
+        _userLatestVersionController.text = settings.userLatestVersion ?? '';
+        _userIosStoreUrlController.text = settings.userIosStoreUrl ?? '';
+        _userAndroidStoreUrlController.text = settings.userAndroidStoreUrl ?? '';
         _hasInitialized = true;
       });
     });
@@ -434,6 +561,76 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     if (storePointsText.isNotEmpty && storePoints == null) {
       return;
     }
+    final minRequiredVersion = _parseVersion(
+      _minRequiredVersionController.text.trim(),
+      context,
+      '必須バージョン',
+    );
+    if (_minRequiredVersionController.text.trim().isNotEmpty &&
+        minRequiredVersion == null) {
+      return;
+    }
+    final latestVersion = _parseVersion(
+      _latestVersionController.text.trim(),
+      context,
+      '最新バージョン',
+    );
+    if (_latestVersionController.text.trim().isNotEmpty && latestVersion == null) {
+      return;
+    }
+    final iosStoreUrl = _parseUrl(
+      _iosStoreUrlController.text.trim(),
+      context,
+      'App Store URL',
+    );
+    if (_iosStoreUrlController.text.trim().isNotEmpty && iosStoreUrl == null) {
+      return;
+    }
+    final androidStoreUrl = _parseUrl(
+      _androidStoreUrlController.text.trim(),
+      context,
+      'Google Play URL',
+    );
+    if (_androidStoreUrlController.text.trim().isNotEmpty &&
+        androidStoreUrl == null) {
+      return;
+    }
+    final userMinRequiredVersion = _parseVersion(
+      _userMinRequiredVersionController.text.trim(),
+      context,
+      'ユーザー用必須バージョン',
+    );
+    if (_userMinRequiredVersionController.text.trim().isNotEmpty &&
+        userMinRequiredVersion == null) {
+      return;
+    }
+    final userLatestVersion = _parseVersion(
+      _userLatestVersionController.text.trim(),
+      context,
+      'ユーザー用最新バージョン',
+    );
+    if (_userLatestVersionController.text.trim().isNotEmpty &&
+        userLatestVersion == null) {
+      return;
+    }
+    final userIosStoreUrl = _parseUrl(
+      _userIosStoreUrlController.text.trim(),
+      context,
+      'ユーザー用App Store URL',
+    );
+    if (_userIosStoreUrlController.text.trim().isNotEmpty &&
+        userIosStoreUrl == null) {
+      return;
+    }
+    final userAndroidStoreUrl = _parseUrl(
+      _userAndroidStoreUrlController.text.trim(),
+      context,
+      'ユーザー用Google Play URL',
+    );
+    if (_userAndroidStoreUrlController.text.trim().isNotEmpty &&
+        userAndroidStoreUrl == null) {
+      return;
+    }
 
     setState(() {
       _isSaving = true;
@@ -454,6 +651,14 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         maintenanceEndDate: _maintenanceEndDate,
         maintenanceStartTime: _maintenanceStartTime,
         maintenanceEndTime: _maintenanceEndTime,
+        minRequiredVersion: minRequiredVersion,
+        latestVersion: latestVersion,
+        iosStoreUrl: iosStoreUrl,
+        androidStoreUrl: androidStoreUrl,
+        userMinRequiredVersion: userMinRequiredVersion,
+        userLatestVersion: userLatestVersion,
+        userIosStoreUrl: userIosStoreUrl,
+        userAndroidStoreUrl: userAndroidStoreUrl,
       );
 
       final service = ref.read(ownerSettingsServiceProvider);
@@ -593,6 +798,37 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       return null;
     }
     return parsed;
+  }
+
+  String? _parseVersion(String value, BuildContext context, String label) {
+    if (value.isEmpty) {
+      return null;
+    }
+    final normalized = value.split('+').first.trim();
+    final parts = normalized.split('.');
+    if (parts.length < 2) {
+      _showSnackBar(context, '$labelは「1.2.3」の形式で入力してください');
+      return null;
+    }
+    for (final part in parts) {
+      if (int.tryParse(part) == null) {
+        _showSnackBar(context, '$labelは数字とドットのみで入力してください');
+        return null;
+      }
+    }
+    return value;
+  }
+
+  String? _parseUrl(String value, BuildContext context, String label) {
+    if (value.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      _showSnackBar(context, '$labelが正しくありません');
+      return null;
+    }
+    return value;
   }
 
   void _showSnackBar(BuildContext context, String message, {bool isSuccess = false}) {
