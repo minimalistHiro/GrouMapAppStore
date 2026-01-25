@@ -300,10 +300,17 @@ class AnalyticsView extends ConsumerWidget {
                     data: (monthlyStats) {
                       final pointsIssued = monthlyStats['monthlyPointsIssued'] ?? 0;
                       final pointsUsed = monthlyStats['monthlyPointsUsed'] ?? 0;
+                      final specialPointsUsed = monthlyStats['monthlySpecialPointsUsed'] ?? 0;
 
                       return _buildStatsGrid([
                         {'label': '月間ポイント付与数', 'value': '$pointsIssued', 'icon': Icons.add_circle_outline, 'color': Colors.green},
-                        {'label': '月間ポイント利用数', 'value': '$pointsUsed', 'icon': Icons.remove_circle_outline, 'color': Colors.orange},
+                        {
+                          'label': '月間ポイント利用数',
+                          'value': '$pointsUsed',
+                          'subValue': '特別ポイント: $specialPointsUsed',
+                          'icon': Icons.remove_circle_outline,
+                          'color': Colors.orange,
+                        },
                       ]);
                     },
                     loading: () => _buildStatsGridPlaceholder(count: 2),
@@ -333,6 +340,7 @@ class AnalyticsView extends ConsumerWidget {
       itemCount: stats.length,
       itemBuilder: (context, index) {
         final stat = stats[index];
+        final subValue = stat['subValue'] as String?;
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -372,6 +380,17 @@ class AnalyticsView extends ConsumerWidget {
                   color: stat['color'] as Color,
                 ),
               ),
+              if (subValue != null && subValue.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subValue,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
           ),
         );

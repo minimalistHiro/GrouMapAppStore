@@ -70,22 +70,25 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
 
   Future<void> _loadUserPoints() async {
     try {
-      final balanceDoc = await FirebaseFirestore.instance
-          .collection('user_point_balances')
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
           .doc(widget.userId)
           .get();
 
       int availablePoints = 0;
-      if (balanceDoc.exists) {
-        final data = balanceDoc.data() ?? {};
-        availablePoints = _parseInt(data['availablePoints']);
+      if (userDoc.exists) {
+        final data = userDoc.data() ?? {};
+        final points = _parseInt(data['points']);
+        final specialPoints = _parseInt(data['specialPoints']);
+        availablePoints = points + specialPoints;
       } else {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
+        final balanceDoc = await FirebaseFirestore.instance
+            .collection('user_point_balances')
             .doc(widget.userId)
             .get();
-        if (userDoc.exists) {
-          availablePoints = _parseInt(userDoc.data()?['points']);
+        if (balanceDoc.exists) {
+          final data = balanceDoc.data() ?? {};
+          availablePoints = _parseInt(data['availablePoints']);
         }
       }
 
@@ -305,31 +308,36 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         .doc(todayStr);
 
     await firestore.runTransaction((txn) async {
-      final balanceSnap = await txn.get(balanceRef);
       final userSnap = await txn.get(userRef);
       if (!userSnap.exists) {
         throw Exception('ユーザー情報が見つかりません');
       }
+      final balanceSnap = await txn.get(balanceRef);
 
-      int availablePoints = 0;
+      final userData = userSnap.data() ?? {};
+      final currentPoints = _parseInt(userData['points']);
+      final currentSpecialPoints = _parseInt(userData['specialPoints']);
+      final availablePoints = currentPoints + currentSpecialPoints;
+
       int usedPoints = 0;
-      int totalPoints = 0;
-
+      int totalPoints = availablePoints;
       if (balanceSnap.exists) {
         final data = balanceSnap.data() ?? {};
-        availablePoints = _parseInt(data['availablePoints']);
         usedPoints = _parseInt(data['usedPoints']);
         totalPoints = _parseInt(data['totalPoints']);
-      } else {
-        final userData = userSnap.data() ?? {};
-        availablePoints = _parseInt(userData['points']);
-        totalPoints = availablePoints;
-        usedPoints = 0;
+        if (totalPoints == 0) {
+          totalPoints = availablePoints;
+        }
       }
 
       if (availablePoints < pointsToUse) {
         throw Exception('ポイントが不足しています');
       }
+
+      final useSpecial = currentSpecialPoints >= pointsToUse
+          ? pointsToUse
+          : currentSpecialPoints;
+      final useNormal = pointsToUse - useSpecial;
 
       txn.set(
         balanceRef,
@@ -344,11 +352,17 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         SetOptions(merge: true),
       );
 
-      txn.update(userRef, {
-        'points': FieldValue.increment(-pointsToUse),
+      final Map<String, dynamic> userUpdates = {
         'lastUpdated': FieldValue.serverTimestamp(),
         'lastUpdatedByStoreId': storeId,
-      });
+      };
+      if (useSpecial > 0) {
+        userUpdates['specialPoints'] = FieldValue.increment(-useSpecial);
+      }
+      if (useNormal > 0) {
+        userUpdates['points'] = FieldValue.increment(-useNormal);
+      }
+      txn.update(userRef, userUpdates);
 
       txn.set(transactionRef, {
         'transactionId': transactionId,
@@ -362,6 +376,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         'createdAt': now,
         'updatedAt': now,
         'description': 'ポイント支払い',
+        'usedSpecialPoints': useSpecial,
+        'usedNormalPoints': useNormal,
+        'totalUsedPoints': pointsToUse,
       });
 
       txn.set(storeTransactionRef, {
@@ -377,6 +394,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         'source': 'point_usage',
         'createdAt': FieldValue.serverTimestamp(),
         'createdAtClient': now,
+        'usedSpecialPoints': useSpecial,
+        'usedNormalPoints': useNormal,
+        'totalUsedPoints': pointsToUse,
       });
 
       txn.set(

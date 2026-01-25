@@ -398,8 +398,11 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
   }
 
   Widget _buildPointUsedCard(Map<String, dynamic> point) {
-    final amount = point['amount'] ?? 0;
-    final usedAmount = amount; // 正の値のまま使用
+    final amount = _parseInt(point['amount']);
+    final usedAmount = amount.abs();
+    final usedNormal = _parseInt(point['usedNormalPoints']);
+    final usedSpecial = _parseInt(point['usedSpecialPoints']);
+    final hasBreakdown = usedNormal > 0 || usedSpecial > 0;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -457,6 +460,16 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
                       color: Colors.grey,
                     ),
                   ),
+                  if (hasBreakdown) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '内訳: 普通 ${usedNormal}pt / 特別 ${usedSpecial}pt',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 2),
                   Text(
                     _formatDateTime(point['createdAt']),
@@ -524,5 +537,12 @@ class _PointsHistoryViewState extends ConsumerState<PointsHistoryView>
       print('日時フォーマットエラー: $e, timestamp: $timestamp');
       return '日時不明';
     }
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

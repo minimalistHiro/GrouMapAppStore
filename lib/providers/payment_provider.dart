@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/point_balance_sync.dart';
 
 class PaymentProvider extends StateNotifier<PaymentState> {
   PaymentProvider() : super(const PaymentState());
@@ -77,6 +78,11 @@ class PaymentProvider extends StateNotifier<PaymentState> {
           'points': FieldValue.increment(pointsToAward),
           'lastUpdated': FieldValue.serverTimestamp(),
         });
+        await syncUserPointBalanceFromUserDoc(
+          firestore: FirebaseFirestore.instance,
+          userId: userId,
+          storeId: storeId,
+        );
       }
 
       // ポイント履歴を記録

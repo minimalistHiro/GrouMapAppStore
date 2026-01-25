@@ -46,9 +46,13 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
         final userData = userDoc.data() ?? {};
         final displayName = _resolveDisplayName(userData);
         final profileImageUrl = _resolveProfileImageUrl(userData);
+        final points = _parsePointsOrNull(userData['points']) ?? 0;
+        final specialPoints = _parsePointsOrNull(userData['specialPoints']) ?? 0;
+        final availablePoints = points + specialPoints;
         setState(() {
           _actualUserName = displayName;
           _profileImageUrl = profileImageUrl;
+          _availablePoints = availablePoints;
           _isLoadingUserInfo = false;
         });
         await _maybeSkipIfNoPoints(userData, displayName);
@@ -200,14 +204,18 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
     if (_skipTriggered) return;
     int? availablePoints;
     try {
-      final balanceDoc = await FirebaseFirestore.instance
-          .collection('user_point_balances')
-          .doc(widget.userId)
-          .get();
-      final data = balanceDoc.data() ?? {};
-      final balancePoints = _parsePointsOrNull(data['availablePoints']);
-      final userPoints = _parsePointsOrNull(userData['points']);
-      availablePoints = _resolveAvailablePoints(balancePoints, userPoints);
+      final userPoints = _parsePointsOrNull(userData['points']) ?? 0;
+      final specialPoints = _parsePointsOrNull(userData['specialPoints']) ?? 0;
+      availablePoints = userPoints + specialPoints;
+      if (availablePoints == 0) {
+        final balanceDoc = await FirebaseFirestore.instance
+            .collection('user_point_balances')
+            .doc(widget.userId)
+            .get();
+        final data = balanceDoc.data() ?? {};
+        final balancePoints = _parsePointsOrNull(data['availablePoints']) ?? 0;
+        availablePoints = balancePoints;
+      }
 
       if (availablePoints == null) {
         if (mounted) {
@@ -251,15 +259,6 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
       return parsed;
     }
     return null;
-  }
-
-  int? _resolveAvailablePoints(int? balancePoints, int? userPoints) {
-    if (balancePoints == null && userPoints == null) {
-      return null;
-    }
-    if (balancePoints == null) return userPoints;
-    if (userPoints == null) return balancePoints;
-    return balancePoints > userPoints ? balancePoints : userPoints;
   }
 
   @override

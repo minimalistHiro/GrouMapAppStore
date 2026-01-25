@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/point_balance_sync.dart';
 
 class PointProvider extends StateNotifier<PointState> {
   PointProvider() : super(const PointState());
@@ -36,6 +37,11 @@ class PointProvider extends StateNotifier<PointState> {
         'points': newPoints,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
+      await syncUserPointBalanceFromUserDoc(
+        firestore: FirebaseFirestore.instance,
+        userId: userId,
+        storeId: storeId,
+      );
 
       // ポイント履歴を記録
       await _recordPointHistory(

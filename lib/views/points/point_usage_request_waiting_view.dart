@@ -199,31 +199,36 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
         .doc(todayStr);
 
     await firestore.runTransaction((txn) async {
-      final balanceSnap = await txn.get(balanceRef);
       final userSnap = await txn.get(userRef);
       if (!userSnap.exists) {
         throw Exception('ユーザー情報が見つかりません');
       }
+      final balanceSnap = await txn.get(balanceRef);
 
-      int availablePoints = 0;
+      final userData = userSnap.data() ?? {};
+      final currentPoints = _parseInt(userData['points']);
+      final currentSpecialPoints = _parseInt(userData['specialPoints']);
+      final availablePoints = currentPoints + currentSpecialPoints;
+
       int usedPoints = 0;
-      int totalPoints = 0;
-
+      int totalPoints = availablePoints;
       if (balanceSnap.exists) {
         final data = balanceSnap.data() ?? {};
-        availablePoints = _parseInt(data['availablePoints']);
         usedPoints = _parseInt(data['usedPoints']);
         totalPoints = _parseInt(data['totalPoints']);
-      } else {
-        final userData = userSnap.data() ?? {};
-        availablePoints = _parseInt(userData['points']);
-        totalPoints = availablePoints;
-        usedPoints = 0;
+        if (totalPoints == 0) {
+          totalPoints = availablePoints;
+        }
       }
 
       if (availablePoints < pointsToUse) {
         throw Exception('ポイントが不足しています');
       }
+
+      final useSpecial = currentSpecialPoints >= pointsToUse
+          ? pointsToUse
+          : currentSpecialPoints;
+      final useNormal = pointsToUse - useSpecial;
 
       txn.set(
         balanceRef,
@@ -238,11 +243,17 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
         SetOptions(merge: true),
       );
 
-      txn.update(userRef, {
-        'points': FieldValue.increment(-pointsToUse),
+      final Map<String, dynamic> userUpdates = {
         'lastUpdated': FieldValue.serverTimestamp(),
         'lastUpdatedByStoreId': storeId,
-      });
+      };
+      if (useSpecial > 0) {
+        userUpdates['specialPoints'] = FieldValue.increment(-useSpecial);
+      }
+      if (useNormal > 0) {
+        userUpdates['points'] = FieldValue.increment(-useNormal);
+      }
+      txn.update(userRef, userUpdates);
 
       txn.set(transactionRef, {
         'transactionId': transactionId,
@@ -256,6 +267,9 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
         'createdAt': now,
         'updatedAt': now,
         'description': 'ポイント支払い',
+        'usedSpecialPoints': useSpecial,
+        'usedNormalPoints': useNormal,
+        'totalUsedPoints': pointsToUse,
       });
 
       txn.set(storeTransactionRef, {
@@ -271,6 +285,9 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
         'source': 'point_usage',
         'createdAt': FieldValue.serverTimestamp(),
         'createdAtClient': now,
+        'usedSpecialPoints': useSpecial,
+        'usedNormalPoints': useNormal,
+        'totalUsedPoints': pointsToUse,
       });
 
       txn.set(

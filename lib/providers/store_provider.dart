@@ -1019,6 +1019,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
       int visitorCount = 0;
       int monthlyPointsIssued = 0;
       int monthlyPointsUsed = 0;
+      int monthlySpecialPointsUsed = 0;
       for (final doc in dailySnapshot.docs) {
         final data = doc.data();
         totalSales += (data['totalSales'] as num?)?.toInt() ?? 0;
@@ -1049,6 +1050,19 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
           ? (repeatUsers / uniqueUsers.length * 100).toInt()
           : 0;
 
+      final useTransactionsSnapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .collection('transactions')
+          .where('type', isEqualTo: 'use')
+          .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('createdAt', isLessThanOrEqualTo: now)
+          .get();
+      for (final doc in useTransactionsSnapshot.docs) {
+        final data = doc.data();
+        monthlySpecialPointsUsed += (data['usedSpecialPoints'] as num?)?.toInt() ?? 0;
+      }
+
       final newCustomersSnapshot = await FirebaseFirestore.instance
           .collection('store_users')
           .doc(storeId)
@@ -1070,6 +1084,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
         'repeatRate': repeatRate,
         'monthlyPointsIssued': monthlyPointsIssued,
         'monthlyPointsUsed': monthlyPointsUsed,
+        'monthlySpecialPointsUsed': monthlySpecialPointsUsed,
       };
     }).handleError((error) {
       debugPrint('Error fetching monthly stats: $error');
@@ -1081,6 +1096,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
         'repeatRate': 0,
         'monthlyPointsIssued': 0,
         'monthlyPointsUsed': 0,
+        'monthlySpecialPointsUsed': 0,
       };
     });
   } catch (e) {
@@ -1093,6 +1109,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
       'repeatRate': 0,
       'monthlyPointsIssued': 0,
       'monthlyPointsUsed': 0,
+      'monthlySpecialPointsUsed': 0,
     });
   }
 });

@@ -9,9 +9,24 @@ service cloud.firestore {
       return isSignedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isOwner == true;
     }
+
+    function isStoreUser(storeId) {
+      return isOwner() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.currentStoreId == storeId;
+    }
+
+    function canOwnerUpdateUser() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly(['points', 'specialPoints', 'lastUpdated', 'lastUpdatedByStoreId']);
+    }
     // ユーザーコレクション
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if (request.auth != null && request.auth.uid == userId) ||
+        (isOwner() && canOwnerUpdateUser());
     }
 
     // オーナー設定コレクション
@@ -26,6 +41,22 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         (request.auth.uid == resource.data.createdBy || 
          request.auth.token.role in ['admin', 'company']);
+    }
+
+    match /stores/{storeId}/transactions/{transactionId} {
+      allow read: if request.auth != null;
+      allow write: if isStoreUser(storeId);
+    }
+
+    match /user_point_balances/{userId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isOwner());
+      allow write: if isOwner();
+    }
+
+    match /store_stats/{storeId}/daily/{date} {
+      allow read: if request.auth != null;
+      allow write: if isStoreUser(storeId);
     }
     
     // バッジコレクション

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/point_request_model.dart';
+import '../utils/point_balance_sync.dart';
 
 // ポイント付与リクエストのプロバイダー
 final pointRequestProvider = StateNotifierProvider<PointRequestNotifier, void>((ref) {
@@ -308,6 +309,11 @@ class PointRequestNotifier extends StateNotifier<void> {
       });
 
       await _recordAwardTransaction(request, approverId: user.uid);
+      await syncUserPointBalanceFromUserDoc(
+        firestore: _firestore,
+        userId: userId,
+        storeId: storeId,
+      );
 
       debugPrint('店舗側でポイント付与を承認しました: ${request.id}');
       return true;
