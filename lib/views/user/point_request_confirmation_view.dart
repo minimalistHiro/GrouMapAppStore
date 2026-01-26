@@ -28,17 +28,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
         title: const Text('ポイント付与承認'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (_) => const MainNavigationView(initialIndex: 2),
-              ),
-              (route) => false,
-            );
-          },
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: ref.watch(pointRequestStatusProvider(widget.requestId)).when(
         loading: () => const Center(child: CircularProgressIndicator()),

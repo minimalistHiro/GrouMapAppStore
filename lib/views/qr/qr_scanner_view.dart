@@ -273,30 +273,6 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
               autofocus: true,
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
-            // テスト用QRトークン生成ボタン
-            Container(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  final testToken = _generateTestToken();
-                  _manualInputController.text = testToken;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('テスト用QRトークンを生成しました'),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.auto_awesome, size: 16),
-                label: const Text('テスト用QRトークンを生成'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF6B35),
-                  side: const BorderSide(color: Color(0xFFFF6B35)),
-                ),
-              ),
-            ),
           ],
         ),
         actions: [

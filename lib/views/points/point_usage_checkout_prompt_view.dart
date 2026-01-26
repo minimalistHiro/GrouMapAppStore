@@ -41,14 +41,9 @@ class PointUsageCheckoutPromptView extends StatelessWidget {
                 children: [
                   const Icon(Icons.point_of_sale, size: 48, color: Color(0xFFFF6B35)),
                   const SizedBox(height: 12),
-                  Text(
-                    userName.isEmpty ? 'お客様' : userName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
                   const Text(
-                    '店舗の専用レジでお会計を済ませてください。',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    '店舗専用レジで\nお会計を済ませてください。',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -65,7 +60,7 @@ class PointUsageCheckoutPromptView extends StatelessWidget {
               height: 52,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pushReplacement(
+                  Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => StorePaymentView(
                         userId: userId,
