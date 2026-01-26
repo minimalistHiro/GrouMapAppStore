@@ -60,7 +60,7 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
       .collection('point_requests')
       .doc(storeId)
       .collection(userId)
-      .doc('request')
+      .doc('award_request')
       .snapshots()
       .map((snapshot) {
     if (snapshot.exists) {
@@ -150,7 +150,7 @@ class PointRequestNotifier extends StateNotifier<void> {
           .collection('point_requests')
           .doc(storeId)
           .collection(userId)
-          .doc('request');
+          .doc('award_request');
       
       print('Firestore参照パス: ${docRef.path}');
       
@@ -170,6 +170,7 @@ class PointRequestNotifier extends StateNotifier<void> {
       print('PointRequestオブジェクト作成完了');
       final jsonData = newRequest.toJson();
       jsonData['usedPoints'] = usedPoints;
+      jsonData['requestType'] = 'award';
       print('JSON変換結果: $jsonData');
       
       // Firebase Consoleの実際のデータ構造に合わせて文字列のまま保存
@@ -242,7 +243,7 @@ class PointRequestNotifier extends StateNotifier<void> {
           .collection('point_requests')
           .doc(storeId)
           .collection(userId)
-          .doc('request')
+          .doc('award_request')
           .update(updateData);
       
       print('ポイント付与リクエストの状態を更新しました: $requestId -> ${status.value}');
@@ -280,7 +281,7 @@ class PointRequestNotifier extends StateNotifier<void> {
           .collection('point_requests')
           .doc(storeId)
           .collection(userId)
-          .doc('request');
+          .doc('award_request');
       final userRef = _firestore.collection('users').doc(userId);
 
       await _firestore.runTransaction((txn) async {

@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../widgets/custom_button.dart';
-import '../payment/store_payment_view.dart';
+import 'point_usage_checkout_prompt_view.dart';
 
 class PointUsageInputView extends ConsumerStatefulWidget {
   final String userId;
@@ -231,12 +231,15 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
         throw Exception('店舗IDが取得できません');
       }
 
-      await _usePoints(storeId: storeId, pointsToUse: pointsToUse);
+      await _usePoints(
+        storeId: storeId,
+        pointsToUse: pointsToUse,
+      );
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => StorePaymentView(
+          builder: (_) => PointUsageCheckoutPromptView(
             userId: widget.userId,
             userName: _actualUserName,
             usedPoints: pointsToUse,
@@ -614,7 +617,7 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
           ),
           const SizedBox(height: 16),
           CustomButton(
-            text: '${_amount}ポイント利用する',
+            text: '確定',
             onPressed: _isProcessing ? null : _onNextPressed,
             isLoading: _isProcessing,
           ),

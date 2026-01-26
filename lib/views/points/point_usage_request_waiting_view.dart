@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../payment/store_payment_view.dart';
+import 'point_usage_input_view.dart';
 
 class PointUsageRequestWaitingView extends ConsumerStatefulWidget {
   final String userId;
@@ -20,7 +21,7 @@ class PointUsageRequestWaitingView extends ConsumerStatefulWidget {
 }
 
 class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequestWaitingView> {
-  bool _isProcessing = false;
+  bool _isUpdating = false;
   bool _didNavigate = false;
 
   @override
@@ -29,12 +30,12 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
         .collection('point_requests')
         .doc(widget.storeId)
         .collection(widget.userId)
-        .doc('request');
+        .doc('usage_request');
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('ポイント入力待ち'),
+        title: const Text('お客様の承認待ち'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
       ),
@@ -52,28 +53,38 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
           final data = snapshot.data!.data() ?? const <String, dynamic>{};
           final status = (data['status'] ?? '').toString();
           final usedPoints = _parseInt(data['usedPoints']);
+          final isExpired = status == 'usage_expired' || _isExpired(data);
 
-          if (!_didNavigate && !_isProcessing && status == 'usage_input_done') {
-            _isProcessing = true;
+          if (status == 'usage_pending_user_approval' && isExpired && !_isUpdating) {
+            _isUpdating = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _applyUsageAndNavigate(usedPoints);
+              _markExpired();
             });
           }
 
-          if (!_didNavigate && status == 'usage_input_cancelled') {
-            _didNavigate = true;
+          if (!_didNavigate && status == 'usage_approved') {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _navigateToPayment(usedPoints);
+            });
+          }
+
+          if (!_didNavigate && (status == 'usage_rejected' || status == 'usage_cancelled')) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _navigateToPayment(0);
             });
           }
 
-          return _buildWaitingContent();
+          return _buildWaitingContent(status, isExpired);
         },
       ),
     );
   }
 
-  Widget _buildWaitingContent() {
+  Widget _buildWaitingContent(String status, bool isExpired) {
+    final isWaiting = status == 'usage_pending_user_approval' && !isExpired;
+    final isApproved = status == 'usage_approved';
+    final isRejected = status == 'usage_rejected' || status == 'usage_cancelled';
+    final canCancel = isWaiting;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -90,53 +101,73 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
               ],
             ),
             child: const Text(
-              'お客様がポイント利用額を入力中です',
+              'お客様の承認を待っています',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),
+          const SizedBox(height: 16),
+          if (!isWaiting && !isApproved)
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                isExpired
+                    ? '承認の有効期限が切れました。再送してください。'
+                    : isRejected
+                        ? '承認が拒否されました。ポイント利用なしで会計に進みます。'
+                        : '処理状態を確認してください。',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          const SizedBox(height: 16),
+          if (!isWaiting && (isExpired || isRejected))
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _navigateToInput,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6B35),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: const Text('再送する'),
+              ),
+            ),
+          if (isApproved)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                '承認されました。会計画面に移動します。',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFFFF6B35), fontWeight: FontWeight.bold),
+              ),
+            ),
+          if (canCancel) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: _cancelAndProceed,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF6B35),
+                  side: const BorderSide(color: Color(0xFFFF6B35)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: const Text('利用しないで会計へ'),
+              ),
+            ),
+          ],
           const Spacer(),
         ],
       ),
     );
-  }
-
-  Future<void> _applyUsageAndNavigate(int usedPoints) async {
-    if (_didNavigate) return;
-    if (usedPoints <= 0) {
-      _navigateToPayment(0);
-      return;
-    }
-
-    try {
-      await _usePoints(
-        storeId: widget.storeId,
-        pointsToUse: usedPoints,
-      );
-
-      await FirebaseFirestore.instance
-          .collection('point_requests')
-          .doc(widget.storeId)
-          .collection(widget.userId)
-          .doc('request')
-          .update({
-        'status': 'usage_processed',
-        'usageProcessedAt': FieldValue.serverTimestamp(),
-      });
-
-      _navigateToPayment(usedPoints);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isProcessing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ポイント利用の反映に失敗しました: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   void _navigateToPayment(int usedPoints) {
@@ -154,154 +185,94 @@ class _PointUsageRequestWaitingViewState extends ConsumerState<PointUsageRequest
     );
   }
 
-  Future<void> _skipPointUsage() async {
+  Future<void> _cancelAndProceed() async {
     try {
-      await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instance;
+      final requestRef = firestore
           .collection('point_requests')
           .doc(widget.storeId)
           .collection(widget.userId)
-          .doc('request')
-          .update({
-        'status': 'usage_input_cancelled',
-        'usageCancelledAt': FieldValue.serverTimestamp(),
+          .doc('usage_request');
+      int? approvedPoints;
+      await firestore.runTransaction((txn) async {
+        final snapshot = await txn.get(requestRef);
+        final data = snapshot.data() ?? {};
+        final status = (data['status'] ?? '').toString();
+        if (status == 'usage_approved') {
+          approvedPoints = _parseInt(data['usedPoints']);
+          return;
+        }
+        if (status != 'usage_pending_user_approval') {
+          return;
+        }
+        txn.update(requestRef, {
+          'status': 'usage_cancelled',
+          'usageCancelledAt': FieldValue.serverTimestamp(),
+        });
       });
+      if (approvedPoints != null) {
+        _navigateToPayment(approvedPoints!);
+        return;
+      }
     } catch (_) {}
 
     _navigateToPayment(0);
   }
 
-  Future<void> _usePoints({
-    required String storeId,
-    required int pointsToUse,
-  }) async {
-    final firestore = FirebaseFirestore.instance;
-    final now = DateTime.now();
-    final transactionId = firestore.collection('point_transactions').doc().id;
-    final balanceRef = firestore.collection('user_point_balances').doc(widget.userId);
-    final userRef = firestore.collection('users').doc(widget.userId);
-    final transactionRef = firestore
-        .collection('point_transactions')
-        .doc(storeId)
-        .collection(widget.userId)
-        .doc(transactionId);
-    final storeTransactionRef = firestore
-        .collection('stores')
-        .doc(storeId)
-        .collection('transactions')
-        .doc(transactionId);
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    final storeStatsRef = firestore
-        .collection('store_stats')
-        .doc(storeId)
-        .collection('daily')
-        .doc(todayStr);
-
-    await firestore.runTransaction((txn) async {
-      final userSnap = await txn.get(userRef);
-      if (!userSnap.exists) {
-        throw Exception('ユーザー情報が見つかりません');
-      }
-      final balanceSnap = await txn.get(balanceRef);
-
-      final userData = userSnap.data() ?? {};
-      final currentPoints = _parseInt(userData['points']);
-      final currentSpecialPoints = _parseInt(userData['specialPoints']);
-      final availablePoints = currentPoints + currentSpecialPoints;
-
-      int usedPoints = 0;
-      int totalPoints = availablePoints;
-      if (balanceSnap.exists) {
-        final data = balanceSnap.data() ?? {};
-        usedPoints = _parseInt(data['usedPoints']);
-        totalPoints = _parseInt(data['totalPoints']);
-        if (totalPoints == 0) {
-          totalPoints = availablePoints;
+  Future<void> _markExpired() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final requestRef = firestore
+          .collection('point_requests')
+          .doc(widget.storeId)
+          .collection(widget.userId)
+          .doc('usage_request');
+      await firestore.runTransaction((txn) async {
+        final snapshot = await txn.get(requestRef);
+        final data = snapshot.data() ?? {};
+        final status = (data['status'] ?? '').toString();
+        if (status != 'usage_pending_user_approval') {
+          return;
         }
-      }
-
-      if (availablePoints < pointsToUse) {
-        throw Exception('ポイントが不足しています');
-      }
-
-      final useSpecial = currentSpecialPoints >= pointsToUse
-          ? pointsToUse
-          : currentSpecialPoints;
-      final useNormal = pointsToUse - useSpecial;
-
-      txn.set(
-        balanceRef,
-        {
-          'userId': widget.userId,
-          'totalPoints': totalPoints,
-          'availablePoints': availablePoints - pointsToUse,
-          'usedPoints': usedPoints + pointsToUse,
-          'lastUpdated': now,
-          'lastUpdatedByStoreId': storeId,
-        },
-        SetOptions(merge: true),
-      );
-
-      final Map<String, dynamic> userUpdates = {
-        'lastUpdated': FieldValue.serverTimestamp(),
-        'lastUpdatedByStoreId': storeId,
-      };
-      if (useSpecial > 0) {
-        userUpdates['specialPoints'] = FieldValue.increment(-useSpecial);
-      }
-      if (useNormal > 0) {
-        userUpdates['points'] = FieldValue.increment(-useNormal);
-      }
-      txn.update(userRef, userUpdates);
-
-      txn.set(transactionRef, {
-        'transactionId': transactionId,
-        'userId': widget.userId,
-        'storeId': storeId,
-        'storeName': widget.storeName,
-        'amount': -pointsToUse,
-        'paymentAmount': null,
-        'status': 'completed',
-        'paymentMethod': 'points',
-        'createdAt': now,
-        'updatedAt': now,
-        'description': 'ポイント支払い',
-        'usedSpecialPoints': useSpecial,
-        'usedNormalPoints': useNormal,
-        'totalUsedPoints': pointsToUse,
+        txn.update(requestRef, {
+          'status': 'usage_expired',
+          'usageExpiredAt': FieldValue.serverTimestamp(),
+        });
       });
+    } catch (_) {
+      // ignore
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdating = false;
+        });
+      }
+    }
+  }
 
-      txn.set(storeTransactionRef, {
-        'transactionId': transactionId,
-        'storeId': storeId,
-        'storeName': widget.storeName,
-        'userId': widget.userId,
-        'type': 'use',
-        'amountYen': null,
-        'points': pointsToUse,
-        'paymentMethod': 'points',
-        'status': 'completed',
-        'source': 'point_usage',
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdAtClient': now,
-        'usedSpecialPoints': useSpecial,
-        'usedNormalPoints': useNormal,
-        'totalUsedPoints': pointsToUse,
-      });
+  bool _isExpired(Map<String, dynamic> data) {
+    final expiresAt = data['expiresAt'];
+    DateTime? expiresAtTime;
+    if (expiresAt is Timestamp) {
+      expiresAtTime = expiresAt.toDate();
+    }
+    if (expiresAtTime != null) {
+      return DateTime.now().isAfter(expiresAtTime);
+    }
+    final updatedAt = data['updatedAt'];
+    if (updatedAt is Timestamp) {
+      return DateTime.now().difference(updatedAt.toDate()).inMinutes >= 5;
+    }
+    return false;
+  }
 
-      txn.set(
-        storeStatsRef,
-        {
-          'date': todayStr,
-          'pointsUsed': FieldValue.increment(pointsToUse),
-          'totalTransactions': FieldValue.increment(1),
-          'visitorCount': FieldValue.increment(1),
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    });
+  void _navigateToInput() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => PointUsageInputView(userId: widget.userId),
+      ),
+    );
   }
 
   int _parseInt(dynamic value) {

@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../payment/store_payment_view.dart';
-import 'point_usage_request_waiting_view.dart';
-import '../../providers/qr_verification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
+import 'point_usage_input_view.dart';
 
 class PointUsageConfirmationView extends ConsumerStatefulWidget {
   final String userId;
@@ -95,7 +94,11 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   }
 
   void _navigateToPointUsage() {
-    _startUsageInputFlow();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PointUsageInputView(userId: widget.userId),
+      ),
+    );
   }
 
   void _skipPointUsage() {
@@ -108,93 +111,6 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
         ),
       ),
     );
-  }
-
-  Future<void> _startUsageInputFlow() async {
-    final requestInfo = await _createUsageInputRequest();
-    if (!mounted || requestInfo == null) return;
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PointUsageRequestWaitingView(
-          userId: widget.userId,
-          storeId: requestInfo['storeId'] as String,
-          storeName: requestInfo['storeName'] as String,
-        ),
-      ),
-    );
-  }
-
-  Future<Map<String, dynamic>?> _createUsageInputRequest() async {
-    try {
-      final storeId = await _resolveStoreId();
-      if (storeId == null || storeId.isEmpty) {
-        throw Exception('店舗情報が取得できません');
-      }
-
-      final storeDoc = await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(storeId)
-          .get();
-      final storeName = storeDoc.data()?['name'] as String? ?? '店舗名';
-
-      final requestRef = FirebaseFirestore.instance
-          .collection('point_requests')
-          .doc(storeId)
-          .collection(widget.userId)
-          .doc('request');
-
-      await requestRef.set({
-        'requestType': 'usage',
-        'status': 'usage_input_pending',
-        'userId': widget.userId,
-        'storeId': storeId,
-        'storeName': storeName,
-        'usedPoints': 0,
-        'description': 'ポイント利用入力リクエスト',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'usageInputNotified': false,
-      });
-
-      return {
-        'storeId': storeId,
-        'storeName': storeName,
-      };
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('ポイント利用リクエストの作成に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return null;
-    }
-  }
-
-  Future<String?> _resolveStoreId() async {
-    final storeSettings = ref.read(storeSettingsProvider);
-    if (storeSettings != null && storeSettings.storeId.isNotEmpty) {
-      return storeSettings.storeId;
-    }
-
-    final authState = ref.read(authStateProvider);
-    final storeUser = authState.value;
-    if (storeUser == null) return null;
-
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(storeUser.uid)
-        .get();
-    if (!userDoc.exists) return null;
-    final data = userDoc.data() ?? {};
-    final currentStoreId = data['currentStoreId'];
-    if (currentStoreId is String && currentStoreId.isNotEmpty) {
-      return currentStoreId;
-    }
-    return null;
   }
 
   Future<void> _maybeSkipIfNoPoints(
