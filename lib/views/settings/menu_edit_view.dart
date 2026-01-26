@@ -109,7 +109,6 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
           .collection('stores')
           .doc(_selectedStoreId)
           .collection('menu')
-          .orderBy('createdAt', descending: true)
           .get();
 
       final items = snapshot.docs.map((doc) => {
@@ -119,7 +118,7 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
 
       if (mounted) {
         setState(() {
-          _menuItems = items;
+          _menuItems = _sortMenuItems(items);
         });
       }
     } catch (e) {
@@ -240,6 +239,8 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
         imageUrl = await _uploadImage(_selectedImage!);
       }
 
+      final sortOrder = _resolveNextSortOrder();
+
       // メニューアイテムを保存
       final menuId = FirebaseFirestore.instance.collection('stores').doc().id;
       
@@ -256,6 +257,7 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
         'category': _selectedCategory,
         'imageUrl': imageUrl,
         'isAvailable': true,
+        'sortOrder': sortOrder,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -345,6 +347,59 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
         );
       }
     }
+  }
+
+  int _resolveNextSortOrder() {
+    int maxOrder = 0;
+    for (final item in _menuItems) {
+      final order = _parseSortOrder(item['sortOrder']);
+      if (order > maxOrder) {
+        maxOrder = order;
+      }
+    }
+    return maxOrder + 1;
+  }
+
+  int _parseSortOrder(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  int _parseCreatedAtMillis(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate().millisecondsSinceEpoch;
+    }
+    if (value is DateTime) {
+      return value.millisecondsSinceEpoch;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value)?.millisecondsSinceEpoch ?? 0;
+    }
+    return 0;
+  }
+
+  List<Map<String, dynamic>> _sortMenuItems(List<Map<String, dynamic>> items) {
+    final sorted = [...items];
+    sorted.sort((a, b) {
+      final aOrder = _parseSortOrder(a['sortOrder']);
+      final bOrder = _parseSortOrder(b['sortOrder']);
+      final aHasOrder = aOrder > 0;
+      final bHasOrder = bOrder > 0;
+
+      if (aHasOrder && bHasOrder) {
+        return aOrder.compareTo(bOrder);
+      }
+      if (aHasOrder != bHasOrder) {
+        return aHasOrder ? -1 : 1;
+      }
+
+      final aCreated = _parseCreatedAtMillis(a['createdAt']);
+      final bCreated = _parseCreatedAtMillis(b['createdAt']);
+      return bCreated.compareTo(aCreated);
+    });
+    return sorted;
   }
 
   @override
