@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/qr_verification_model.dart';
+import '../../widgets/common_header.dart';
 import '../points/point_usage_confirmation_view.dart';
 
 class QRScannerView extends ConsumerStatefulWidget {
@@ -41,11 +42,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('QRコードスキャン'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
-      ),
+      appBar: const CommonHeader(title: '読み取り'),
       body: _buildScannerContent(context),
     );
   }

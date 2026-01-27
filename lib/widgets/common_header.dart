@@ -1,0 +1,30 @@
+import 'package:flutter/material.dart';
+
+class CommonHeader extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  const CommonHeader({
+    super.key,
+    required this.title,
+    this.backgroundColor = const Color(0xFFFF6B35),
+    this.foregroundColor = Colors.white,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: Text(title),
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+}

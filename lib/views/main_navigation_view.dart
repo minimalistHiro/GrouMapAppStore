@@ -21,21 +21,43 @@ class MainNavigationView extends ConsumerStatefulWidget {
   ConsumerState<MainNavigationView> createState() => _MainNavigationViewState();
 }
 
+class _LoweredFabLocation extends FloatingActionButtonLocation {
+  final double offset;
+  const _LoweredFabLocation(this.offset);
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final baseOffset = FloatingActionButtonLocation.centerDocked.getOffset(scaffoldGeometry);
+    return Offset(baseOffset.dx, baseOffset.dy + offset);
+  }
+}
+
+enum _MainTab {
+  home,
+  analytics,
+  qr,
+  coupons,
+  settings,
+}
+
 class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
   late int _currentIndex;
+  int _lastNonQrTabIndex = 0;
+  static const double _fabVerticalOffset = 12;
 
-  final List<Widget> _pages = [
-    const HomeView(),
-    const AnalyticsView(),
-    const QRScannerView(),
-    const CouponsView(),
-    const SettingsView(),
+  static const List<_MainTab> _tabs = [
+    _MainTab.home,
+    _MainTab.analytics,
+    _MainTab.qr,
+    _MainTab.coupons,
+    _MainTab.settings,
   ];
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
+    _currentIndex = widget.initialIndex.clamp(0, _tabs.length - 1);
+    _setCurrentTab(_currentIndex);
     // 初期データ読み込みをフレーム後に実行
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
@@ -90,18 +112,82 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     }
   }
 
-  // タブ切り替え時のデータ読み込み
-  Future<void> _onTabChanged(int index) async {
+  List<_MainTab> _bottomTabsFor() {
+    return _tabs.where((tab) => tab != _MainTab.qr).toList();
+  }
+
+  void _setCurrentTab(int index) {
+    _currentIndex = index;
+    final tab = _tabs[index];
+    if (tab != _MainTab.qr) {
+      final bottomIndex = _bottomTabsFor().indexOf(tab);
+      if (bottomIndex >= 0) {
+        _lastNonQrTabIndex = bottomIndex;
+      }
+    }
+  }
+
+  int _placeholderIndexFor(List<_MainTab> bottomTabs) {
+    final analyticsIndex = bottomTabs.indexOf(_MainTab.analytics);
+    final couponsIndex = bottomTabs.indexOf(_MainTab.coupons);
+    if (analyticsIndex >= 0 && couponsIndex >= 0 && analyticsIndex < couponsIndex) {
+      return analyticsIndex + 1;
+    }
+    return -1;
+  }
+
+  int? _bottomTabIndexForVisualIndex(int visualIndex, int placeholderIndex) {
+    if (placeholderIndex < 0) {
+      return visualIndex;
+    }
+    if (visualIndex == placeholderIndex) {
+      return null;
+    }
+    return visualIndex > placeholderIndex ? visualIndex - 1 : visualIndex;
+  }
+
+  int _visualIndexForBottomTabIndex(int bottomTabIndex, int placeholderIndex) {
+    if (placeholderIndex < 0) {
+      return bottomTabIndex;
+    }
+    return bottomTabIndex >= placeholderIndex ? bottomTabIndex + 1 : bottomTabIndex;
+  }
+
+  List<BottomNavigationBarItem> _bottomNavItemsWithPlaceholder(List<_MainTab> bottomTabs) {
+    final items = _navItemsForTabs(bottomTabs);
+    final placeholderIndex = _placeholderIndexFor(bottomTabs);
+    if (placeholderIndex >= 0 && placeholderIndex <= items.length) {
+      items.insert(
+        placeholderIndex,
+        const BottomNavigationBarItem(
+          icon: SizedBox.shrink(),
+          label: '',
+        ),
+      );
+    }
+    return items;
+  }
+
+  // タブ切り替え時のデータ読み込み（BottomNavigationBar用）
+  Future<void> _onBottomTabChanged(int bottomIndex) async {
+    final bottomTabs = _bottomTabsFor();
+    final placeholderIndex = _placeholderIndexFor(bottomTabs);
+    final bottomTabIndex = _bottomTabIndexForVisualIndex(bottomIndex, placeholderIndex);
+    if (bottomTabIndex == null) {
+      return;
+    }
+    final nextTab = bottomTabs[bottomTabIndex];
+    final nextIndex = _tabs.indexOf(nextTab);
     setState(() {
-      _currentIndex = index;
+      _setCurrentTab(nextIndex);
     });
 
     // タブに応じて必要なデータを読み込み
-    await _loadTabSpecificData(index);
+    await _loadTabSpecificData(nextTab);
   }
 
   // タブ固有のデータ読み込み
-  Future<void> _loadTabSpecificData(int tabIndex) async {
+  Future<void> _loadTabSpecificData(_MainTab tab) async {
     final authState = ref.read(authStateProvider);
     await authState.when(
       data: (user) async {
@@ -113,20 +199,20 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
           data: (storeId) async {
             if (storeId == null) return;
 
-            switch (tabIndex) {
-              case 0: // ホーム
+            switch (tab) {
+              case _MainTab.home:
                 await _loadHomeData(user.uid, storeId);
                 break;
-              case 1: // 分析
+              case _MainTab.analytics:
                 await _loadAnalyticsData(storeId);
                 break;
-              case 2: // QRスキャナー
+              case _MainTab.qr:
                 // QRスキャナーは特別なデータ読み込み不要
                 break;
-              case 3: // クーポン管理
+              case _MainTab.coupons:
                 await _loadCouponManagementData(storeId);
                 break;
-              case 4: // 設定
+              case _MainTab.settings:
                 await _loadSettingsData(storeId);
                 break;
             }
@@ -163,6 +249,69 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
   Future<void> _loadSettingsData(String storeId) async {
     // 設定画面のデータ読み込み
     ref.invalidate(storeDataProvider(storeId));
+  }
+
+  void _onQrFabPressed() {
+    _loadTabSpecificData(_MainTab.qr);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const QRScannerView(),
+      ),
+    );
+  }
+
+  int _safeBottomIndex(List<_MainTab> bottomTabs) {
+    if (bottomTabs.isEmpty) {
+      return 0;
+    }
+    return _lastNonQrTabIndex.clamp(0, bottomTabs.length - 1);
+  }
+
+  Widget _pageForTab(_MainTab tab) {
+    switch (tab) {
+      case _MainTab.home:
+        return const HomeView();
+      case _MainTab.analytics:
+        return const AnalyticsView();
+      case _MainTab.qr:
+        return const QRScannerView();
+      case _MainTab.coupons:
+        return const CouponsView();
+      case _MainTab.settings:
+        return const SettingsView();
+    }
+  }
+
+  List<BottomNavigationBarItem> _navItemsForTabs(List<_MainTab> tabs) {
+    return tabs.map((tab) {
+      switch (tab) {
+        case _MainTab.home:
+          return const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'ホーム',
+          );
+        case _MainTab.analytics:
+          return const BottomNavigationBarItem(
+            icon: Icon(Icons.analytics),
+            label: '分析',
+          );
+        case _MainTab.qr:
+          return const BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner),
+            label: 'QRスキャン',
+          );
+        case _MainTab.coupons:
+          return const BottomNavigationBarItem(
+            icon: Icon(Icons.local_offer),
+            label: 'クーポン',
+          );
+        case _MainTab.settings:
+          return const BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: '設定',
+          );
+      }
+    }).toList();
   }
 
   @override
@@ -399,36 +548,59 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
   }
 
   Widget _buildMainScaffold() {
+    final safeIndex = _currentIndex.clamp(0, _tabs.length - 1);
+    if (safeIndex != _currentIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _setCurrentTab(safeIndex);
+        });
+      });
+    }
+
+    final bottomTabs = _bottomTabsFor();
+    final items = _bottomNavItemsWithPlaceholder(bottomTabs);
+    final placeholderIndex = _placeholderIndexFor(bottomTabs);
+    final currentTab = _tabs[safeIndex];
+    final bottomIndex = bottomTabs.isEmpty
+        ? 0
+        : currentTab == _MainTab.qr
+            ? _visualIndexForBottomTabIndex(_safeBottomIndex(bottomTabs), placeholderIndex)
+            : _visualIndexForBottomTabIndex(
+                bottomTabs.indexOf(currentTab).clamp(0, bottomTabs.length - 1),
+                placeholderIndex,
+              );
+
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: _pageForTab(currentTab),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _onQrFabPressed,
+        backgroundColor: const Color(0xFFFF6B35),
+        shape: const CircleBorder(),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.qr_code_scanner, color: Colors.white),
+            SizedBox(height: 2),
+            Text(
+              '読み取り',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: const _LoweredFabLocation(_fabVerticalOffset),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: _onTabChanged,
+        currentIndex: bottomIndex,
+        onTap: _onBottomTabChanged,
         selectedItemColor: const Color(0xFFFF6B35),
         unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'ホーム',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: '分析',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner),
-            label: 'QRスキャン',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_offer),
-            label: 'クーポン',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '設定',
-          ),
-        ],
+        items: items,
       ),
     );
   }
