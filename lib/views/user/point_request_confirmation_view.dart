@@ -84,6 +84,10 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
   }
 
   Widget _buildConfirmationView(PointRequest request) {
+    final totalPoints = request.totalPoints ?? request.pointsToAward;
+    final normalPoints = request.normalPoints ?? totalPoints;
+    final specialPoints = request.specialPoints ?? 0;
+    final isRateReady = request.rateCalculatedAt != null;
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -158,7 +162,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '${request.pointsToAward}pt',
+                  '${totalPoints}pt',
                   style: const TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
@@ -173,6 +177,16 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                     color: Colors.grey,
                   ),
                 ),
+                if (specialPoints > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '通常${normalPoints}pt / 特別${specialPoints}pt',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -215,9 +229,11 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.orange[200]!),
             ),
-            child: const Text(
-              'このポイント付与を承認しますか？\n承認するとお客様のアカウントにポイントが付与されます。',
-              style: TextStyle(
+            child: Text(
+              isRateReady
+                  ? 'このポイント付与を承認しますか？\n承認するとお客様のアカウントにポイントが付与されます。'
+                  : 'ポイント計算中のため、承認まで少しお待ちください。',
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.orange,
               ),
@@ -256,7 +272,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               Expanded(
                 child: CustomButton(
                   text: '受け入れる',
-                  onPressed: _isProcessing ? null : () => _acceptRequest(request),
+                  onPressed: _isProcessing || !isRateReady ? null : () => _acceptRequest(request),
                   isLoading: _isProcessing,
                 ),
               ),
@@ -274,8 +290,11 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
     final icon = isAccepted ? Icons.check_circle : Icons.cancel;
     final color = isAccepted ? Colors.green : Colors.red;
     final title = isAccepted ? 'ポイント付与完了' : 'ポイント付与拒否';
+    final totalPoints = request.totalPoints ?? request.pointsToAward;
+    final normalPoints = request.normalPoints ?? totalPoints;
+    final specialPoints = request.specialPoints ?? 0;
     final message = isAccepted 
-        ? '${request.pointsToAward}ptが付与されました！'
+        ? '${totalPoints}ptが付与されました！'
         : 'ポイント付与が拒否されました';
 
     return Center(
@@ -303,6 +322,16 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               ),
               textAlign: TextAlign.center,
             ),
+            if (isAccepted && specialPoints > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                '通常${normalPoints}pt / 特別${specialPoints}pt',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
             if (request.rejectionReason != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -328,7 +357,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (_) => const MainNavigationView(initialIndex: 2),
+                    builder: (_) => const MainNavigationView(),
                   ),
                   (route) => false,
                 );

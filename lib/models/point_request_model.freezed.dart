@@ -27,6 +27,15 @@ mixin _$PointRequest {
   int get amount => throw _privateConstructorUsedError;
   int get pointsToAward => throw _privateConstructorUsedError;
   int get userPoints => throw _privateConstructorUsedError; // ユーザーに付与されるポイント
+  double? get baseRate => throw _privateConstructorUsedError; // 固定1.0
+  double? get appliedRate => throw _privateConstructorUsedError; // 最終適用率
+  int? get normalPoints => throw _privateConstructorUsedError; // 店舗負担分
+  int? get specialPoints => throw _privateConstructorUsedError; // 自社負担分
+  int? get totalPoints => throw _privateConstructorUsedError; // 付与合計
+  DateTime? get rateCalculatedAt =>
+      throw _privateConstructorUsedError; // Functions確定時刻
+  String? get rateSource => throw _privateConstructorUsedError;
+  String? get campaignId => throw _privateConstructorUsedError;
   String get status =>
       throw _privateConstructorUsedError; // pending, accepted, rejected
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -60,6 +69,14 @@ abstract class $PointRequestCopyWith<$Res> {
       int amount,
       int pointsToAward,
       int userPoints,
+      double? baseRate,
+      double? appliedRate,
+      int? normalPoints,
+      int? specialPoints,
+      int? totalPoints,
+      DateTime? rateCalculatedAt,
+      String? rateSource,
+      String? campaignId,
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
@@ -90,6 +107,14 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
     Object? amount = null,
     Object? pointsToAward = null,
     Object? userPoints = null,
+    Object? baseRate = freezed,
+    Object? appliedRate = freezed,
+    Object? normalPoints = freezed,
+    Object? specialPoints = freezed,
+    Object? totalPoints = freezed,
+    Object? rateCalculatedAt = freezed,
+    Object? rateSource = freezed,
+    Object? campaignId = freezed,
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
@@ -126,6 +151,38 @@ class _$PointRequestCopyWithImpl<$Res, $Val extends PointRequest>
           ? _value.userPoints
           : userPoints // ignore: cast_nullable_to_non_nullable
               as int,
+      baseRate: freezed == baseRate
+          ? _value.baseRate
+          : baseRate // ignore: cast_nullable_to_non_nullable
+              as double?,
+      appliedRate: freezed == appliedRate
+          ? _value.appliedRate
+          : appliedRate // ignore: cast_nullable_to_non_nullable
+              as double?,
+      normalPoints: freezed == normalPoints
+          ? _value.normalPoints
+          : normalPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      specialPoints: freezed == specialPoints
+          ? _value.specialPoints
+          : specialPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalPoints: freezed == totalPoints
+          ? _value.totalPoints
+          : totalPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      rateCalculatedAt: freezed == rateCalculatedAt
+          ? _value.rateCalculatedAt
+          : rateCalculatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      rateSource: freezed == rateSource
+          ? _value.rateSource
+          : rateSource // ignore: cast_nullable_to_non_nullable
+              as String?,
+      campaignId: freezed == campaignId
+          ? _value.campaignId
+          : campaignId // ignore: cast_nullable_to_non_nullable
+              as String?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -170,6 +227,14 @@ abstract class _$$PointRequestImplCopyWith<$Res>
       int amount,
       int pointsToAward,
       int userPoints,
+      double? baseRate,
+      double? appliedRate,
+      int? normalPoints,
+      int? specialPoints,
+      int? totalPoints,
+      DateTime? rateCalculatedAt,
+      String? rateSource,
+      String? campaignId,
       String status,
       DateTime createdAt,
       DateTime? respondedAt,
@@ -198,6 +263,14 @@ class __$$PointRequestImplCopyWithImpl<$Res>
     Object? amount = null,
     Object? pointsToAward = null,
     Object? userPoints = null,
+    Object? baseRate = freezed,
+    Object? appliedRate = freezed,
+    Object? normalPoints = freezed,
+    Object? specialPoints = freezed,
+    Object? totalPoints = freezed,
+    Object? rateCalculatedAt = freezed,
+    Object? rateSource = freezed,
+    Object? campaignId = freezed,
     Object? status = null,
     Object? createdAt = null,
     Object? respondedAt = freezed,
@@ -234,6 +307,38 @@ class __$$PointRequestImplCopyWithImpl<$Res>
           ? _value.userPoints
           : userPoints // ignore: cast_nullable_to_non_nullable
               as int,
+      baseRate: freezed == baseRate
+          ? _value.baseRate
+          : baseRate // ignore: cast_nullable_to_non_nullable
+              as double?,
+      appliedRate: freezed == appliedRate
+          ? _value.appliedRate
+          : appliedRate // ignore: cast_nullable_to_non_nullable
+              as double?,
+      normalPoints: freezed == normalPoints
+          ? _value.normalPoints
+          : normalPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      specialPoints: freezed == specialPoints
+          ? _value.specialPoints
+          : specialPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalPoints: freezed == totalPoints
+          ? _value.totalPoints
+          : totalPoints // ignore: cast_nullable_to_non_nullable
+              as int?,
+      rateCalculatedAt: freezed == rateCalculatedAt
+          ? _value.rateCalculatedAt
+          : rateCalculatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      rateSource: freezed == rateSource
+          ? _value.rateSource
+          : rateSource // ignore: cast_nullable_to_non_nullable
+              as String?,
+      campaignId: freezed == campaignId
+          ? _value.campaignId
+          : campaignId // ignore: cast_nullable_to_non_nullable
+              as String?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -273,6 +378,14 @@ class _$PointRequestImpl implements _PointRequest {
       required this.amount,
       required this.pointsToAward,
       required this.userPoints,
+      this.baseRate,
+      this.appliedRate,
+      this.normalPoints,
+      this.specialPoints,
+      this.totalPoints,
+      this.rateCalculatedAt,
+      this.rateSource,
+      this.campaignId,
       required this.status,
       required this.createdAt,
       this.respondedAt,
@@ -299,6 +412,28 @@ class _$PointRequestImpl implements _PointRequest {
   final int userPoints;
 // ユーザーに付与されるポイント
   @override
+  final double? baseRate;
+// 固定1.0
+  @override
+  final double? appliedRate;
+// 最終適用率
+  @override
+  final int? normalPoints;
+// 店舗負担分
+  @override
+  final int? specialPoints;
+// 自社負担分
+  @override
+  final int? totalPoints;
+// 付与合計
+  @override
+  final DateTime? rateCalculatedAt;
+// Functions確定時刻
+  @override
+  final String? rateSource;
+  @override
+  final String? campaignId;
+  @override
   final String status;
 // pending, accepted, rejected
   @override
@@ -315,7 +450,7 @@ class _$PointRequestImpl implements _PointRequest {
 
   @override
   String toString() {
-    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, userPoints: $userPoints, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, respondedBy: $respondedBy, description: $description, rejectionReason: $rejectionReason)';
+    return 'PointRequest(id: $id, userId: $userId, storeId: $storeId, storeName: $storeName, amount: $amount, pointsToAward: $pointsToAward, userPoints: $userPoints, baseRate: $baseRate, appliedRate: $appliedRate, normalPoints: $normalPoints, specialPoints: $specialPoints, totalPoints: $totalPoints, rateCalculatedAt: $rateCalculatedAt, rateSource: $rateSource, campaignId: $campaignId, status: $status, createdAt: $createdAt, respondedAt: $respondedAt, respondedBy: $respondedBy, description: $description, rejectionReason: $rejectionReason)';
   }
 
   @override
@@ -333,6 +468,22 @@ class _$PointRequestImpl implements _PointRequest {
                 other.pointsToAward == pointsToAward) &&
             (identical(other.userPoints, userPoints) ||
                 other.userPoints == userPoints) &&
+            (identical(other.baseRate, baseRate) ||
+                other.baseRate == baseRate) &&
+            (identical(other.appliedRate, appliedRate) ||
+                other.appliedRate == appliedRate) &&
+            (identical(other.normalPoints, normalPoints) ||
+                other.normalPoints == normalPoints) &&
+            (identical(other.specialPoints, specialPoints) ||
+                other.specialPoints == specialPoints) &&
+            (identical(other.totalPoints, totalPoints) ||
+                other.totalPoints == totalPoints) &&
+            (identical(other.rateCalculatedAt, rateCalculatedAt) ||
+                other.rateCalculatedAt == rateCalculatedAt) &&
+            (identical(other.rateSource, rateSource) ||
+                other.rateSource == rateSource) &&
+            (identical(other.campaignId, campaignId) ||
+                other.campaignId == campaignId) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -348,21 +499,30 @@ class _$PointRequestImpl implements _PointRequest {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      userId,
-      storeId,
-      storeName,
-      amount,
-      pointsToAward,
-      userPoints,
-      status,
-      createdAt,
-      respondedAt,
-      respondedBy,
-      description,
-      rejectionReason);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        userId,
+        storeId,
+        storeName,
+        amount,
+        pointsToAward,
+        userPoints,
+        baseRate,
+        appliedRate,
+        normalPoints,
+        specialPoints,
+        totalPoints,
+        rateCalculatedAt,
+        rateSource,
+        campaignId,
+        status,
+        createdAt,
+        respondedAt,
+        respondedBy,
+        description,
+        rejectionReason
+      ]);
 
   /// Create a copy of PointRequest
   /// with the given fields replaced by the non-null parameter values.
@@ -389,6 +549,14 @@ abstract class _PointRequest implements PointRequest {
       required final int amount,
       required final int pointsToAward,
       required final int userPoints,
+      final double? baseRate,
+      final double? appliedRate,
+      final int? normalPoints,
+      final int? specialPoints,
+      final int? totalPoints,
+      final DateTime? rateCalculatedAt,
+      final String? rateSource,
+      final String? campaignId,
       required final String status,
       required final DateTime createdAt,
       final DateTime? respondedAt,
@@ -413,6 +581,22 @@ abstract class _PointRequest implements PointRequest {
   int get pointsToAward;
   @override
   int get userPoints; // ユーザーに付与されるポイント
+  @override
+  double? get baseRate; // 固定1.0
+  @override
+  double? get appliedRate; // 最終適用率
+  @override
+  int? get normalPoints; // 店舗負担分
+  @override
+  int? get specialPoints; // 自社負担分
+  @override
+  int? get totalPoints; // 付与合計
+  @override
+  DateTime? get rateCalculatedAt; // Functions確定時刻
+  @override
+  String? get rateSource;
+  @override
+  String? get campaignId;
   @override
   String get status; // pending, accepted, rejected
   @override

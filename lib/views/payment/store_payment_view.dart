@@ -573,20 +573,12 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           _currentRequestId = requestId; // 新しいID形式: "storeId_userId"
         });
         
-        final request = PointRequest(
-          id: requestId,
-          userId: widget.userId,
+        final approved = await _approveRequestAfterRateCalculated(
+          requestId: requestId,
           storeId: currentStoreId,
-          storeName: storeName,
-          amount: amount,
-          pointsToAward: pointsToAward,
-          userPoints: pointsToAward,
-          description: '店舗からのポイント付与リクエスト',
-          status: PointRequestStatus.pending.value,
-          createdAt: DateTime.now(),
+          userId: widget.userId,
+          requestNotifier: requestNotifier,
         );
-
-        final approved = await requestNotifier.acceptPointRequestAsStore(request);
         if (approved) {
           if (mounted) {
             Navigator.of(context).pushReplacement(
@@ -624,6 +616,51 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         setState(() {
           _isProcessing = false;
         });
+      }
+    }
+  }
+
+  Future<bool> _approveRequestAfterRateCalculated({
+    required String requestId,
+    required String storeId,
+    required String userId,
+    required PointRequestNotifier requestNotifier,
+  }) async {
+    final docRef = FirebaseFirestore.instance
+        .collection('point_requests')
+        .doc(storeId)
+        .collection(userId)
+        .doc('award_request');
+
+    final start = DateTime.now();
+    const timeout = Duration(seconds: 10);
+    while (DateTime.now().difference(start) < timeout) {
+      final snap = await docRef.get();
+      if (!snap.exists) break;
+      final data = snap.data() as Map<String, dynamic>;
+      if (data['rateCalculatedAt'] != null) {
+        final convertedData = Map<String, dynamic>.from(data);
+        _convertTimestampFields(convertedData, ['createdAt', 'respondedAt', 'rateCalculatedAt']);
+        final request = PointRequest.fromJson({
+          'id': requestId,
+          'userId': userId,
+          'storeId': storeId,
+          ...convertedData,
+        });
+        return requestNotifier.acceptPointRequestAsStore(request);
+      }
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    throw Exception('ポイント計算が完了していません。少し待ってから再試行してください。');
+  }
+
+  void _convertTimestampFields(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is Timestamp) {
+        data[key] = value.toDate().toIso8601String();
+      } else if (value is DateTime) {
+        data[key] = value.toIso8601String();
       }
     }
   }

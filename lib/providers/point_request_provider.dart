@@ -97,6 +97,16 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
           convertedData['respondedAt'] = (data['respondedAt'] as Timestamp).toDate().toIso8601String();
         }
       }
+      if (data['rateCalculatedAt'] != null) {
+        if (data['rateCalculatedAt'] is String) {
+          convertedData['rateCalculatedAt'] = data['rateCalculatedAt'];
+        } else if (data['rateCalculatedAt'] is DateTime) {
+          convertedData['rateCalculatedAt'] = (data['rateCalculatedAt'] as DateTime).toIso8601String();
+        } else {
+          convertedData['rateCalculatedAt'] =
+              (data['rateCalculatedAt'] as Timestamp).toDate().toIso8601String();
+        }
+      }
       
       try {
         return PointRequest.fromJson({
@@ -163,6 +173,12 @@ class PointRequestNotifier extends StateNotifier<void> {
         amount: amount,
         pointsToAward: pointsToAward,
         userPoints: userPoints,
+        baseRate: 1.0,
+        appliedRate: 1.0,
+        normalPoints: pointsToAward,
+        specialPoints: 0,
+        totalPoints: pointsToAward,
+        rateSource: 'client',
         description: description,
         status: PointRequestStatus.pending.value,
         createdAt: DateTime.now(),
@@ -288,32 +304,52 @@ class PointRequestNotifier extends StateNotifier<void> {
           .doc('award_request');
       final userRef = _firestore.collection('users').doc(userId);
 
-      await _firestore.runTransaction((txn) async {
-        final reqSnap = await txn.get(requestRef);
-        if (!reqSnap.exists) {
-          throw Exception('リクエストが存在しません');
-        }
+      final reqSnap = await requestRef.get();
+      if (!reqSnap.exists) {
+        throw Exception('リクエストが存在しません');
+      }
 
-        final current = (reqSnap.data() ?? const {}) as Map<String, dynamic>;
-        if ((current['status'] ?? '').toString() != PointRequestStatus.pending.value) {
-          return;
-        }
+      final current = (reqSnap.data() ?? const {}) as Map<String, dynamic>;
+      if ((current['status'] ?? '').toString() != PointRequestStatus.pending.value) {
+        debugPrint('ポイント付与リクエストは既に処理済みです: ${request.id}');
+        return true;
+      }
 
-        txn.update(requestRef, {
-          'status': PointRequestStatus.accepted.value,
-          'respondedAt': FieldValue.serverTimestamp(),
-          'respondedBy': user.uid,
-        });
+      if (current['rateCalculatedAt'] == null) {
+        throw Exception('ポイント計算が完了していません');
+      }
 
-        txn.update(userRef, {
-          'points': FieldValue.increment(request.pointsToAward),
-          'paid': FieldValue.increment(request.amount),
-          'lastUpdated': FieldValue.serverTimestamp(),
-          'lastUpdatedByStoreId': storeId,
-        });
+      final resolvedNormalPoints =
+          _parseInt(current['normalPoints'], fallback: request.normalPoints ?? request.pointsToAward);
+      final resolvedSpecialPoints =
+          _parseInt(current['specialPoints'], fallback: request.specialPoints ?? 0);
+      final resolvedTotalPoints =
+          _parseInt(current['totalPoints'], fallback: request.totalPoints ?? request.pointsToAward);
+
+      await requestRef.update({
+        'status': PointRequestStatus.accepted.value,
+        'respondedAt': FieldValue.serverTimestamp(),
+        'respondedBy': user.uid,
       });
 
-      await _recordAwardTransaction(request, approverId: user.uid);
+      await userRef.update({
+        'points': FieldValue.increment(resolvedNormalPoints),
+        if (resolvedSpecialPoints > 0) 'specialPoints': FieldValue.increment(resolvedSpecialPoints),
+        if (resolvedSpecialPoints > 0) 'specialPointsTotal': FieldValue.increment(resolvedSpecialPoints),
+        'paid': FieldValue.increment(request.amount),
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'lastUpdatedByStoreId': storeId,
+      });
+
+      final requestForRecord = request.copyWith(
+        pointsToAward: resolvedTotalPoints,
+        userPoints: resolvedTotalPoints,
+        normalPoints: resolvedNormalPoints,
+        specialPoints: resolvedSpecialPoints,
+        totalPoints: resolvedTotalPoints,
+      );
+
+      await _recordAwardTransaction(requestForRecord, approverId: user.uid);
       await syncUserPointBalanceFromUserDoc(
         firestore: _firestore,
         userId: userId,
@@ -326,6 +362,16 @@ class PointRequestNotifier extends StateNotifier<void> {
       debugPrint('店舗側のポイント付与承認エラー: $e');
       return false;
     }
+  }
+
+  int _parseInt(dynamic value, {required int fallback}) {
+    if (value == null) return fallback;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? fallback;
+    }
+    return fallback;
   }
 
   // ポイント付与リクエストを拒否
@@ -349,19 +395,31 @@ class PointRequestNotifier extends StateNotifier<void> {
     final now = DateTime.now();
     final storeId = request.storeId;
     final userId = request.userId;
+    final normalPoints = request.normalPoints ?? request.pointsToAward;
+    final specialPoints = request.specialPoints ?? 0;
+    final totalPoints = request.totalPoints ?? request.pointsToAward;
+    final baseRate = request.baseRate ?? 1.0;
+    final appliedRate = request.appliedRate ?? baseRate;
 
     final pointTransactionData = {
       'transactionId': transactionId,
       'userId': userId,
       'storeId': storeId,
       'storeName': request.storeName,
-      'amount': request.pointsToAward,
+      'amount': totalPoints,
       'paymentAmount': request.amount,
       'status': 'completed',
       'paymentMethod': 'points',
       'createdAt': now,
       'updatedAt': now,
       'description': request.description ?? 'ポイント付与',
+      'normalPointsAwarded': normalPoints,
+      'specialPointsAwarded': specialPoints,
+      'totalPointsAwarded': totalPoints,
+      'baseRate': baseRate,
+      'appliedRate': appliedRate,
+      if (request.rateSource != null) 'rateSource': request.rateSource,
+      if (request.campaignId != null) 'campaignId': request.campaignId,
     };
 
     await _firestore
@@ -383,13 +441,20 @@ class PointRequestNotifier extends StateNotifier<void> {
       'userId': userId,
       'type': 'award',
       'amountYen': request.amount,
-      'points': request.pointsToAward,
+      'points': totalPoints,
       'paymentMethod': 'points',
       'status': 'completed',
       'source': 'point_request',
       'createdAt': FieldValue.serverTimestamp(),
       'createdAtClient': now,
       'approvedBy': approverId,
+      'normalPointsAwarded': normalPoints,
+      'specialPointsAwarded': specialPoints,
+      'totalPointsAwarded': totalPoints,
+      'baseRate': baseRate,
+      'appliedRate': appliedRate,
+      if (request.rateSource != null) 'rateSource': request.rateSource,
+      if (request.campaignId != null) 'campaignId': request.campaignId,
     });
 
     final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -400,12 +465,13 @@ class PointRequestNotifier extends StateNotifier<void> {
         .doc(todayStr)
         .set({
       'date': todayStr,
-      'pointsIssued': FieldValue.increment(request.pointsToAward),
-      'totalPointsAwarded': FieldValue.increment(request.pointsToAward),
+      'pointsIssued': FieldValue.increment(totalPoints),
+      'totalPointsAwarded': FieldValue.increment(totalPoints),
       'totalSales': FieldValue.increment(request.amount),
       'totalTransactions': FieldValue.increment(1),
       'visitorCount': FieldValue.increment(1),
       'lastUpdated': FieldValue.serverTimestamp(),
+      if (specialPoints > 0) 'specialPointsIssued': FieldValue.increment(specialPoints),
     }, SetOptions(merge: true));
   }
 
