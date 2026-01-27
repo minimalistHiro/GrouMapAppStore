@@ -11,8 +11,15 @@ service cloud.firestore {
     }
 
     function isStoreUser(storeId) {
-      return isOwner() &&
+      return isSignedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.currentStoreId == storeId;
+    }
+
+    function isStoreMember(storeId) {
+      return isSignedIn() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.currentStoreId == storeId ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.createdStores.hasAny([storeId]) ||
+         get(/databases/$(database)/documents/stores/$(storeId)).data.createdBy == request.auth.uid);
     }
 
     function canOwnerUpdateUser() {
@@ -72,6 +79,26 @@ service cloud.firestore {
       allow write: if request.auth != null && 
         (request.auth.uid == resource.data.createdBy || 
          request.auth.token.role in ['admin', 'company']);
+    }
+
+    // 店舗配下のクーポン
+    match /coupons/{storeId}/coupons/{couponId} {
+      allow read: if request.auth != null;
+      allow write: if isStoreMember(storeId);
+
+      match /usedBy/{userId} {
+        allow read: if request.auth != null;
+        allow write: if isStoreMember(storeId);
+      }
+    }
+
+    // ユーザー側の使用済みクーポン
+    match /users/{userId}/used_coupons/{couponId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || isOwner());
+      allow write: if isSignedIn() &&
+        request.resource.data.userId == userId &&
+        isStoreMember(request.resource.data.storeId);
     }
 
     // 公開クーポンコレクション（ユーザー表示用）

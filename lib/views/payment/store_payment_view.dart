@@ -13,12 +13,14 @@ class StorePaymentView extends ConsumerStatefulWidget {
   final String userId;
   final String userName;
   final int usedPoints;
+  final List<String> selectedCouponIds;
   
   const StorePaymentView({
     Key? key,
     required this.userId,
     required this.userName,
     this.usedPoints = 0,
+    this.selectedCouponIds = const [],
   }) : super(key: key);
 
   @override
@@ -209,6 +211,79 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
       }
     }
     return null;
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  Future<void> _consumeSelectedCoupons({required String storeId}) async {
+    if (widget.selectedCouponIds.isEmpty) return;
+
+    final firestore = FirebaseFirestore.instance;
+    final now = DateTime.now();
+    await firestore.runTransaction((txn) async {
+      for (final couponId in widget.selectedCouponIds) {
+        final couponRef = firestore
+            .collection('coupons')
+            .doc(storeId)
+            .collection('coupons')
+            .doc(couponId);
+        final usedByRef = couponRef
+            .collection('usedBy')
+            .doc(widget.userId);
+        final userUsedRef = firestore
+            .collection('users')
+            .doc(widget.userId)
+            .collection('used_coupons')
+            .doc(couponId);
+
+        final couponSnap = await txn.get(couponRef);
+        if (!couponSnap.exists) {
+          throw Exception('クーポンが見つかりません: $couponId');
+        }
+        final data = couponSnap.data() ?? {};
+        final isActive = data['isActive'] as bool? ?? true;
+        final validUntil = (data['validUntil'] as Timestamp?)?.toDate();
+        final usageLimit = _parseInt(data['usageLimit']);
+        final usedCount = _parseInt(data['usedCount']);
+
+        if (!isActive) {
+          throw Exception('クーポンが無効です: $couponId');
+        }
+        if (validUntil == null || !validUntil.isAfter(now)) {
+          throw Exception('クーポンの有効期限が切れています: $couponId');
+        }
+        if (usedCount >= usageLimit) {
+          throw Exception('クーポンの上限に達しています: $couponId');
+        }
+
+        final usedBySnap = await txn.get(usedByRef);
+        if (usedBySnap.exists) {
+          throw Exception('このクーポンは既に使用済みです: $couponId');
+        }
+
+        txn.set(usedByRef, {
+          'userId': widget.userId,
+          'usedAt': FieldValue.serverTimestamp(),
+          'couponId': couponId,
+          'storeId': storeId,
+        });
+        txn.set(userUsedRef, {
+          'userId': widget.userId,
+          'usedAt': FieldValue.serverTimestamp(),
+          'couponId': couponId,
+          'storeId': storeId,
+        });
+        txn.update(couponRef, {
+          'usedCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    });
   }
 
   /// 店舗情報を読み込み
@@ -470,6 +545,9 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
       print('amount: $amount');
       print('pointsToAward: $pointsToAward');
 
+      print('ステップ4.5: クーポン使用処理');
+      await _consumeSelectedCoupons(storeId: currentStoreId);
+
       print('ステップ5: ポイント付与リクエストの作成');
       // ポイント付与リクエストを作成
       final requestNotifier = ref.read(pointRequestProvider.notifier);
@@ -484,6 +562,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         userPoints: pointsToAward, // ユーザーに付与されるポイント
         description: '店舗からのポイント付与リクエスト',
         usedPoints: widget.usedPoints,
+        selectedCouponIds: widget.selectedCouponIds,
       );
 
       print('リクエスト作成結果: $requestId');

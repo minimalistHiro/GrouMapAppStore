@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../widgets/custom_button.dart';
-import 'point_usage_checkout_prompt_view.dart';
+import '../coupons/coupon_select_for_checkout_view.dart';
 
 class PointUsageInputView extends ConsumerStatefulWidget {
   final String userId;
@@ -239,7 +239,7 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => PointUsageCheckoutPromptView(
+          builder: (_) => CouponSelectForCheckoutView(
             userId: widget.userId,
             userName: _actualUserName,
             usedPoints: pointsToUse,

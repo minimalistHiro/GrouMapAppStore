@@ -5,12 +5,14 @@ class PointUsageCheckoutPromptView extends StatelessWidget {
   final String userId;
   final String userName;
   final int usedPoints;
+  final List<String> selectedCouponIds;
 
   const PointUsageCheckoutPromptView({
     Key? key,
     required this.userId,
     required this.userName,
     required this.usedPoints,
+    this.selectedCouponIds = const [],
   }) : super(key: key);
 
   @override
@@ -66,6 +68,7 @@ class PointUsageCheckoutPromptView extends StatelessWidget {
                         userId: userId,
                         userName: userName,
                         usedPoints: usedPoints,
+                        selectedCouponIds: selectedCouponIds,
                       ),
                     ),
                   );

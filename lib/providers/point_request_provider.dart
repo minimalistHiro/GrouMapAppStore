@@ -129,6 +129,7 @@ class PointRequestNotifier extends StateNotifier<void> {
     required int userPoints,
     required String description,
     int usedPoints = 0,
+    List<String> selectedCouponIds = const [],
   }) async {
     print('=== PointRequestNotifier.createPointRequest 開始 ===');
     print('パラメータ:');
@@ -171,6 +172,9 @@ class PointRequestNotifier extends StateNotifier<void> {
       final jsonData = newRequest.toJson();
       jsonData['usedPoints'] = usedPoints;
       jsonData['requestType'] = 'award';
+      if (selectedCouponIds.isNotEmpty) {
+        jsonData['selectedCouponIds'] = selectedCouponIds;
+      }
       print('JSON変換結果: $jsonData');
       
       // Firebase Consoleの実際のデータ構造に合わせて文字列のまま保存
