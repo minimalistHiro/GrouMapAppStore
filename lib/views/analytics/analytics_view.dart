@@ -8,6 +8,7 @@ import 'point_issue_trend_view.dart';
 import 'point_usage_user_trend_view.dart';
 import 'all_user_trend_view.dart';
 import 'total_point_issue_trend_view.dart';
+import '../../providers/referral_kpi_provider.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -56,6 +57,11 @@ class AnalyticsView extends ConsumerWidget {
             
             // 月間統計セクション
             _buildMonthlyStatsSection(ref),
+            
+            const SizedBox(height: 24),
+
+            // 送客KPIセクション
+            _buildReferralKpiSection(ref),
             
             const SizedBox(height: 24),
             
@@ -835,6 +841,312 @@ class AnalyticsView extends ConsumerWidget {
         {'label': '使用済みクーポン', 'value': '987', 'change': '+18%'},
         {'label': '使用率', 'value': '80%', 'change': '+5%'},
         {'label': '平均割引額', 'value': '¥180', 'change': '+2%'},
+      ],
+    );
+  }
+
+  Widget _buildReferralKpiSection(WidgetRef ref) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildReferralKpiCard(
+                stats: _buildReferralKpiPlaceholderStats(),
+                sourceRanking: const [],
+                targetRanking: const [],
+              );
+            }
+            final kpiAsync = ref.watch(referralKpiProvider(storeId));
+            final sourceRankingAsync = ref.watch(referralSourceRankingProvider(storeId));
+            final targetRankingAsync = ref.watch(referralTargetRankingProvider(storeId));
+
+            return kpiAsync.when(
+              data: (kpiData) {
+                final stats = _buildReferralKpiStats(kpiData);
+                final sourceRanking = sourceRankingAsync.value ?? const [];
+                final targetRanking = targetRankingAsync.value ?? const [];
+                return _buildReferralKpiCard(
+                  stats: stats,
+                  sourceRanking: sourceRanking,
+                  targetRanking: targetRanking,
+                );
+              },
+              loading: () => _buildReferralKpiCard(
+                stats: _buildReferralKpiPlaceholderStats(),
+                sourceRanking: const [],
+                targetRanking: const [],
+              ),
+              error: (error, stackTrace) => _buildReferralKpiCard(
+                stats: _buildReferralKpiPlaceholderStats(),
+                sourceRanking: const [],
+                targetRanking: const [],
+              ),
+            );
+          },
+          loading: () => _buildReferralKpiCard(
+            stats: _buildReferralKpiPlaceholderStats(),
+            sourceRanking: const [],
+            targetRanking: const [],
+          ),
+          error: (error, stackTrace) => _buildReferralKpiCard(
+            stats: _buildReferralKpiPlaceholderStats(),
+            sourceRanking: const [],
+            targetRanking: const [],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Map<String, dynamic>> _buildReferralKpiStats(Map<String, dynamic> data) {
+    final firstVisits = data['firstVisits'] as int? ?? 0;
+    final impressions = data['impressions'] as int? ?? 0;
+    final visitRate = data['visitRate'] as double? ?? 0.0;
+    final referralRevenue = data['referralRevenue'] as int? ?? 0;
+    final referralLtv30 = data['referralLtv30'] as int? ?? 0;
+    final balance = data['balance'] as int? ?? 0;
+
+    final visitRateText = impressions > 0 ? '${visitRate.toStringAsFixed(1)}%' : '-';
+    final balanceText = balance >= 0 ? '+$balance' : '$balance';
+
+    return [
+      {
+        'label': '送客起点初回来店数',
+        'value': '$firstVisits',
+        'icon': Icons.person_add_alt,
+        'color': Colors.blue,
+      },
+      {
+        'label': '送客起点初回来店率',
+        'value': visitRateText,
+        'subValue': '表示 $impressions 件',
+        'icon': Icons.trending_up,
+        'color': Colors.green,
+      },
+      {
+        'label': '送客経由売上',
+        'value': _formatCurrency(referralRevenue),
+        'icon': Icons.payments_outlined,
+        'color': Colors.orange,
+      },
+      {
+        'label': '送客LTV30',
+        'value': _formatCurrency(referralLtv30),
+        'subValue': '30日合計',
+        'icon': Icons.timeline,
+        'color': Colors.purple,
+      },
+      {
+        'label': '送客バランス',
+        'value': balanceText,
+        'subValue': '受け-送客',
+        'icon': Icons.compare_arrows,
+        'color': Colors.teal,
+      },
+    ];
+  }
+
+  String _formatCurrency(int value) {
+    final formatted = value.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]},',
+    );
+    return '¥$formatted';
+  }
+
+  List<Map<String, dynamic>> _buildReferralKpiPlaceholderStats() {
+    return [
+      {
+        'label': '送客起点初回来店数',
+        'value': '-',
+        'icon': Icons.person_add_alt,
+        'color': Colors.grey,
+      },
+      {
+        'label': '送客起点初回来店率',
+        'value': '-',
+        'subValue': '表示→来店',
+        'icon': Icons.trending_up,
+        'color': Colors.grey,
+      },
+      {
+        'label': '送客経由売上',
+        'value': '-',
+        'icon': Icons.payments_outlined,
+        'color': Colors.grey,
+      },
+      {
+        'label': '送客LTV30',
+        'value': '-',
+        'subValue': '30日売上',
+        'icon': Icons.timeline,
+        'color': Colors.grey,
+      },
+      {
+        'label': '送客バランス',
+        'value': '-',
+        'subValue': '受け/送客差',
+        'icon': Icons.compare_arrows,
+        'color': Colors.grey,
+      },
+    ];
+  }
+
+  Widget _buildReferralKpiCard({
+    required List<Map<String, dynamic>> stats,
+    required List<Map<String, String>> sourceRanking,
+    required List<Map<String, String>> targetRanking,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.alt_route, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '送客KPI',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '送客ログの集計が有効になると自動で表示されます。',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildStatsGrid(stats),
+          const SizedBox(height: 16),
+          _buildRankingSection(
+            title: '送客元ランキング',
+            icon: Icons.call_made,
+            items: sourceRanking,
+          ),
+          const SizedBox(height: 12),
+          _buildRankingSection(
+            title: '送客先ランキング',
+            icon: Icons.call_received,
+            items: targetRanking,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRankingSection({
+    required String title,
+    required IconData icon,
+    required List<Map<String, String>> items,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: const Color(0xFFFF6B35), size: 18),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (items.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: const Text(
+              'データ準備中',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              children: items.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF6B35),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item['label'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        item['value'] ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
       ],
     );
   }

@@ -57,20 +57,7 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 40),
-                
-                // ロゴ
-                Center(
-                  child: Image.asset(
-                    'assets/images/groumap_store_icon.png',
-                    width: 120,
-                    height: 120,
-                    errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.store, size: 120, color: Colors.white),
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
+
                 // タイトル
                 const Text(
                   'GrouMap Store',

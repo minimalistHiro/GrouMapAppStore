@@ -50,6 +50,7 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
   // requestIdの形式: "storeId_userId"
   final parts = requestId.split('_');
   if (parts.length != 2) {
+    debugPrint('pointRequestStatusProvider: invalid requestId format: $requestId');
     return Stream.value(null);
   }
   
@@ -119,7 +120,17 @@ final pointRequestStatusProvider = StreamProvider.family<PointRequest?, String>(
         rethrow;
       }
     }
+    debugPrint('pointRequestStatusProvider: request not found: point_requests/$storeId/$userId/award_request');
     return null;
+  }).handleError((error, stackTrace) {
+    debugPrint('pointRequestStatusProvider: stream error for requestId=$requestId');
+    debugPrint('  storeId=$storeId userId=$userId');
+    if (error is FirebaseException) {
+      debugPrint('  FirebaseException code=${error.code} message=${error.message}');
+    } else {
+      debugPrint('  error=$error');
+    }
+    debugPrint('  stackTrace=$stackTrace');
   });
 });
 

@@ -5,9 +5,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:latlong2/latlong.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import 'sign_up_view.dart';
+import 'store_location_picker_view.dart';
 
 class StoreInfoView extends ConsumerStatefulWidget {
   const StoreInfoView({Key? key}) : super(key: key);
@@ -87,8 +89,8 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   }
 
   void _initializeLocationControllers() {
-    _selectedLatitude = 35.6581; // 東京のデフォルト位置
-    _selectedLongitude = 139.7017;
+    _selectedLatitude = null;
+    _selectedLongitude = null;
     _updateLocationControllers();
   }
   
@@ -96,7 +98,11 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     if (_selectedLatitude != null && _selectedLongitude != null) {
       _latitudeController.text = _selectedLatitude!.toStringAsFixed(6);
       _longitudeController.text = _selectedLongitude!.toStringAsFixed(6);
+      return;
     }
+
+    _latitudeController.text = '';
+    _longitudeController.text = '';
   }
 
   @override
@@ -121,42 +127,6 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     super.dispose();
   }
 
-  Future<void> _getCoordinatesFromAddress() async {
-    final address = _addressController.text.trim();
-    if (address.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('住所を入力してください'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-    
-    setState(() {
-      _isLoading = true;
-    });
-    
-    // 簡易的な座標設定（実際のAPIを使う場合はNominatimなど）
-    // ここでは東京の座標を設定
-    setState(() {
-      _selectedLatitude = 35.6581;
-      _selectedLongitude = 139.7017;
-      _updateLocationControllers();
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('座標を設定しました（デフォルト：東京）'),
-        backgroundColor: Colors.green,
-      ),
-    );
-    
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
   void _addTag() {
     final tag = _tagsController.text.trim();
     if (tag.isNotEmpty && !_tags.contains(tag)) {
@@ -170,6 +140,24 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   void _removeTag(String tag) {
     setState(() {
       _tags.remove(tag);
+    });
+  }
+
+  Future<void> _openLocationPicker() async {
+    final selectedLocation = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (context) => const StoreLocationPickerView(),
+      ),
+    );
+
+    if (selectedLocation == null) {
+      return;
+    }
+
+    setState(() {
+      _selectedLatitude = selectedLocation.latitude;
+      _selectedLongitude = selectedLocation.longitude;
+      _updateLocationControllers();
     });
   }
 
@@ -544,20 +532,7 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                
-                // ロゴ
-                Center(
-                  child: Image.asset(
-                    'assets/images/groumap_store_icon.png',
-                    width: 100,
-                    height: 100,
-                    errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.store, size: 100, color: Color(0xFFFF6B35)),
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
+
                 // タイトル
                 const Text(
                   '店舗情報を入力',
@@ -790,18 +765,9 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _isLoading ? null : _getCoordinatesFromAddress,
-            icon: _isLoading 
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Icon(Icons.search, size: 18),
-            label: Text(_isLoading ? '座標取得中...' : '住所から座標を取得'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+          child: CustomButton(
+            text: '地図を開く',
+            onPressed: _openLocationPicker,
           ),
         ),
       ],
