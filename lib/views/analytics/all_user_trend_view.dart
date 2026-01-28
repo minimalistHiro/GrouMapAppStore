@@ -17,6 +17,19 @@ class AllUserTrendView extends StatelessWidget {
       onFetch: (ref, storeId, period) {
         return ref.read(allUserTrendNotifierProvider.notifier).fetchTrendData(storeId, period);
       },
+      onFetchWithDate: (ref, storeId, period, anchorDate) {
+        return ref
+            .read(allUserTrendNotifierProvider.notifier)
+            .fetchTrendData(storeId, period, anchorDate: anchorDate);
+      },
+      minAvailableDateResolver: (ref) =>
+          ref.read(allUserTrendNotifierProvider.notifier).minAvailableDate,
+      periodOptions: const [
+        TrendPeriodOption('日', 'day'),
+        TrendPeriodOption('月', 'month'),
+        TrendPeriodOption('年', 'year'),
+      ],
+      initialPeriod: 'day',
       secondaryChartTitle: '累計ユーザー数推移グラフ',
       secondaryEmptyDetail: 'ユーザー登録の履歴がありません',
       secondaryValueKey: 'cumulativeUsers',

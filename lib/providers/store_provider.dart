@@ -227,7 +227,10 @@ final todayVisitorsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
 class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   StoreUserTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== StoreUserTrendNotifier START ===');
       debugPrint('StoreId: $storeId, Period: $period');
@@ -235,23 +238,28 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
       state = const AsyncValue.loading();
       
       DateTime startDate;
-      DateTime endDate = DateTime.now();
-      
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
+
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
       
@@ -262,6 +270,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
       debugPrint('Found ${usersSnapshot.docs.length} users');
       
       final List<Map<String, dynamic>> allTransactions = [];
+      DateTime? earliestDate;
       
       // 各ユーザーのトランザクションを取得
       for (final userDoc in usersSnapshot.docs) {
@@ -278,6 +287,10 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           final data = transDoc.data();
           data['userId'] = userId;
           data['transactionId'] = transDoc.id;
+          final createdAt = _parseCreatedAt(data['createdAt']);
+          if (createdAt != null && (earliestDate == null || createdAt.isBefore(earliestDate!))) {
+            earliestDate = createdAt;
+          }
           allTransactions.add(data);
         }
       }
@@ -311,17 +324,13 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           return false;
         }
         
+        if (period == 'day' || period == 'month') {
+          return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
+        }
         return docDate.isAfter(startDate) && docDate.isBefore(endDate);
       }).toList();
       
       debugPrint('Filtered transactions in date range: ${filteredTransactions.length}');
-      
-      if (filteredTransactions.isEmpty) {
-        debugPrint('No transactions found, returning empty list');
-        state = const AsyncValue.data([]);
-        debugPrint('=== StoreUserTrendNotifier END ===');
-        return;
-      }
       
       // 日付ごとにユーザーIDをグループ化
       final Map<String, Set<String>> dailyUsers = {};
@@ -371,6 +380,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
         
         String groupKey;
         switch (period) {
+          case 'day':
           case 'week':
             groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
             break;
@@ -389,12 +399,39 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
       }
       
       // 結果をリストに変換してソート
-      final result = groupedData.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'userCount': entry.value.length,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'userCount': groupedData[key]?.length ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'userCount': groupedData[key]?.length ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedData.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'userCount': entry.value.length,
+          };
+        }).toList();
+      }
       
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
       
@@ -403,7 +440,8 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
         debugPrint('Sample data: ${result.take(3)}');
       }
       debugPrint('=== StoreUserTrendNotifier END ===');
-      
+
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching user trend data: $e');
@@ -442,6 +480,7 @@ String _buildDateKey(DateTime date) {
 
 String _buildGroupKey(DateTime date, String period) {
   switch (period) {
+    case 'day':
     case 'week':
       return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     case 'month':
@@ -457,7 +496,10 @@ String _buildGroupKey(DateTime date, String period) {
 class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   NewCustomerTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== NewCustomerTrendNotifier START ===');
       debugPrint('StoreId: $storeId, Period: $period');
@@ -465,23 +507,28 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
       state = const AsyncValue.loading();
 
       DateTime startDate;
-      final endDate = DateTime.now();
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
 
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
 
@@ -491,6 +538,7 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
       debugPrint('Found ${usersSnapshot.docs.length} users');
 
       final Map<String, DateTime> firstVisitByUser = {};
+      DateTime? earliestDate;
 
       for (final userDoc in usersSnapshot.docs) {
         final userId = userDoc.id;
@@ -525,6 +573,9 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
           if (existing == null || docDate.isBefore(existing)) {
             firstVisitByUser[userId] = docDate;
           }
+          if (earliestDate == null || docDate.isBefore(earliestDate!)) {
+            earliestDate = docDate;
+          }
         }
       }
 
@@ -533,12 +584,16 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
       final Map<String, int> groupedData = {};
       for (final entry in firstVisitByUser.entries) {
         final visitDate = entry.value;
-        if (!(visitDate.isAfter(startDate) && visitDate.isBefore(endDate))) {
+        final isWithinRange = period == 'day' || period == 'month'
+            ? !visitDate.isBefore(startDate) && !visitDate.isAfter(endDate)
+            : visitDate.isAfter(startDate) && visitDate.isBefore(endDate);
+        if (!isWithinRange) {
           continue;
         }
 
         String groupKey;
         switch (period) {
+          case 'day':
           case 'week':
             groupKey = '${visitDate.year}-${visitDate.month.toString().padLeft(2, '0')}-${visitDate.day.toString().padLeft(2, '0')}';
             break;
@@ -555,12 +610,39 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
         groupedData[groupKey] = (groupedData[groupKey] ?? 0) + 1;
       }
 
-      final result = groupedData.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'newCustomerCount': entry.value,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'newCustomerCount': groupedData[key] ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'newCustomerCount': groupedData[key] ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedData.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'newCustomerCount': entry.value,
+          };
+        }).toList();
+      }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
@@ -570,6 +652,7 @@ class NewCustomerTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
       }
       debugPrint('=== NewCustomerTrendNotifier END ===');
 
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching new customer trend data: $e');
@@ -588,7 +671,10 @@ final newCustomerTrendNotifierProvider = StateNotifierProvider<NewCustomerTrendN
 class PointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   PointIssueTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== PointIssueTrendNotifier START ===');
       debugPrint('StoreId: $storeId, Period: $period');
@@ -596,28 +682,34 @@ class PointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, 
       state = const AsyncValue.loading();
 
       DateTime startDate;
-      final endDate = DateTime.now();
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
 
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
 
       final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final Map<String, int> groupedData = {};
+      DateTime? earliestDate;
 
       for (final userDoc in usersSnapshot.docs) {
         final transactionsSnapshot = await FirebaseFirestore.instance
@@ -631,7 +723,13 @@ class PointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, 
           final data = transDoc.data();
           final createdAt = _parseCreatedAt(data['createdAt']);
           if (createdAt == null) continue;
-          if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+          if (earliestDate == null || createdAt.isBefore(earliestDate!)) {
+            earliestDate = createdAt;
+          }
+          final isWithinRange = period == 'day' || period == 'month'
+              ? !createdAt.isBefore(startDate) && !createdAt.isAfter(endDate)
+              : _isWithinRange(createdAt, startDate, endDate);
+          if (!isWithinRange) continue;
 
           final groupKey = _buildGroupKey(createdAt, period);
           final amount = (data['amount'] as num?)?.toInt() ?? 0;
@@ -639,18 +737,46 @@ class PointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, 
         }
       }
 
-      final result = groupedData.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'pointsIssued': entry.value,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'pointsIssued': groupedData[key] ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'pointsIssued': groupedData[key] ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedData.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'pointsIssued': entry.value,
+          };
+        }).toList();
+      }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       debugPrint('Result: ${result.length} data points');
       debugPrint('=== PointIssueTrendNotifier END ===');
 
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching point issue trend data: $e');
@@ -668,7 +794,10 @@ final pointIssueTrendNotifierProvider = StateNotifierProvider<PointIssueTrendNot
 class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   PointUsageUserTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== PointUsageUserTrendNotifier START ===');
       debugPrint('StoreId: $storeId, Period: $period');
@@ -676,28 +805,34 @@ class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<Stri
       state = const AsyncValue.loading();
 
       DateTime startDate;
-      final endDate = DateTime.now();
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
 
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
 
       final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final Map<String, Set<String>> groupedUsers = {};
+      DateTime? earliestDate;
 
       for (final userDoc in usersSnapshot.docs) {
         final userId = userDoc.id;
@@ -712,7 +847,13 @@ class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<Stri
           final data = transDoc.data();
           final createdAt = _parseCreatedAt(data['createdAt']);
           if (createdAt == null) continue;
-          if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+          if (earliestDate == null || createdAt.isBefore(earliestDate!)) {
+            earliestDate = createdAt;
+          }
+          final isWithinRange = period == 'day' || period == 'month'
+              ? !createdAt.isBefore(startDate) && !createdAt.isAfter(endDate)
+              : _isWithinRange(createdAt, startDate, endDate);
+          if (!isWithinRange) continue;
 
           final groupKey = _buildGroupKey(createdAt, period);
           groupedUsers.putIfAbsent(groupKey, () => <String>{});
@@ -720,18 +861,46 @@ class PointUsageUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<Stri
         }
       }
 
-      final result = groupedUsers.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'pointUsageUsers': entry.value.length,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'pointUsageUsers': groupedUsers[key]?.length ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'pointUsageUsers': groupedUsers[key]?.length ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedUsers.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'pointUsageUsers': entry.value.length,
+          };
+        }).toList();
+      }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       debugPrint('Result: ${result.length} data points');
       debugPrint('=== PointUsageUserTrendNotifier END ===');
 
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching point usage user trend data: $e');
@@ -749,7 +918,10 @@ final pointUsageUserTrendNotifierProvider = StateNotifierProvider<PointUsageUser
 class AllUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   AllUserTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== AllUserTrendNotifier START ===');
       debugPrint('Period: $period');
@@ -757,51 +929,91 @@ class AllUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dyn
       state = const AsyncValue.loading();
 
       DateTime startDate;
-      final endDate = DateTime.now();
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
 
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
 
       final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final Map<String, int> groupedUsers = {};
+      DateTime? earliestDate;
 
       for (final userDoc in usersSnapshot.docs) {
         final data = userDoc.data();
         final createdAt = _parseCreatedAt(data['createdAt']);
         if (createdAt == null) continue;
-        if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+        if (earliestDate == null || createdAt.isBefore(earliestDate!)) {
+          earliestDate = createdAt;
+        }
+        final isWithinRange = period == 'day' || period == 'month'
+            ? !createdAt.isBefore(startDate) && !createdAt.isAfter(endDate)
+            : _isWithinRange(createdAt, startDate, endDate);
+        if (!isWithinRange) continue;
 
         final groupKey = _buildGroupKey(createdAt, period);
         groupedUsers[groupKey] = (groupedUsers[groupKey] ?? 0) + 1;
       }
 
-      final result = groupedUsers.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'totalUsers': entry.value,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'totalUsers': groupedUsers[key] ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'totalUsers': groupedUsers[key] ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedUsers.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'totalUsers': entry.value,
+          };
+        }).toList();
+      }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       debugPrint('Result: ${result.length} data points');
       debugPrint('=== AllUserTrendNotifier END ===');
 
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching all user trend data: $e');
@@ -819,7 +1031,10 @@ final allUserTrendNotifierProvider = StateNotifierProvider<AllUserTrendNotifier,
 class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   TotalPointIssueTrendNotifier() : super(const AsyncValue.loading());
 
-  Future<void> fetchTrendData(String storeId, String period) async {
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
     try {
       debugPrint('=== TotalPointIssueTrendNotifier START ===');
       debugPrint('Period: $period');
@@ -827,29 +1042,35 @@ class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<Str
       state = const AsyncValue.loading();
 
       DateTime startDate;
-      final endDate = DateTime.now();
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
 
       switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
         case 'week':
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
           break;
         case 'month':
-          if (endDate.month == 1) {
-            startDate = DateTime(endDate.year - 1, 12, endDate.day);
-          } else {
-            startDate = DateTime(endDate.year, endDate.month - 1, endDate.day);
-          }
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
           break;
         case 'year':
+          endDate = baseDate;
           startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
           break;
         default:
+          endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
 
       final storesSnapshot = await FirebaseFirestore.instance.collection('stores').get();
       final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final Map<String, int> groupedData = {};
+      DateTime? earliestDate;
 
       for (final storeDoc in storesSnapshot.docs) {
         final storeDocId = storeDoc.id;
@@ -865,7 +1086,13 @@ class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<Str
             final data = transDoc.data();
             final createdAt = _parseCreatedAt(data['createdAt']);
             if (createdAt == null) continue;
-            if (!_isWithinRange(createdAt, startDate, endDate)) continue;
+            if (earliestDate == null || createdAt.isBefore(earliestDate!)) {
+              earliestDate = createdAt;
+            }
+            final isWithinRange = period == 'day' || period == 'month'
+                ? !createdAt.isBefore(startDate) && !createdAt.isAfter(endDate)
+                : _isWithinRange(createdAt, startDate, endDate);
+            if (!isWithinRange) continue;
 
             final groupKey = _buildGroupKey(createdAt, period);
             final amount = (data['amount'] as num?)?.toInt() ?? 0;
@@ -874,18 +1101,46 @@ class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<Str
         }
       }
 
-      final result = groupedData.entries.map((entry) {
-        return {
-          'date': entry.key,
-          'totalPointsIssued': entry.value,
-        };
-      }).toList();
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = _buildDateKey(date);
+          days.add({
+            'date': key,
+            'totalPointsIssued': groupedData[key] ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          months.add({
+            'date': key,
+            'totalPointsIssued': groupedData[key] ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedData.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'totalPointsIssued': entry.value,
+          };
+        }).toList();
+      }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       debugPrint('Result: ${result.length} data points');
       debugPrint('=== TotalPointIssueTrendNotifier END ===');
 
+      _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
     } catch (e, stackTrace) {
       debugPrint('Error fetching total point issue trend data: $e');

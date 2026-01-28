@@ -9,6 +9,7 @@ import 'point_usage_user_trend_view.dart';
 import 'all_user_trend_view.dart';
 import 'total_point_issue_trend_view.dart';
 import '../../providers/referral_kpi_provider.dart';
+import '../ranking/leaderboard_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -450,6 +451,37 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildDataSection(WidgetRef ref) {
+    final dataItems = [
+      {
+        'title': '店舗利用者推移',
+        'icon': Icons.people_outline,
+      },
+      {
+        'title': '新規顧客推移',
+        'icon': Icons.person_add_outlined,
+      },
+      {
+        'title': 'ポイント発行推移',
+        'icon': Icons.monetization_on_outlined,
+      },
+      {
+        'title': 'ポイント利用者推移',
+        'icon': Icons.shopping_cart_outlined,
+      },
+      {
+        'title': '全ユーザー数推移',
+        'icon': Icons.group_outlined,
+      },
+      {
+        'title': '全ポイント発行数推移',
+        'icon': Icons.trending_up_outlined,
+      },
+      {
+        'title': 'ランキング',
+        'icon': Icons.emoji_events_outlined,
+      },
+    ];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -483,86 +515,43 @@ class AnalyticsView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          GridView.builder(
+          ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: 6,
+            itemCount: dataItems.length,
+            separatorBuilder: (context, index) => const Divider(height: 16),
             itemBuilder: (context, index) {
-              final dataItems = [
-                {
-                  'title': '店舗利用者推移',
-                  'icon': Icons.people_outline,
-                  'color': Colors.blue,
-                },
-                {
-                  'title': '新規顧客推移',
-                  'icon': Icons.person_add_outlined,
-                  'color': Colors.purple,
-                },
-                {
-                  'title': 'ポイント発行推移',
-                  'icon': Icons.monetization_on_outlined,
-                  'color': Colors.green,
-                },
-                {
-                  'title': 'ポイント利用者推移',
-                  'icon': Icons.shopping_cart_outlined,
-                  'color': Colors.orange,
-                },
-                {
-                  'title': '全ユーザー数推移',
-                  'icon': Icons.group_outlined,
-                  'color': Colors.teal,
-                },
-                {
-                  'title': '全ポイント発行数推移',
-                  'icon': Icons.trending_up_outlined,
-                  'color': Colors.red,
-                },
-              ];
-              
               final item = dataItems[index];
-              
-              return GestureDetector(
+
+              return InkWell(
                 onTap: () {
                   // 各データ項目の詳細画面への遷移処理
                   _navigateToDataDetail(context, item['title'] as String);
                 },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (item['color'] as Color).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: (item['color'] as Color).withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
                     children: [
                       Icon(
                         item['icon'] as IconData,
-                        color: item['color'] as Color,
+                        color: const Color(0xFFFF6B35),
                         size: 24,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        item['title'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: item['color'] as Color,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item['title'] as String,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Colors.black38,
+                        size: 20,
                       ),
                     ],
                   ),
@@ -623,6 +612,14 @@ class AnalyticsView extends ConsumerWidget {
           context,
           MaterialPageRoute(
             builder: (context) => const TotalPointIssueTrendView(),
+          ),
+        );
+        break;
+      case 'ランキング':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const LeaderboardView(),
           ),
         );
         break;

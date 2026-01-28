@@ -17,6 +17,19 @@ class PointIssueTrendView extends StatelessWidget {
       onFetch: (ref, storeId, period) {
         return ref.read(pointIssueTrendNotifierProvider.notifier).fetchTrendData(storeId, period);
       },
+      onFetchWithDate: (ref, storeId, period, anchorDate) {
+        return ref
+            .read(pointIssueTrendNotifierProvider.notifier)
+            .fetchTrendData(storeId, period, anchorDate: anchorDate);
+      },
+      minAvailableDateResolver: (ref) =>
+          ref.read(pointIssueTrendNotifierProvider.notifier).minAvailableDate,
+      periodOptions: const [
+        TrendPeriodOption('日', 'day'),
+        TrendPeriodOption('月', 'month'),
+        TrendPeriodOption('年', 'year'),
+      ],
+      initialPeriod: 'day',
       statsConfig: const TrendStatsConfig(
         totalLabel: '総ポイント発行数',
         maxLabel: '最大ポイント発行数',

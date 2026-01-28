@@ -34,7 +34,15 @@ class TrendStatsConfig {
   final Color avgColor;
 }
 
+class TrendPeriodOption {
+  const TrendPeriodOption(this.label, this.value);
+
+  final String label;
+  final String value;
+}
+
 typedef TrendFetch = FutureOr<void> Function(WidgetRef ref, String storeId, String period);
+typedef TrendFetchWithDate = FutureOr<void> Function(WidgetRef ref, String storeId, String period, DateTime anchorDate);
 
 class TrendBaseView extends ConsumerStatefulWidget {
   const TrendBaseView({
@@ -51,6 +59,14 @@ class TrendBaseView extends ConsumerStatefulWidget {
     this.secondaryEmptyDetail,
     this.secondaryValueKey,
     this.secondaryDataBuilder,
+    this.periodOptions = const [
+      TrendPeriodOption('週', 'week'),
+      TrendPeriodOption('月', 'month'),
+      TrendPeriodOption('年', 'year'),
+    ],
+    this.initialPeriod,
+    this.onFetchWithDate,
+    this.minAvailableDateResolver,
   }) : super(key: key);
 
   final String title;
@@ -65,6 +81,10 @@ class TrendBaseView extends ConsumerStatefulWidget {
   final String? secondaryEmptyDetail;
   final String? secondaryValueKey;
   final List<Map<String, dynamic>> Function(List<Map<String, dynamic>> trendData)? secondaryDataBuilder;
+  final List<TrendPeriodOption> periodOptions;
+  final String? initialPeriod;
+  final TrendFetchWithDate? onFetchWithDate;
+  final DateTime? Function(WidgetRef ref)? minAvailableDateResolver;
 
   @override
   ConsumerState<TrendBaseView> createState() => _TrendBaseViewState();
@@ -73,8 +93,17 @@ class TrendBaseView extends ConsumerStatefulWidget {
 class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   String _selectedPeriod = 'week';
   bool _hasInitialized = false;
+  DateTime _anchorDate = DateTime.now();
 
   bool get _hasSecondaryChart => widget.secondaryChartTitle != null && widget.secondaryValueKey != null;
+  bool get _showsPeriodHeader =>
+      widget.onFetchWithDate != null && (_selectedPeriod == 'day' || _selectedPeriod == 'month');
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPeriod = widget.initialPeriod ?? _selectedPeriod;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +146,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
 
               if (!_hasInitialized) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  widget.onFetch(ref, storeId, _selectedPeriod);
+                  _triggerFetch(ref, storeId);
                   _hasInitialized = true;
                 });
               }
@@ -136,6 +165,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                           chartTitle: widget.chartTitle,
                           emptyDetail: widget.emptyDetail,
                           valueKey: widget.valueKey,
+                          storeId: storeId,
                         ),
                         if (_hasSecondaryChart) ...[
                           const SizedBox(height: 24),
@@ -144,6 +174,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                             chartTitle: widget.secondaryChartTitle!,
                             emptyDetail: widget.secondaryEmptyDetail ?? widget.emptyDetail,
                             valueKey: widget.secondaryValueKey!,
+                            storeId: storeId,
                           ),
                         ],
                         const SizedBox(height: 24),
@@ -159,10 +190,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                     children: [
                       _buildPeriodSelector(storeId),
                       const SizedBox(height: 24),
-                      _buildLoadingChart(widget.chartTitle),
+                      _buildLoadingChart(storeId, widget.chartTitle),
                       if (_hasSecondaryChart) ...[
                         const SizedBox(height: 24),
-                        _buildLoadingChart(widget.secondaryChartTitle!),
+                        _buildLoadingChart(storeId, widget.secondaryChartTitle!),
                       ],
                       const SizedBox(height: 24),
                       _buildLoadingStatsCard(),
@@ -231,6 +262,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   }
 
   Widget _buildPeriodSelector(String storeId) {
+    final options = widget.periodOptions;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -266,11 +298,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildPeriodButton('週', 'week', storeId),
-              const SizedBox(width: 12),
-              _buildPeriodButton('月', 'month', storeId),
-              const SizedBox(width: 12),
-              _buildPeriodButton('年', 'year', storeId),
+              for (var i = 0; i < options.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                _buildPeriodButton(options[i].label, options[i].value, storeId),
+              ],
             ],
           ),
         ],
@@ -286,8 +317,9 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
           if (_selectedPeriod != period) {
             setState(() {
               _selectedPeriod = period;
+              _anchorDate = DateTime.now();
             });
-            widget.onFetch(ref, storeId, period);
+            _triggerFetch(ref, storeId);
           }
         },
         child: Container(
@@ -319,6 +351,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     required String chartTitle,
     required String emptyDetail,
     required String valueKey,
+    required String storeId,
   }) {
     return Container(
       width: double.infinity,
@@ -338,6 +371,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_showsPeriodHeader) ...[
+            _buildPeriodHeader(storeId),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
@@ -353,8 +390,108 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
             ],
           ),
           const SizedBox(height: 20),
-          trendData.isEmpty ? _buildEmptyChart(emptyDetail) : _buildLineChart(trendData, valueKey: valueKey),
+          trendData.isEmpty
+              ? _buildEmptyChart(emptyDetail)
+              : _buildChartWithData(trendData, valueKey: valueKey),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChartWithData(
+    List<Map<String, dynamic>> trendData, {
+    required String valueKey,
+  }) {
+    if (_selectedPeriod == 'day' || _selectedPeriod == 'month' || _selectedPeriod == 'year') {
+      return _buildBarChart(trendData, valueKey: valueKey);
+    }
+    return _buildLineChart(trendData, valueKey: valueKey);
+  }
+
+  Widget _buildBarChart(
+    List<Map<String, dynamic>> trendData, {
+    required String valueKey,
+  }) {
+    final maxValue = trendData.isNotEmpty
+        ? trendData.map((data) => _getValue(data, valueKey)).reduce((a, b) => a > b ? a : b)
+        : 1;
+
+    return SizedBox(
+      height: 300,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceBetween,
+          maxY: maxValue == 0 ? 1 : maxValue.toDouble() * 1.1,
+          minY: 0,
+          barTouchData: BarTouchData(enabled: true),
+          gridData: FlGridData(
+            show: true,
+            horizontalInterval: maxValue > 10 ? (maxValue / 5).ceil().toDouble() : 1,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey[300]!,
+                strokeWidth: 1,
+              );
+            },
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 1,
+                getTitlesWidget: (double value, TitleMeta meta) {
+                  if (value.toInt() < trendData.length) {
+                    final date = trendData[value.toInt()]['date'] as String;
+                    return _buildBottomTitle(date);
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: maxValue > 10 ? (maxValue / 5).ceil().toDouble() : 1,
+                reservedSize: 40,
+                getTitlesWidget: (double value, TitleMeta meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          barGroups: trendData.asMap().entries.map((entry) {
+            return BarChartGroupData(
+              x: entry.key,
+              barRods: [
+                BarChartRodData(
+                  toY: _getValue(entry.value, valueKey).toDouble(),
+                  color: const Color(0xFFFF6B35),
+                  width: 10,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -485,13 +622,17 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   Widget _buildBottomTitle(String date) {
     String displayText;
     switch (_selectedPeriod) {
+      case 'day':
+        final parts = date.split('-');
+        displayText = int.parse(parts[2]).toString();
+        break;
       case 'week':
         final parts = date.split('-');
         displayText = '${parts[1]}/${parts[2]}';
         break;
       case 'month':
         final parts = date.split('-');
-        displayText = '${parts[0]}/${parts[1]}';
+        displayText = int.parse(parts[1]).toString();
         break;
       case 'year':
         displayText = date;
@@ -516,6 +657,9 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   Widget _buildEmptyChart(String emptyDetail) {
     String periodText;
     switch (_selectedPeriod) {
+      case 'day':
+        periodText = '今月';
+        break;
       case 'week':
         periodText = '過去7日間';
         break;
@@ -594,7 +738,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
-  Widget _buildLoadingChart(String chartTitle) {
+  Widget _buildLoadingChart(String storeId, String chartTitle) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -613,6 +757,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_showsPeriodHeader) ...[
+            _buildPeriodHeader(storeId),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
@@ -660,6 +808,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_showsPeriodHeader) ...[
+            _buildPeriodHeader(storeId),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               const Icon(Icons.show_chart, color: Color(0xFFFF6B35), size: 24),
@@ -767,6 +919,108 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
+  Widget _buildPeriodHeader(String storeId) {
+    final label = _getPeriodLabel();
+    final canGoPrev = _canMovePrev();
+    final canGoNext = _canMoveNext();
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        TextButton(
+          onPressed: canGoPrev
+              ? () {
+                  _shiftPeriod(storeId, -1);
+                }
+              : null,
+          child: const Text('<'),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        TextButton(
+          onPressed: canGoNext
+              ? () {
+                  _shiftPeriod(storeId, 1);
+                }
+              : null,
+          child: const Text('>'),
+        ),
+      ],
+    );
+  }
+
+  void _shiftPeriod(String storeId, int offset) {
+    setState(() {
+      switch (_selectedPeriod) {
+        case 'day':
+          _anchorDate = DateTime(_anchorDate.year, _anchorDate.month + offset, 1);
+          break;
+        case 'month':
+          _anchorDate = DateTime(_anchorDate.year + offset, 1, 1);
+          break;
+        default:
+          _anchorDate = DateTime(_anchorDate.year + offset, _anchorDate.month, _anchorDate.day);
+          break;
+      }
+    });
+    _triggerFetch(ref, storeId);
+  }
+
+  bool _canMoveNext() {
+    final now = DateTime.now();
+    switch (_selectedPeriod) {
+      case 'day':
+        return _anchorDate.year < now.year ||
+            (_anchorDate.year == now.year && _anchorDate.month < now.month);
+      case 'month':
+        return _anchorDate.year < now.year;
+      default:
+        return true;
+    }
+  }
+
+  bool _canMovePrev() {
+    final minDate = widget.minAvailableDateResolver?.call(ref);
+    if (minDate == null) {
+      return true;
+    }
+    switch (_selectedPeriod) {
+      case 'day':
+        final currentMonth = DateTime(_anchorDate.year, _anchorDate.month, 1);
+        final minMonth = DateTime(minDate.year, minDate.month, 1);
+        return currentMonth.isAfter(minMonth);
+      case 'month':
+        return _anchorDate.year > minDate.year;
+      default:
+        return true;
+    }
+  }
+
+  String _getPeriodLabel() {
+    switch (_selectedPeriod) {
+      case 'day':
+        return '${_anchorDate.year}年${_anchorDate.month}月';
+      case 'month':
+        return '${_anchorDate.year}年';
+      default:
+        return '';
+    }
+  }
+
+  void _triggerFetch(WidgetRef ref, String storeId) {
+    final fetchWithDate = widget.onFetchWithDate;
+    if (fetchWithDate != null) {
+      fetchWithDate(ref, storeId, _selectedPeriod, _anchorDate);
+    } else {
+      widget.onFetch(ref, storeId, _selectedPeriod);
+    }
+  }
+
   Widget _buildStatsCards(List<Map<String, dynamic>> trendData) {
     final total = trendData.fold<int>(0, (sum, data) => sum + _getValue(data, widget.valueKey));
     final maxValue = trendData.isNotEmpty
@@ -837,6 +1091,9 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   Widget _buildEmptyStats() {
     String periodText;
     switch (_selectedPeriod) {
+      case 'day':
+        periodText = '今月';
+        break;
       case 'week':
         periodText = '過去7日間';
         break;
