@@ -4,14 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/qr_verification_provider.dart';
 import '../../widgets/custom_button.dart';
-import '../coupons/coupon_select_for_checkout_view.dart';
+import '../user/store_user_detail_view.dart';
 
 class PointUsageInputView extends ConsumerStatefulWidget {
   final String userId;
+  final String? storeId;
 
   const PointUsageInputView({
     Key? key,
     required this.userId,
+    this.storeId,
   }) : super(key: key);
 
   @override
@@ -239,10 +241,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => CouponSelectForCheckoutView(
+          builder: (_) => StoreUserDetailView(
             userId: widget.userId,
-            userName: _actualUserName,
-            usedPoints: pointsToUse,
+            storeId: storeId,
           ),
         ),
       );
@@ -260,6 +261,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
   }
 
   Future<String?> _resolveStoreId() async {
+    if (widget.storeId != null && widget.storeId!.isNotEmpty) {
+      return widget.storeId;
+    }
     final storeSettings = ref.read(storeSettingsProvider);
     if (storeSettings != null && storeSettings.storeId.isNotEmpty) {
       return storeSettings.storeId;

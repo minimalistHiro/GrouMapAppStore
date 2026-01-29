@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../coupons/coupon_select_for_checkout_view.dart';
-import '../../providers/auth_provider.dart';
+import '../user/store_user_detail_view.dart';
 import '../../widgets/custom_button.dart';
 import 'point_usage_input_view.dart';
 
 class PointUsageConfirmationView extends ConsumerStatefulWidget {
   final String userId;
+  final String storeId;
 
   const PointUsageConfirmationView({
     Key? key,
     required this.userId,
+    required this.storeId,
   }) : super(key: key);
 
   @override
@@ -96,7 +97,10 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   void _navigateToPointUsage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PointUsageInputView(userId: widget.userId),
+        builder: (_) => PointUsageInputView(
+          userId: widget.userId,
+          storeId: widget.storeId,
+        ),
       ),
     );
   }
@@ -104,10 +108,9 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   void _skipPointUsage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CouponSelectForCheckoutView(
+        builder: (_) => StoreUserDetailView(
           userId: widget.userId,
-          userName: _actualUserName,
-          usedPoints: 0,
+          storeId: widget.storeId,
         ),
       ),
     );

@@ -25,7 +25,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('ポイント付与承認'),
+        title: const Text('スタンプ押印確認'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
@@ -84,9 +84,6 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
   }
 
   Widget _buildConfirmationView(PointRequest request) {
-    final totalPoints = request.totalPoints ?? request.pointsToAward;
-    final normalPoints = request.normalPoints ?? totalPoints;
-    final specialPoints = request.specialPoints ?? 0;
     final isRateReady = request.rateCalculatedAt != null;
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -125,7 +122,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'からポイント付与のリクエストが届きました',
+                  'からスタンプ押印のリクエストが届きました',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -137,7 +134,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
           
           const SizedBox(height: 24),
           
-          // ポイント情報カード
+          // スタンプ情報カード
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -156,37 +153,27 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
             child: Column(
               children: [
                 const Icon(
-                  Icons.stars,
+                  Icons.check_circle,
                   size: 48,
                   color: Colors.amber,
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  '${totalPoints}pt',
-                  style: const TextStyle(
+                const Text(
+                  '1回',
+                  style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  '付与予定ポイント',
-                  style: const TextStyle(
+                const Text(
+                  '押印予定スタンプ',
+                  style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
                   ),
                 ),
-                if (specialPoints > 0) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '通常${normalPoints}pt / 特別${specialPoints}pt',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -198,7 +185,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                   child: Column(
                     children: [
                       Text(
-                        '支払い金額: ${request.amount}円',
+                        'スタンプ押印を行います',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -206,7 +193,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '付与率: 100円 = 1pt',
+                        '承認するとスタンプが1つ押されます',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -231,8 +218,8 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
             ),
             child: Text(
               isRateReady
-                  ? 'このポイント付与を承認しますか？\n承認するとお客様のアカウントにポイントが付与されます。'
-                  : 'ポイント計算中のため、承認まで少しお待ちください。',
+                  ? 'このスタンプ押印を承認しますか？\n承認するとお客様のスタンプが1つ押されます。'
+                  : 'スタンプ押印の準備中のため、承認まで少しお待ちください。',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.orange,
@@ -289,13 +276,8 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
     final isAccepted = request.status == PointRequestStatus.accepted.value;
     final icon = isAccepted ? Icons.check_circle : Icons.cancel;
     final color = isAccepted ? Colors.green : Colors.red;
-    final title = isAccepted ? 'ポイント付与完了' : 'ポイント付与拒否';
-    final totalPoints = request.totalPoints ?? request.pointsToAward;
-    final normalPoints = request.normalPoints ?? totalPoints;
-    final specialPoints = request.specialPoints ?? 0;
-    final message = isAccepted 
-        ? '${totalPoints}ptが付与されました！'
-        : 'ポイント付与が拒否されました';
+    final title = isAccepted ? 'スタンプ押印完了' : 'スタンプ押印拒否';
+    final message = isAccepted ? 'スタンプ押印が完了しました' : 'スタンプ押印が拒否されました';
 
     return Center(
       child: Padding(
@@ -322,16 +304,6 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
               ),
               textAlign: TextAlign.center,
             ),
-            if (isAccepted && specialPoints > 0) ...[
-              const SizedBox(height: 8),
-              Text(
-                '通常${normalPoints}pt / 特別${specialPoints}pt',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
             if (request.rejectionReason != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -382,7 +354,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('ポイント付与を承認しました'),
+              content: Text('スタンプ押印を承認しました'),
               backgroundColor: Colors.green,
             ),
           );
@@ -428,7 +400,7 @@ class _PointRequestConfirmationViewState extends ConsumerState<PointRequestConfi
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('ポイント付与を拒否しました'),
+              content: Text('スタンプ押印を拒否しました'),
               backgroundColor: Colors.orange,
             ),
           );

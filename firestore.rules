@@ -22,6 +22,11 @@ service cloud.firestore {
          get(/databases/$(database)/documents/stores/$(storeId)).data.createdBy == request.auth.uid);
     }
 
+    function isStoreStaff() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.currentStoreId != null;
+    }
+
     function canOwnerUpdateUser() {
       return request.resource.data
         .diff(resource.data)
@@ -30,10 +35,16 @@ service cloud.firestore {
     }
     // ユーザーコレクション
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isOwner() || isStoreStaff());
       allow create, delete: if request.auth != null && request.auth.uid == userId;
       allow update: if (request.auth != null && request.auth.uid == userId) ||
         (isOwner() && canOwnerUpdateUser());
+    }
+
+    // ユーザーの店舗別スタンプ
+    match /users/{userId}/stores/{storeId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isStoreMember(storeId) || isOwner());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isStoreMember(storeId) || isOwner());
     }
 
     // オーナー設定コレクション
@@ -64,6 +75,12 @@ service cloud.firestore {
     match /store_stats/{storeId}/daily/{date} {
       allow read: if request.auth != null;
       allow write: if isStoreUser(storeId);
+    }
+
+    // 店舗来店ユーザー集計
+    match /store_users/{storeId}/users/{userId} {
+      allow read: if isSignedIn() && (isStoreMember(storeId) || isOwner());
+      allow write: if isSignedIn() && (isStoreMember(storeId) || isOwner());
     }
     
     // バッジコレクション

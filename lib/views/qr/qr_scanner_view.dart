@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/qr_verification_model.dart';
 import '../../widgets/common_header.dart';
 import '../points/point_usage_confirmation_view.dart';
+import '../user/store_user_detail_view.dart';
 
 class QRScannerView extends ConsumerStatefulWidget {
   const QRScannerView({Key? key}) : super(key: key);
@@ -403,14 +404,11 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       // 結果に基づいて処理を分岐
       if (result.isSuccess && result.uid != null) {
         print('QR検証成功、支払い画面に遷移開始');
-        
-        // ローディングを閉じる
-        _closeLoadingDialog(context, timeoutTimer);
-        
-        // ウィジェットが破棄されていないかチェックしてから画面遷移
+
         if (context.mounted) {
-          _navigateToPaymentScreenImmediate(context, result.uid!);
+          _routeAfterVerified(context, result.uid!, timeoutTimer);
         } else {
+          _closeLoadingDialog(context, timeoutTimer);
           print('画面遷移時にウィジェットが破棄されています');
         }
       } else {
@@ -491,16 +489,13 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
 
       // 結果に基づいて処理を分岐
       if (result.isSuccess) {
-        // 成功時：支払い画面に遷移
-        print('QR検証成功、支払い画面に遷移開始');
+        // 成功時：分岐して画面遷移
+        print('QR検証成功、画面遷移開始');
         if (result.uid != null) {
-          // ローディングを閉じる
-          _closeLoadingDialog(context, timeoutTimer);
-          
-          // ウィジェットが破棄されていないかチェックしてから画面遷移
           if (context.mounted) {
-            _navigateToPaymentScreenImmediate(context, result.uid!);
+            _routeAfterVerified(context, result.uid!, timeoutTimer);
           } else {
+            _closeLoadingDialog(context, timeoutTimer);
             print('画面遷移時にウィジェットが破棄されています');
           }
         } else {
@@ -557,127 +552,140 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     }
   }
 
-  /// 支払い画面に即座に遷移（遅延なし）
-  void _navigateToPaymentScreenImmediate(BuildContext context, String uid) {
+  Future<void> _routeAfterVerified(
+    BuildContext context,
+    String userId,
+    Timer? timeoutTimer,
+  ) async {
     try {
-      print('支払い画面への即座遷移を開始: uid=$uid');
-
-      // ウィジェットが破棄されていないか再チェック
-      if (!context.mounted) {
-        print('画面遷移実行時にウィジェットが破棄されています');
+      final storeId = await _resolveStoreIdForNavigation();
+      if (storeId == null || storeId.isEmpty) {
+        _closeLoadingDialog(context, timeoutTimer);
+        if (context.mounted) {
+          _showStoreIdErrorDialog(context);
+        }
         return;
       }
 
-      // ポイント利用確認画面に遷移
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PointUsageConfirmationView(userId: uid),
-        ),
-      );
-      
-      print('支払い画面への遷移が完了しました');
+      final availablePoints = await _resolveAvailablePoints(userId);
+      final isOwner = await _resolveStoreUserIsOwner();
+
+      _closeLoadingDialog(context, timeoutTimer);
+      if (!context.mounted) return;
+
+      if (availablePoints >= 1 && isOwner) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PointUsageConfirmationView(
+              userId: userId,
+              storeId: storeId,
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => StoreUserDetailView(
+              userId: userId,
+              storeId: storeId,
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      print('支払い画面遷移エラー: $e');
-      // エラー時はウィジェットの状態をチェックせずにログのみ出力
-      print('画面遷移に失敗しました: $e');
+      _closeLoadingDialog(context, timeoutTimer);
+      if (context.mounted) {
+        _showErrorDialog(
+          context,
+          '処理エラー',
+          '画面遷移中にエラーが発生しました: $e',
+        );
+      }
     }
+  }
+
+  Future<String?> _resolveStoreIdForNavigation() async {
+    final storeSettings = ref.read(storeSettingsProvider);
+    if (storeSettings != null && storeSettings.storeId.isNotEmpty) {
+      return storeSettings.storeId;
+    }
+
+    final authState = ref.read(authStateProvider);
+    final storeUser = authState.value;
+    if (storeUser == null) return null;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(storeUser.uid)
+        .get();
+    final data = doc.data();
+    final currentStoreId = data?['currentStoreId'];
+    if (currentStoreId is String && currentStoreId.isNotEmpty) {
+      return currentStoreId;
+    }
+    return null;
+  }
+
+  Future<int> _resolveAvailablePoints(String userId) async {
+    try {
+      final balanceDoc = await FirebaseFirestore.instance
+          .collection('user_point_balances')
+          .doc(userId)
+          .get();
+      if (balanceDoc.exists) {
+        final data = balanceDoc.data() ?? {};
+        return _parseInt(data['availablePoints']);
+      }
+    } catch (_) {}
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      final data = userDoc.data() ?? {};
+      final points = _parseInt(data['points']);
+      final special = _parseInt(data['specialPoints']);
+      return points + special;
+    } catch (_) {}
+
+    return 0;
+  }
+
+  Future<bool> _resolveStoreUserIsOwner() async {
+    final authState = ref.read(authStateProvider);
+    final storeUser = authState.value;
+    if (storeUser == null) return false;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(storeUser.uid)
+        .get();
+    final data = doc.data() ?? {};
+    return (data['isOwner'] as bool?) ?? false;
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  /// 支払い画面に即座に遷移（遅延なし）
+  void _navigateToPaymentScreenImmediate(BuildContext context, String uid) {
+    // 互換のため残す（未使用）
+    _routeAfterVerified(context, uid, null);
   }
 
   /// 支払い画面に同期的に遷移（旧版、現在は使用していない）
   void _navigateToPaymentScreenSync(BuildContext context, String uid) {
-    try {
-      // ウィジェットが破棄されていないかチェック
-      if (!context.mounted) {
-        print('支払い画面遷移時にウィジェットが破棄されています');
-        return;
-      }
-
-      print('支払い画面への遷移を開始: uid=$uid');
-
-      // 少し遅延を追加してから画面遷移を実行
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (context.mounted) {
-          // 支払い画面に遷移（ユーザー情報は画面内で取得）
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => PointUsageConfirmationView(userId: uid),
-            ),
-          );
-          
-          print('支払い画面への遷移が完了しました');
-        } else {
-          print('遅延後にウィジェットが破棄されています');
-        }
-      });
-    } catch (e) {
-      print('支払い画面遷移エラー: $e');
-      if (context.mounted) {
-        _showErrorDialog(
-          context,
-          '画面遷移エラー',
-          'エラー: $e',
-        );
-      }
-    }
+    _routeAfterVerified(context, uid, null);
   }
 
   /// 支払い画面に遷移（非同期版、現在は使用していない）
   Future<void> _navigateToPaymentScreen(BuildContext context, String uid) async {
-    try {
-      // ウィジェットが破棄されていないかチェック
-      if (!context.mounted) {
-        print('ウィジェットが破棄されています');
-        return;
-      }
-
-      // ユーザー情報を取得
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-
-      // 再度ウィジェットが破棄されていないかチェック
-      if (!context.mounted) {
-        print('ユーザー情報取得後にウィジェットが破棄されています');
-        return;
-      }
-
-      if (!userDoc.exists) {
-        _showErrorDialog(
-          context,
-          'ユーザーエラー',
-          'ユーザー情報が見つかりませんでした。',
-        );
-        return;
-      }
-
-      final userData = userDoc.data()!;
-      final userName = userData['displayName'] ?? 
-                     userData['email'] ?? 
-                     'お客様';
-
-      // 最終的にウィジェットが破棄されていないかチェック
-      if (!context.mounted) {
-        print('画面遷移前にウィジェットが破棄されています');
-        return;
-      }
-
-      // 支払い画面に遷移
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PointUsageConfirmationView(userId: uid),
-        ),
-      );
-    } catch (e) {
-      print('ユーザー情報取得エラー: $e');
-      if (context.mounted) {
-        _showErrorDialog(
-          context,
-          'ユーザー情報取得エラー',
-          'エラー: $e',
-        );
-      }
-    }
+    _routeAfterVerified(context, uid, null);
   }
 
   /// 検証エラーダイアログを表示
