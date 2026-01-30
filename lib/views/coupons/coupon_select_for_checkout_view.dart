@@ -137,11 +137,13 @@ class _CouponSelectForCheckoutViewState
         _showStoreIdMissingDialog();
         return;
       }
+      debugPrint('CouponSelect: to stamp view, selected=${_selectedCouponIds.length}');
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => StoreUserDetailView(
             userId: widget.userId,
             storeId: storeId,
+            selectedCouponIds: _selectedCouponIds.toList(),
           ),
         ),
       );

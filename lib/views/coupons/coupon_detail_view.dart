@@ -376,13 +376,6 @@ class _StoreCouponDetailViewState extends State<StoreCouponDetailView> {
             ),
             const SizedBox(height: 12),
             _buildDetailRow(
-              icon: Icons.people,
-              label: '使用制限',
-              value: '${usageLimit}枚まで',
-              valueColor: Colors.grey[700]!,
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
               icon: Icons.inventory,
               label: '残り枚数',
               value: '${usageLimit - usedCount}枚',

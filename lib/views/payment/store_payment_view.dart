@@ -232,6 +232,8 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
             .doc(storeId)
             .collection('coupons')
             .doc(couponId);
+        final publicCouponRef =
+            firestore.collection('public_coupons').doc(couponId);
         final usedByRef = couponRef
             .collection('usedBy')
             .doc(widget.userId);
@@ -278,10 +280,21 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           'couponId': couponId,
           'storeId': storeId,
         });
+        final nextUsedCount = usedCount + 1;
+        final shouldDeactivate = usageLimit > 0 && nextUsedCount == usageLimit;
         txn.update(couponRef, {
-          'usedCount': FieldValue.increment(1),
+          'usedCount': nextUsedCount,
+          if (shouldDeactivate) 'isActive': false,
           'updatedAt': FieldValue.serverTimestamp(),
         });
+        final publicSnap = await txn.get(publicCouponRef);
+        if (publicSnap.exists) {
+          txn.update(publicCouponRef, {
+            'usedCount': nextUsedCount,
+            if (shouldDeactivate) 'isActive': false,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
     });
   }

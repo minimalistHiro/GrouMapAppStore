@@ -6,11 +6,13 @@ import 'point_request_confirmation_view.dart';
 class StoreUserDetailView extends StatefulWidget {
   final String userId;
   final String storeId;
+  final List<String> selectedCouponIds;
 
   const StoreUserDetailView({
     Key? key,
     required this.userId,
     required this.storeId,
+    this.selectedCouponIds = const [],
   }) : super(key: key);
 
   @override
@@ -98,12 +100,18 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
       _isStampProcessing = true;
     });
     try {
+      debugPrint(
+        'Stamp: user=${widget.userId}, store=${widget.storeId}, coupons=${widget.selectedCouponIds.length}',
+      );
       final functions = FirebaseFunctions.instanceFor(region: 'asia-northeast1');
       final callable = functions.httpsCallable('punchStamp');
-      await callable.call({
+      final payload = {
         'userId': widget.userId,
         'storeId': widget.storeId,
-      });
+        if (widget.selectedCouponIds.isNotEmpty)
+          'selectedCouponIds': widget.selectedCouponIds,
+      };
+      await callable.call(payload);
       if (!mounted) return;
       final requestId = '${widget.storeId}_${widget.userId}';
       Navigator.of(context).push(
