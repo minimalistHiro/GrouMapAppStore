@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../user/store_user_detail_view.dart';
 import '../../widgets/custom_button.dart';
+import '../coupons/coupon_select_for_checkout_view.dart';
 import 'point_usage_input_view.dart';
 
 class PointUsageConfirmationView extends ConsumerStatefulWidget {
@@ -108,9 +108,12 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   void _skipPointUsage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StoreUserDetailView(
+        builder: (_) => CouponSelectForCheckoutView(
           userId: widget.userId,
+          userName: _actualUserName,
+          usedPoints: 0,
           storeId: widget.storeId,
+          nextRoute: CouponSelectNextRoute.stamp,
         ),
       ),
     );

@@ -9,7 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/qr_verification_model.dart';
 import '../../widgets/common_header.dart';
 import '../points/point_usage_confirmation_view.dart';
-import '../user/store_user_detail_view.dart';
+import '../coupons/coupon_select_for_checkout_view.dart';
 
 class QRScannerView extends ConsumerStatefulWidget {
   const QRScannerView({Key? key}) : super(key: key);
@@ -585,9 +585,12 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       } else {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => StoreUserDetailView(
+            builder: (_) => CouponSelectForCheckoutView(
               userId: userId,
+              userName: 'お客様',
+              usedPoints: 0,
               storeId: storeId,
+              nextRoute: CouponSelectNextRoute.stamp,
             ),
           ),
         );
