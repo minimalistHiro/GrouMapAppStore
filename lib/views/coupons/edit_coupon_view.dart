@@ -31,6 +31,7 @@ class _EditCouponViewState extends State<EditCouponView> {
   DateTime _validUntil = DateTime.now().add(const Duration(days: 30));
   int? _selectedRequiredStampCount;
   bool _isNoExpiry = false;
+  bool _isActive = true;
   bool _isLoading = false;
   
   // 画像関連
@@ -69,6 +70,7 @@ class _EditCouponViewState extends State<EditCouponView> {
     if (_isNoExpiry) {
       _validUntil = _noExpirySentinel;
     }
+    _isActive = widget.couponData['isActive'] ?? true;
     
     // 既存の画像URL
     _existingImageUrl = widget.couponData['imageUrl'];
@@ -224,6 +226,7 @@ class _EditCouponViewState extends State<EditCouponView> {
         'imageUrl': imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
         'noExpiry': _isNoExpiry,
+        'isActive': _isActive,
       });
 
       // 公開クーポンも更新
@@ -243,6 +246,7 @@ class _EditCouponViewState extends State<EditCouponView> {
         'imageUrl': imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
         'noExpiry': _isNoExpiry,
+        'isActive': _isActive,
       });
 
       if (mounted) {
@@ -483,6 +487,11 @@ class _EditCouponViewState extends State<EditCouponView> {
               
               // 有効期限
               _buildValidUntilPicker(),
+
+              const SizedBox(height: 20),
+
+              // 公開状態
+              _buildActiveToggle(),
               
               const SizedBox(height: 20),
               
@@ -972,6 +981,73 @@ class _EditCouponViewState extends State<EditCouponView> {
                     ),
                   ],
                 ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveToggle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '公開状態',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _isActive ? Icons.toggle_on : Icons.toggle_off,
+                color: _isActive ? const Color(0xFF2196F3) : Colors.grey,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isActive ? 'アクティブ' : '非アクティブ',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      _isActive ? '公開中のクーポンです' : '非公開のクーポンです',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _isActive,
+                activeColor: const Color(0xFF2196F3),
+                onChanged: (value) {
+                  setState(() {
+                    _isActive = value;
+                  });
+                },
               ),
             ],
           ),
