@@ -284,6 +284,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       try {
         final endDate = coupon['validUntil']?.toDate();
         if (endDate == null) return '期限不明';
+        if (coupon['noExpiry'] == true || endDate.year >= 2100) return '無期限';
         
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
@@ -325,6 +326,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       try {
         final validUntil = coupon['validUntil']?.toDate();
         if (validUntil == null) return false;
+        if (coupon['noExpiry'] == true || validUntil.year >= 2100) return false;
         return validUntil.isBefore(DateTime.now());
       } catch (e) {
         return false;

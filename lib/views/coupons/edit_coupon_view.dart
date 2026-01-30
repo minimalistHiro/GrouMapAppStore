@@ -17,16 +17,20 @@ class EditCouponView extends StatefulWidget {
 }
 
 class _EditCouponViewState extends State<EditCouponView> {
+  static final DateTime _noExpirySentinel = DateTime(2100, 12, 31);
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _discountValueController = TextEditingController();
   final _usageLimitController = TextEditingController();
-  
+
   String _selectedDiscountType = 'percentage';
   String _selectedCouponType = 'discount';
   DateTime _validFrom = DateTime.now();
   DateTime _validUntil = DateTime.now().add(const Duration(days: 30));
+  int? _selectedRequiredStampCount;
+  bool _isNoExpiry = false;
   bool _isLoading = false;
   
   // 画像関連
@@ -49,6 +53,7 @@ class _EditCouponViewState extends State<EditCouponView> {
     _descriptionController.text = widget.couponData['description'] ?? '';
     _discountValueController.text = (widget.couponData['discountValue'] ?? 0).toString();
     _usageLimitController.text = (widget.couponData['usageLimit'] ?? 0).toString();
+    _selectedRequiredStampCount = (widget.couponData['requiredStampCount'] as num?)?.toInt();
     
     _selectedDiscountType = widget.couponData['discountType'] ?? 'percentage';
     _selectedCouponType = widget.couponData['couponType'] ?? 'discount';
@@ -59,6 +64,10 @@ class _EditCouponViewState extends State<EditCouponView> {
     }
     if (widget.couponData['validUntil'] != null) {
       _validUntil = widget.couponData['validUntil'].toDate();
+    }
+    _isNoExpiry = widget.couponData['noExpiry'] == true || _validUntil.year >= 2100;
+    if (_isNoExpiry) {
+      _validUntil = _noExpirySentinel;
     }
     
     // 既存の画像URL
@@ -110,6 +119,25 @@ class _EditCouponViewState extends State<EditCouponView> {
   }
 
   Future<void> _updateCoupon() async {
+    if (_selectedRequiredStampCount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('スタンプ達成数を選択してください'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -175,6 +203,8 @@ class _EditCouponViewState extends State<EditCouponView> {
         throw Exception('店舗IDが見つかりません');
       }
 
+      final validUntil = _isNoExpiry ? _noExpirySentinel : _validUntil;
+
       // Firestoreにクーポン情報を更新
       await FirebaseFirestore.instance
           .collection('coupons')
@@ -188,10 +218,12 @@ class _EditCouponViewState extends State<EditCouponView> {
         'discountValue': double.parse(_discountValueController.text),
         'couponType': _selectedCouponType,
         'usageLimit': int.parse(_usageLimitController.text),
+        'requiredStampCount': _selectedRequiredStampCount!,
         'validFrom': Timestamp.fromDate(_validFrom),
-        'validUntil': Timestamp.fromDate(_validUntil),
+        'validUntil': Timestamp.fromDate(validUntil),
         'imageUrl': imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
+        'noExpiry': _isNoExpiry,
       });
 
       // 公開クーポンも更新
@@ -205,10 +237,12 @@ class _EditCouponViewState extends State<EditCouponView> {
         'discountValue': double.parse(_discountValueController.text),
         'couponType': _selectedCouponType,
         'usageLimit': int.parse(_usageLimitController.text),
+        'requiredStampCount': _selectedRequiredStampCount!,
         'validFrom': Timestamp.fromDate(_validFrom),
-        'validUntil': Timestamp.fromDate(_validUntil),
+        'validUntil': Timestamp.fromDate(validUntil),
         'imageUrl': imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
+        'noExpiry': _isNoExpiry,
       });
 
       if (mounted) {
@@ -419,15 +453,15 @@ class _EditCouponViewState extends State<EditCouponView> {
               
               const SizedBox(height: 20),
               
-              // 使用回数制限
+              // 発券枚数
               _buildInputField(
                 controller: _usageLimitController,
-                label: '使用回数制限 *',
+                label: '発券枚数 *',
                 hint: '例：100',
                 icon: Icons.confirmation_number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return '使用回数制限を入力してください';
+                    return '発券枚数を入力してください';
                   }
                   final usageLimit = int.tryParse(value);
                   if (usageLimit == null) {
@@ -441,9 +475,14 @@ class _EditCouponViewState extends State<EditCouponView> {
               ),
               
               const SizedBox(height: 20),
+
+              // スタンプ条件
+              _buildRequiredStampCountDropdown(),
+
+              const SizedBox(height: 20),
               
-              // 有効期間
-              _buildDateSection(),
+              // 有効期限
+              _buildValidUntilPicker(),
               
               const SizedBox(height: 20),
               
@@ -529,6 +568,7 @@ class _EditCouponViewState extends State<EditCouponView> {
     required IconData icon,
     String? Function(String?)? validator,
     int maxLines = 1,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,9 +586,10 @@ class _EditCouponViewState extends State<EditCouponView> {
           controller: controller,
           validator: validator,
           maxLines: maxLines,
-          keyboardType: icon == Icons.monetization_on || icon == Icons.confirmation_number
+          keyboardType: keyboardType ??
+              (icon == Icons.monetization_on || icon == Icons.confirmation_number
               ? TextInputType.number
-              : TextInputType.text,
+              : TextInputType.text),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400]),
@@ -709,12 +750,12 @@ class _EditCouponViewState extends State<EditCouponView> {
     );
   }
 
-  Widget _buildDateSection() {
+  Widget _buildRequiredStampCountDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '有効期間 *',
+          'スタンプ達成数（何個目で利用可能）*',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -722,90 +763,127 @@ class _EditCouponViewState extends State<EditCouponView> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDateField(
-                label: '開始日',
-                date: _validFrom,
-                onTap: () => _selectDate(true),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _selectedRequiredStampCount,
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down),
+              hint: const Text('選択してください'),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
               ),
+              items: List<int>.generate(11, (index) => index)
+                  .map((count) => DropdownMenuItem<int>(
+                        value: count,
+                        child: Text('$count 個'),
+                      ))
+                  .toList(),
+              onChanged: (int? newValue) {
+                setState(() {
+                  _selectedRequiredStampCount = newValue;
+                });
+              },
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildDateField(
-                label: '終了日',
-                date: _validUntil,
-                onTap: () => _selectDate(false),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDateField({
-    required String label,
-    required DateTime date,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildValidUntilPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Text(
-              label,
+            const Text(
+              '有効期限 *',
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${date.year}/${date.month}/${date.day}',
-              style: const TextStyle(
                 fontSize: 16,
+                fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
+            const Spacer(),
+            Row(
+              children: [
+                Checkbox(
+                  value: _isNoExpiry,
+                  onChanged: (value) {
+                    setState(() {
+                      _isNoExpiry = value ?? false;
+                      if (_isNoExpiry) {
+                        _validUntil = _noExpirySentinel;
+                      } else {
+                        _validUntil = DateTime.now().add(const Duration(days: 30));
+                      }
+                    });
+                  },
+                ),
+                const Text('無期限'),
+              ],
+            ),
           ],
         ),
-      ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _isNoExpiry
+              ? null
+              : () async {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: _validUntil,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _validUntil = picked;
+                      if (_validFrom.isAfter(_validUntil)) {
+                        _validFrom = _validUntil;
+                      }
+                    });
+                  }
+                },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _isNoExpiry ? Colors.grey[100] : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.grey[600], size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _isNoExpiry
+                        ? '無期限'
+                        : '${_validUntil.year}年${_validUntil.month}月${_validUntil.day}日',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _isNoExpiry ? Colors.black87 : Colors.black87,
+                    ),
+                  ),
+                ),
+                if (!_isNoExpiry) const Icon(Icons.arrow_drop_down),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
-  }
-
-  Future<void> _selectDate(bool isStartDate) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isStartDate ? _validFrom : _validUntil,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _validFrom = picked;
-          if (_validUntil.isBefore(_validFrom)) {
-            _validUntil = _validFrom.add(const Duration(days: 1));
-          }
-        } else {
-          _validUntil = picked;
-          if (_validFrom.isAfter(_validUntil)) {
-            _validFrom = _validUntil.subtract(const Duration(days: 1));
-          }
-        }
-      });
-    }
   }
 
   Widget _buildImageSection() {

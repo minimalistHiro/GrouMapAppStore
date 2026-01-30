@@ -114,6 +114,11 @@ class _CouponSelectForCheckoutViewState
     return null;
   }
 
+  bool _isNoExpiryCoupon(Map<String, dynamic> coupon, DateTime? validUntil) {
+    if (coupon['noExpiry'] == true) return true;
+    return validUntil != null && validUntil.year >= 2100;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -229,7 +234,10 @@ class _CouponSelectForCheckoutViewState
               final usedCount = _parseInt(coupon['usedCount']);
               final usageLimit = _parseInt(coupon['usageLimit']);
               if (!isActive) return false;
-              if (validUntil == null || !validUntil.isAfter(now)) return false;
+              final isNoExpiry = _isNoExpiryCoupon(coupon, validUntil);
+              if (!isNoExpiry && (validUntil == null || !validUntil.isAfter(now))) {
+                return false;
+              }
               if (usedCount >= usageLimit) return false;
               if (usedIds.contains(couponId)) return false;
               return true;
@@ -330,12 +338,14 @@ class _CouponSelectForCheckoutViewState
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    if (validUntil != null)
-                                      Text(
-                                        '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
+                                if (validUntil != null)
+                                  Text(
+                                    _isNoExpiryCoupon(coupon, validUntil)
+                                        ? '期限: 無期限'
+                                        : '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
                                         ),
                                       ),
                                   ],

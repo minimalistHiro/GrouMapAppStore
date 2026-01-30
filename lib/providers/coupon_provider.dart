@@ -168,6 +168,8 @@ class CouponService {
     required DateTime validFrom,
     required DateTime validUntil,
     required int usageLimit,
+    int requiredStampCount = 10,
+    bool noExpiry = false,
     int minOrderAmount = 0,
     String? imageUrl,
     List<String>? applicableItems,
@@ -191,6 +193,7 @@ class CouponService {
         'validFrom': Timestamp.fromDate(validFrom),
         'validUntil': Timestamp.fromDate(validUntil),
         'usageLimit': usageLimit,
+        'requiredStampCount': requiredStampCount,
         'usedCount': 0,
         'minOrderAmount': minOrderAmount,
         'isActive': true,
@@ -200,6 +203,7 @@ class CouponService {
         'applicableItems': applicableItems ?? [],
         'conditions': conditions ?? {},
         'viewCount': 0,
+        'noExpiry': noExpiry,
       };
 
       // ネストされた構造で保存: coupons/{storeId}/coupons/{couponId}
@@ -231,6 +235,8 @@ class CouponService {
     required DateTime validFrom,
     required DateTime validUntil,
     required int usageLimit,
+    int? requiredStampCount,
+    bool? noExpiry,
     int? minOrderAmount,
     String? imageUrl,
     List<String>? applicableItems,
@@ -250,6 +256,12 @@ class CouponService {
         'imageUrl': imageUrl,
       };
 
+      if (requiredStampCount != null) {
+        updateData['requiredStampCount'] = requiredStampCount;
+      }
+      if (noExpiry != null) {
+        updateData['noExpiry'] = noExpiry;
+      }
       if (minOrderAmount != null) {
         updateData['minOrderAmount'] = minOrderAmount;
       }

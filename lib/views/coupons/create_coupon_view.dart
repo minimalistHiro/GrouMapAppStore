@@ -18,16 +18,20 @@ class CreateCouponView extends ConsumerStatefulWidget {
 }
 
 class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
+  static final DateTime _noExpirySentinel = DateTime(2100, 12, 31);
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _discountValueController = TextEditingController();
   final _usageLimitController = TextEditingController();
-  
+
   String _selectedDiscountType = 'percentage';
   String? _selectedStoreId;
   String _selectedStoreName = '';
   DateTime? _selectedValidUntil;
+  int? _selectedRequiredStampCount;
+  bool _isNoExpiry = false;
   bool _isLoading = false;
   
   // 写真関連
@@ -94,6 +98,25 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
               SizedBox(width: 8),
               Expanded(
                 child: Text('店舗を選択してください'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (_selectedRequiredStampCount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('スタンプ達成数を選択してください'),
               ),
             ],
           ),
@@ -176,6 +199,10 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       }
 
       // Firestoreにクーポン情報を保存
+      final validUntil = _isNoExpiry
+          ? _noExpirySentinel
+          : (_selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)));
+
       await FirebaseFirestore.instance
           .collection('coupons')
           .doc(_selectedStoreId)
@@ -189,8 +216,9 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'storeName': _selectedStoreName,
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
-        'validUntil': _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
+        'validUntil': validUntil,
         'usageLimit': int.parse(_usageLimitController.text),
+        'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
         'viewCount': 0,
         'createdBy': user.uid,
@@ -198,6 +226,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'updatedAt': FieldValue.serverTimestamp(),
         'isActive': true,
         'imageUrl': imageUrl,
+        'noExpiry': _isNoExpiry,
       });
 
       // 公開クーポンを作成（ユーザーアプリ参照用）
@@ -213,8 +242,9 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'storeName': _selectedStoreName,
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
-        'validUntil': _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
+        'validUntil': validUntil,
         'usageLimit': int.parse(_usageLimitController.text),
+        'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
         'viewCount': 0,
         'createdBy': user.uid,
@@ -222,6 +252,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'updatedAt': FieldValue.serverTimestamp(),
         'isActive': true,
         'imageUrl': imageUrl,
+        'noExpiry': _isNoExpiry,
       });
 
       if (mounted) {
@@ -433,16 +464,16 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
               
               const SizedBox(height: 20),
               
-              // 利用回数制限
+              // 発券枚数
               _buildInputField(
                 controller: _usageLimitController,
-                label: '利用回数制限 *',
+                label: '発券枚数 *',
                 hint: '例：100',
                 icon: Icons.confirmation_number,
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return '利用回数制限を入力してください';
+                    return '発券枚数を入力してください';
                   }
                   final intValue = int.tryParse(value);
                   if (intValue == null) {
@@ -455,6 +486,11 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                 },
               ),
               
+              const SizedBox(height: 20),
+
+              // スタンプ条件
+              _buildRequiredStampCountDropdown(),
+
               const SizedBox(height: 20),
               
               // 有効期限
@@ -645,12 +681,12 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
     );
   }
 
-  Widget _buildValidUntilPicker() {
+  Widget _buildRequiredStampCountDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '有効期限 *',
+          'スタンプ達成数（何個目で利用可能）*',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -658,8 +694,80 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
           ),
         ),
         const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _selectedRequiredStampCount,
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down),
+              hint: const Text('選択してください'),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+              items: List<int>.generate(11, (index) => index)
+                  .map((count) => DropdownMenuItem<int>(
+                        value: count,
+                        child: Text('$count 個'),
+                      ))
+                  .toList(),
+              onChanged: (int? newValue) {
+                setState(() {
+                  _selectedRequiredStampCount = newValue;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildValidUntilPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              '有効期限 *',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Checkbox(
+                  value: _isNoExpiry,
+                  onChanged: (value) {
+                    setState(() {
+                      _isNoExpiry = value ?? false;
+                      if (_isNoExpiry) {
+                        _selectedValidUntil = null;
+                      }
+                    });
+                  },
+                ),
+                const Text('無期限'),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         GestureDetector(
-          onTap: () async {
+          onTap: _isNoExpiry
+              ? null
+              : () async {
             final DateTime? picked = await showDatePicker(
               context: context,
               initialDate: _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
@@ -676,7 +784,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _isNoExpiry ? Colors.grey[100] : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey[300]!),
             ),
@@ -686,16 +794,22 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _selectedValidUntil != null
-                        ? '${_selectedValidUntil!.year}年${_selectedValidUntil!.month}月${_selectedValidUntil!.day}日'
-                        : '有効期限を選択してください',
+                    _isNoExpiry
+                        ? '無期限'
+                        : _selectedValidUntil != null
+                            ? '${_selectedValidUntil!.year}年${_selectedValidUntil!.month}月${_selectedValidUntil!.day}日'
+                            : '有効期限を選択してください',
                     style: TextStyle(
                       fontSize: 16,
-                      color: _selectedValidUntil != null ? Colors.black87 : Colors.grey[400],
+                      color: _isNoExpiry
+                          ? Colors.black87
+                          : _selectedValidUntil != null
+                              ? Colors.black87
+                              : Colors.grey[400],
                     ),
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down),
+                if (!_isNoExpiry) const Icon(Icons.arrow_drop_down),
               ],
             ),
           ),

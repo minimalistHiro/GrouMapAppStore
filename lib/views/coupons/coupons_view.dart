@@ -849,6 +849,7 @@ class CouponsView extends ConsumerWidget {
       final endDate = coupon['validUntil']?.toDate();
       
       if (endDate == null) return '期限不明';
+      if (coupon['noExpiry'] == true || endDate.year >= 2100) return '無期限';
       
       try {
         final now = DateTime.now();

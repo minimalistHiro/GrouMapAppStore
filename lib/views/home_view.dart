@@ -10,6 +10,7 @@ import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
 import 'posts/create_post_view.dart';
 import 'coupons/create_coupon_view.dart';
+import 'coupons/coupon_detail_view.dart';
 import 'posts/posts_manage_view.dart';
 import 'coupons/coupons_manage_view.dart';
 import 'points/points_history_view.dart';
@@ -1426,7 +1427,7 @@ class HomeView extends ConsumerWidget {
                 itemCount: coupons.length,
                 itemBuilder: (context, index) {
                   final coupon = coupons[index];
-                  return _buildCouponCard(coupon);
+                  return _buildCouponCard(context, coupon);
                 },
               );
             },
@@ -1858,7 +1859,7 @@ class HomeView extends ConsumerWidget {
     );
   }
 
-  Widget _buildCouponCard(Map<String, dynamic> coupon) {
+  Widget _buildCouponCard(BuildContext context, Map<String, dynamic> coupon) {
     // 終了日の表示用フォーマット
     String formatEndDate() {
       final endDate = coupon['validUntil'];
@@ -1866,6 +1867,9 @@ class HomeView extends ConsumerWidget {
       
       try {
         final date = endDate is DateTime ? endDate : endDate.toDate();
+        if (coupon['noExpiry'] == true || date.year >= 2100) {
+          return '無期限';
+        }
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final tomorrow = today.add(const Duration(days: 1));
@@ -1903,10 +1907,11 @@ class HomeView extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        // クーポン詳細画面に遷移
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(content: Text('クーポン詳細画面は準備中です')),
-        // );
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => StoreCouponDetailView(coupon: coupon),
+          ),
+        );
       },
       child: Align(
         alignment: Alignment.topCenter,
