@@ -11,6 +11,7 @@ import 'store_selection_view.dart';
 import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
+import 'interior_images_view.dart';
 import 'owner_settings_view.dart';
 import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
@@ -76,6 +77,18 @@ class SettingsView extends ConsumerWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const MenuEditView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.photo_library,
+                  title: '店内画像設定',
+                  subtitle: '店内画像を最大5枚まで登録',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const InteriorImagesView(),
                       ),
                     );
                   },
