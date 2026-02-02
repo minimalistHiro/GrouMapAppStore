@@ -23,6 +23,52 @@ import '../badges/badge_manage_view.dart';
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
 
+  Color _getDefaultStoreColor(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Colors.red;
+      case 'カフェ':
+        return Colors.brown;
+      case 'ショップ':
+        return Colors.blue;
+      case '美容院':
+        return Colors.pink;
+      case '薬局':
+        return Colors.green;
+      case 'コンビニ':
+        return Colors.orange;
+      case 'スーパー':
+        return Colors.lightGreen;
+      case '書店':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getDefaultStoreIcon(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Icons.restaurant;
+      case 'カフェ':
+        return Icons.local_cafe;
+      case 'ショップ':
+        return Icons.shopping_bag;
+      case '美容院':
+        return Icons.content_cut;
+      case '薬局':
+        return Icons.local_pharmacy;
+      case 'コンビニ':
+        return Icons.store;
+      case 'スーパー':
+        return Icons.shopping_cart;
+      case '書店':
+        return Icons.menu_book;
+      default:
+        return Icons.store;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwnerAsync = ref.watch(userIsOwnerProvider);
@@ -357,6 +403,9 @@ class SettingsView extends ConsumerWidget {
                   return _buildStoreInfoCardPlaceholder();
                 }
                 
+                final String category = storeData['category'] ?? 'その他';
+                final Color baseColor = _getDefaultStoreColor(category);
+
                 return Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -381,7 +430,7 @@ class SettingsView extends ConsumerWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(40),
                           border: Border.all(
-                            color: Colors.grey[300]!,
+                            color: baseColor.withOpacity(0.3),
                             width: 2,
                           ),
                         ),
@@ -392,20 +441,20 @@ class SettingsView extends ConsumerWidget {
                                   storeData['iconImageUrl'],
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) => Container(
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.store,
+                                    color: baseColor.withOpacity(0.1),
+                                    child: Icon(
+                                      _getDefaultStoreIcon(category),
                                       size: 40,
-                                      color: Colors.grey,
+                                      color: baseColor,
                                     ),
                                   ),
                                 )
                               : Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.store,
+                                  color: baseColor.withOpacity(0.1),
+                                  child: Icon(
+                                    _getDefaultStoreIcon(category),
                                     size: 40,
-                                    color: Colors.grey,
+                                    color: baseColor,
                                   ),
                                 ),
                         ),

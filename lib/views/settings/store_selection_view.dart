@@ -7,6 +7,52 @@ import '../../widgets/custom_button.dart';
 class StoreSelectionView extends ConsumerWidget {
   const StoreSelectionView({Key? key}) : super(key: key);
 
+  Color _getDefaultStoreColor(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Colors.red;
+      case 'カフェ':
+        return Colors.brown;
+      case 'ショップ':
+        return Colors.blue;
+      case '美容院':
+        return Colors.pink;
+      case '薬局':
+        return Colors.green;
+      case 'コンビニ':
+        return Colors.orange;
+      case 'スーパー':
+        return Colors.lightGreen;
+      case '書店':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getDefaultStoreIcon(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Icons.restaurant;
+      case 'カフェ':
+        return Icons.local_cafe;
+      case 'ショップ':
+        return Icons.shopping_bag;
+      case '美容院':
+        return Icons.content_cut;
+      case '薬局':
+        return Icons.local_pharmacy;
+      case 'コンビニ':
+        return Icons.store;
+      case 'スーパー':
+        return Icons.shopping_cart;
+      case '書店':
+        return Icons.menu_book;
+      default:
+        return Icons.store;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
@@ -126,6 +172,9 @@ class StoreSelectionView extends ConsumerWidget {
         final storeData = snapshot.data!.data() as Map<String, dynamic>;
         final isSelected = currentStoreId == storeId;
 
+        final String category = storeData['category'] ?? 'その他';
+        final Color baseColor = _getDefaultStoreColor(category);
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
@@ -151,7 +200,7 @@ class StoreSelectionView extends ConsumerWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: Colors.grey[300]!,
+                  color: baseColor.withOpacity(0.3),
                   width: 2,
                 ),
               ),
@@ -162,20 +211,20 @@ class StoreSelectionView extends ConsumerWidget {
                         storeData['iconImageUrl'],
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.store,
+                          color: baseColor.withOpacity(0.1),
+                          child: Icon(
+                            _getDefaultStoreIcon(category),
                             size: 30,
-                            color: Colors.grey,
+                            color: baseColor,
                           ),
                         ),
                       )
                     : Container(
-                        color: Colors.grey[300],
-                        child: const Icon(
-                          Icons.store,
+                        color: baseColor.withOpacity(0.1),
+                        child: Icon(
+                          _getDefaultStoreIcon(category),
                           size: 30,
-                          color: Colors.grey,
+                          color: baseColor,
                         ),
                       ),
               ),

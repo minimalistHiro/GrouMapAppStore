@@ -272,7 +272,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                       child: const Text(
                         '新規登録',
                         style: TextStyle(
-                          color: Color(0xFFFF6B35),
+                          color: Colors.blue,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

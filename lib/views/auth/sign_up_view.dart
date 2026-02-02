@@ -25,6 +25,7 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -159,7 +160,8 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
                 // 登録ボタン
                 CustomButton(
                   text: 'アカウント作成',
-                  onPressed: _handleSignUp,
+                  onPressed: _isLoading ? null : _handleSignUp,
+                  isLoading: _isLoading,
                 ),
                 
                 const SizedBox(height: 32),
@@ -173,6 +175,9 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
 
   void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
       try {
         final authService = ref.read(authServiceProvider);
         
@@ -237,6 +242,12 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
               duration: const Duration(seconds: 4),
             ),
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
         }
       }
     }
