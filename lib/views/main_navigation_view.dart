@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/owner_settings_provider.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/app_update_gate.dart';
+import '../widgets/custom_button.dart';
+import 'auth/login_view.dart';
 import 'home_view.dart';
 import 'analytics/analytics_view.dart';
 import 'qr/qr_scanner_view.dart';
@@ -608,46 +611,286 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
   Widget _buildApprovalPendingView(BuildContext context, String storeId) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.hourglass_top,
-                size: 64,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '店舗の承認待ちです',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.hourglass_top,
+                      size: 64,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '店舗の承認待ちです',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '承認が完了するまでしばらくお待ちください。',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    IconButton(
+                      onPressed: () {
+                        ref.invalidate(storeDataProvider(storeId));
+                      },
+                      icon: const Icon(Icons.refresh),
+                      color: const Color(0xFFFF6B35),
+                      iconSize: 32,
+                      tooltip: 'リロード',
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                '承認が完了するまでしばらくお待ちください。',
+            ),
+            TextButton(
+              onPressed: _showReturnToTopDialog,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text(
+                'トップに戻る',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(storeDataProvider(storeId));
-                },
-                child: const Text('リロード'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReturnToTopDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text('トップに戻る'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'トップに戻るとアカウントが削除されます。',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text('• アカウント情報'),
+              Text('• 作成した店舗情報'),
+              Text('• その他すべての関連データ'),
+              SizedBox(height: 12),
+              Text(
+                'この操作は取り消すことができません。',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                '本当にトップに戻りますか？',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deleteAccountAndReturn();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('削除して戻る'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteAccountAndReturn() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('アカウントを削除しています...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    final authService = ref.read(authServiceProvider);
+    final deleted = await _deleteAccountWithReauth(authService);
+    if (!mounted) return;
+
+    if (deleted == true) {
+      Navigator.of(context).pop();
+      try {
+        await authService.signOut();
+      } catch (e) {
+        debugPrint('ログアウトエラー: $e');
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginView()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (deleted == false) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    Navigator.of(context).pop();
+    final password = await _promptPassword();
+    if (!mounted || password == null || password.isEmpty) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('再認証しています...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null) {
+      if (mounted) Navigator.of(context).pop();
+      await _showErrorDialog('再認証に必要なメールアドレスを取得できませんでした');
+      return;
+    }
+
+    try {
+      await authService.reauthenticateWithPassword(email: email, password: password);
+      await authService.deleteAccount();
+      if (mounted) Navigator.of(context).pop();
+      try {
+        await authService.signOut();
+      } catch (e) {
+        debugPrint('ログアウトエラー: $e');
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginView()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      await _showErrorDialog('再認証に失敗しました: ${e.message ?? e.code}');
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      await _showErrorDialog('再認証に失敗しました: ${e.toString()}');
+    }
+  }
+
+  Future<bool?> _deleteAccountWithReauth(AuthService authService) async {
+    try {
+      await authService.deleteAccount();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'requires-recent-login') {
+        await _showErrorDialog('アカウント削除に失敗しました: ${e.message ?? e.code}');
+        return false;
+      }
+      return null;
+    } catch (e) {
+      await _showErrorDialog('アカウント削除に失敗しました: ${e.toString()}');
+      return false;
+    }
+  }
+
+  Future<String?> _promptPassword() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('再認証が必要です'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'パスワード',
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('再認証'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showErrorDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('エラー'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
       ),
     );
   }

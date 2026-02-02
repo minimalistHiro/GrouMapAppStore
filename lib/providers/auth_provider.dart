@@ -169,7 +169,7 @@ class AuthService {
         'createdBy': uid,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'isActive': true,
+        'isActive': false,
         'isApproved': false,
         'goldStamps': 0,
         'totalVisitors': 0,
@@ -284,6 +284,22 @@ class AuthService {
         await user.updatePhotoURL(photoURL);
       }
     }
+  }
+
+  // 再認証（メール/パスワード）
+  Future<void> reauthenticateWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('ユーザーがログインしていません');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
   }
 
   // アカウント削除（退会）

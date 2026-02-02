@@ -4,12 +4,16 @@ class CommonHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final Color backgroundColor;
   final Color foregroundColor;
+  final bool showBack;
+  final VoidCallback? onBack;
 
   const CommonHeader({
     super.key,
     required this.title,
     this.backgroundColor = const Color(0xFFFF6B35),
     this.foregroundColor = Colors.white,
+    this.showBack = true,
+    this.onBack,
   });
 
   @override
@@ -21,10 +25,13 @@ class CommonHeader extends StatelessWidget implements PreferredSizeWidget {
       title: Text(title),
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
+      automaticallyImplyLeading: showBack,
+      leading: showBack
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: onBack ?? () => Navigator.of(context).pop(),
+            )
+          : null,
     );
   }
 }

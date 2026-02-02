@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/custom_button.dart';
 import '../main_navigation_view.dart';
 import 'login_view.dart';
 
@@ -20,6 +22,7 @@ class EmailVerificationPendingView extends ConsumerStatefulWidget {
 class _EmailVerificationPendingViewState extends ConsumerState<EmailVerificationPendingView> {
   bool _isResending = false;
   bool _isVerifying = false;
+  bool _isDeleting = false;
   final TextEditingController _codeController = TextEditingController();
 
   @override
@@ -177,75 +180,47 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
               const SizedBox(height: 24),
 
               // 認証実行ボタン
-              ElevatedButton(
-                onPressed: _isVerifying ? null : _verifyEmailOtp,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B35),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              CustomButton(
+                text: '認証する',
+                onPressed: _verifyEmailOtp,
+                isLoading: _isVerifying,
+                backgroundColor: const Color(0xFFFF6B35),
+                textColor: Colors.white,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: _isVerifying
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        '認証する',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
               ),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               
               // 再送信ボタン
-              OutlinedButton(
-                onPressed: _isResending ? null : _resendEmailVerification,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF6B35),
-                  side: const BorderSide(color: Color(0xFFFF6B35)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              CustomButton(
+                text: '認証コードを再送信',
+                onPressed: _resendEmailVerification,
+                isLoading: _isResending,
+                backgroundColor: Colors.white,
+                textColor: const Color(0xFFFF6B35),
+                borderColor: const Color(0xFFFF6B35),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: _isResending
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)),
-                        ),
-                      )
-                    : const Text(
-                        '認証コードを再送信',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
               ),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               
-              // ログアウトボタン
+              // トップに戻るボタン
               TextButton(
-                onPressed: _signOut,
+                onPressed: _isDeleting ? null : _deleteAccountAndReturn,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
                 child: const Text(
-                  'ログアウト',
+                  'トップに戻る',
                   style: TextStyle(
-                    color: Colors.grey,
                     fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -353,58 +328,147 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
     await _requestEmailOtp();
   }
 
-  // ログアウト確認ダイアログを表示
-  Future<void> _signOut() async {
-    final shouldLogout = await showDialog<bool>(
+  Future<void> _deleteAccountAndReturn() async {
+    setState(() {
+      _isDeleting = true;
+    });
+
+    final authService = ref.read(authServiceProvider);
+    final deleted = await _deleteAccountWithReauth(authService);
+    if (!mounted) return;
+
+    if (deleted == true) {
+      try {
+        await authService.signOut();
+      } catch (e) {
+        debugPrint('ログアウトエラー: $e');
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginView()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (deleted == false) {
+      setState(() {
+        _isDeleting = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isDeleting = false;
+    });
+    final password = await _promptPassword();
+    if (!mounted || password == null || password.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null) {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+      await _showErrorDialog('再認証に必要なメールアドレスを取得できませんでした');
+      return;
+    }
+
+    try {
+      await authService.reauthenticateWithPassword(email: email, password: password);
+      await authService.deleteAccount();
+      if (mounted) {
+        await authService.signOut();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginView()),
+          (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      await _showErrorDialog('再認証に失敗しました: ${e.message ?? e.code}');
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    } catch (e) {
+      await _showErrorDialog('再認証に失敗しました: ${e.toString()}');
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
+
+  Future<bool?> _deleteAccountWithReauth(AuthService authService) async {
+    try {
+      await authService.deleteAccount();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'requires-recent-login') {
+        await _showErrorDialog('アカウント削除に失敗しました: ${e.message ?? e.code}');
+        return false;
+      }
+      return null;
+    } catch (e) {
+      await _showErrorDialog('アカウント削除に失敗しました: ${e.toString()}');
+      return false;
+    }
+  }
+
+  Future<String?> _promptPassword() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ログアウト確認'),
-        content: const Text('ログアウトしますか？'),
+        title: const Text('再認証が必要です'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'パスワード',
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
-              'キャンセル',
-              style: TextStyle(color: Colors.grey),
-            ),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B35),
               foregroundColor: Colors.white,
             ),
-            child: const Text('ログアウト'),
+            child: const Text('再認証'),
           ),
         ],
       ),
     );
+  }
 
-    // ユーザーがログアウトを選択した場合
-    if (shouldLogout == true && mounted) {
-      try {
-        final authService = ref.read(authServiceProvider);
-        await authService.signOut();
-        
-        if (mounted) {
-          // ログイン画面に遷移
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginView()),
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        print('ログアウトエラー: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ログアウトに失敗しました: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    }
+  Future<void> _showErrorDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('エラー'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
   }
 }
