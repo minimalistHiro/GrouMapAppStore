@@ -38,7 +38,7 @@ final emailVerificationStatusProvider = StreamProvider<bool>((ref) {
   });
 });
 
-// 現在のユーザーがオーナーかどうか
+// 現在のユーザーが店舗オーナーかどうか
 final userIsOwnerProvider = StreamProvider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(false);
@@ -50,7 +50,7 @@ final userIsOwnerProvider = StreamProvider<bool>((ref) {
       .map((snapshot) {
     if (!snapshot.exists) return false;
     final data = snapshot.data();
-    return (data?['isOwner'] as bool?) ?? false;
+    return (data?['isStoreOwner'] as bool?) ?? false;
   }).handleError((error) {
     debugPrint('Error fetching user owner flag: $error');
     return false;

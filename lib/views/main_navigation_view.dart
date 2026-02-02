@@ -330,6 +330,33 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
       return maintenanceGate;
     }
 
+    final isOwnerAsync = ref.watch(userIsOwnerProvider);
+    return isOwnerAsync.when(
+      data: (isOwner) {
+        if (!isOwner) {
+          return _buildUserAccountLockedView(context);
+        }
+        return _buildOwnerMainContent();
+      },
+      loading: () => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: Center(
+          child: Text(
+            'ユーザー情報の取得に失敗しました: ${error.toString()}',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerMainContent() {
     final storeIdAsync = ref.watch(userStoreIdProvider);
 
     return storeIdAsync.when(
@@ -400,6 +427,70 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
           child: Text(
             'ユーザー情報の取得に失敗しました: ${error.toString()}',
             textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserAccountLockedView(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              const Icon(
+                Icons.lock_outline,
+                size: 72,
+                color: Color(0xFFFF6B35),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '店舗用アカウントが必要です',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'このアカウントはユーザー用アカウントとして作成されています。\n店舗用アカウントでログインしてください。',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const Spacer(),
+              CustomButton(
+                text: 'ログアウト',
+                onPressed: () async {
+                  final authService = ref.read(authServiceProvider);
+                  try {
+                    await authService.signOut();
+                  } catch (e) {
+                    debugPrint('ログアウトエラー: $e');
+                  }
+                  if (!mounted) return;
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginView()),
+                    (route) => false,
+                  );
+                },
+                backgroundColor: const Color(0xFFFF6B35),
+                textColor: Colors.white,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ),
