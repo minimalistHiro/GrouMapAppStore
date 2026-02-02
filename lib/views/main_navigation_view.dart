@@ -9,6 +9,7 @@ import '../services/push_notification_service.dart';
 import '../widgets/app_update_gate.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
+import 'auth/email_verification_pending_view.dart';
 import 'home_view.dart';
 import 'analytics/analytics_view.dart';
 import 'qr/qr_scanner_view.dart';
@@ -330,13 +331,40 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
       return maintenanceGate;
     }
 
-    final isOwnerAsync = ref.watch(userIsOwnerProvider);
-    return isOwnerAsync.when(
-      data: (isOwner) {
-        if (!isOwner) {
-          return _buildUserAccountLockedView(context);
+    final emailOtpRequired = ref.watch(emailOtpRequiredProvider);
+    return emailOtpRequired.when(
+      data: (isRequired) {
+        if (isRequired) {
+          return const EmailVerificationPendingView(
+            autoSendOnLoad: false,
+            isLoginFlow: true,
+          );
         }
-        return _buildOwnerMainContent();
+
+        final isOwnerAsync = ref.watch(userIsOwnerProvider);
+        return isOwnerAsync.when(
+          data: (isOwner) {
+            if (!isOwner) {
+              return _buildUserAccountLockedView(context);
+            }
+            return _buildOwnerMainContent();
+          },
+          loading: () => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, _) => Scaffold(
+            backgroundColor: Colors.grey[50],
+            body: Center(
+              child: Text(
+                'ユーザー情報の取得に失敗しました: ${error.toString()}',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        );
       },
       loading: () => Scaffold(
         backgroundColor: Colors.grey[50],
@@ -344,14 +372,9 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
           child: CircularProgressIndicator(),
         ),
       ),
-      error: (error, _) => Scaffold(
-        backgroundColor: Colors.grey[50],
-        body: Center(
-          child: Text(
-            'ユーザー情報の取得に失敗しました: ${error.toString()}',
-            textAlign: TextAlign.center,
-          ),
-        ),
+      error: (_, __) => const EmailVerificationPendingView(
+        autoSendOnLoad: false,
+        isLoginFlow: true,
       ),
     );
   }

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'email_verification_pending_view.dart';
-import '../main_navigation_view.dart';
 import 'password_reset_view.dart';
 import 'store_info_view.dart';
 
@@ -43,34 +42,26 @@ class _LoginViewState extends ConsumerState<LoginView> {
       );
 
       if (mounted) {
-        final isVerified = await authService.isEmailVerified();
-        if (!isVerified) {
-          try {
-            await authService.sendEmailVerification();
-          } catch (_) {
-            // 送信失敗でも遷移は続行
-          }
-
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const EmailVerificationPendingView(autoSendOnLoad: false),
-            ),
-            (route) => false,
-          );
-          return;
+        try {
+          await authService.setEmailOtpRequired(true);
+        } catch (_) {
+          // 更新失敗でも遷移は続行
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ログインしました'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        // ホーム画面に遷移
+        try {
+          await authService.sendEmailVerification();
+        } catch (_) {
+          // 送信失敗でも遷移は続行
+        }
+
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainNavigationView()),
-          (route) => false, // すべての前の画面を削除
+          MaterialPageRoute(
+            builder: (context) => const EmailVerificationPendingView(
+              autoSendOnLoad: false,
+              isLoginFlow: true,
+            ),
+          ),
+          (route) => false,
         );
       }
     } catch (e) {

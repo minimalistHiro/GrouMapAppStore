@@ -9,10 +9,12 @@ import 'login_view.dart';
 
 class EmailVerificationPendingView extends ConsumerStatefulWidget {
   final bool autoSendOnLoad;
+  final bool isLoginFlow;
 
   const EmailVerificationPendingView({
     Key? key,
     this.autoSendOnLoad = true,
+    this.isLoginFlow = false,
   }) : super(key: key);
 
   @override
@@ -23,6 +25,7 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
   bool _isResending = false;
   bool _isVerifying = false;
   bool _isDeleting = false;
+  bool _isLoggingOut = false;
   final TextEditingController _codeController = TextEditingController();
 
   @override
@@ -212,13 +215,15 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
               
               // トップに戻るボタン
               TextButton(
-                onPressed: _isDeleting ? null : _deleteAccountAndReturn,
+                onPressed: widget.isLoginFlow
+                    ? (_isLoggingOut ? null : _logoutAndReturn)
+                    : (_isDeleting ? null : _deleteAccountAndReturn),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.red,
                 ),
-                child: const Text(
-                  'トップに戻る',
-                  style: TextStyle(
+                child: Text(
+                  widget.isLoginFlow ? 'ログアウト' : 'トップに戻る',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -253,6 +258,7 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
     try {
       final authService = ref.read(authServiceProvider);
       await authService.verifyEmailOtp(code);
+      await authService.setEmailOtpRequired(false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -406,6 +412,25 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
         });
       }
     }
+  }
+
+  Future<void> _logoutAndReturn() async {
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    final authService = ref.read(authServiceProvider);
+    try {
+      await authService.signOut();
+    } catch (e) {
+      debugPrint('ログアウトエラー: $e');
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginView()),
+      (route) => false,
+    );
   }
 
   Future<bool?> _deleteAccountWithReauth(AuthService authService) async {

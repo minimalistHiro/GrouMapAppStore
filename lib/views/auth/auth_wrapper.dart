@@ -12,7 +12,7 @@ class AuthWrapper extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final emailVerificationStatus = ref.watch(emailVerificationStatusProvider);
+    final emailOtpRequired = ref.watch(emailOtpRequiredProvider);
 
     return AppUpdateGate(
       child: authState.when(
@@ -22,10 +22,13 @@ class AuthWrapper extends ConsumerWidget {
             return const LoginView();
           }
 
-          return emailVerificationStatus.when(
-            data: (isVerified) {
-              if (!isVerified) {
-                return const EmailVerificationPendingView(autoSendOnLoad: false);
+          return emailOtpRequired.when(
+            data: (isRequired) {
+              if (isRequired) {
+                return const EmailVerificationPendingView(
+                  autoSendOnLoad: false,
+                  isLoginFlow: true,
+                );
               }
               return const MainNavigationView();
             },
@@ -36,7 +39,10 @@ class AuthWrapper extends ConsumerWidget {
                 ),
               ),
             ),
-            error: (_, __) => const EmailVerificationPendingView(autoSendOnLoad: false),
+            error: (_, __) => const EmailVerificationPendingView(
+              autoSendOnLoad: false,
+              isLoginFlow: true,
+            ),
           );
         },
         loading: () {

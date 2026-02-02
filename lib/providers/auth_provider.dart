@@ -19,23 +19,28 @@ final currentUserProvider = Provider<User?>((ref) {
   );
 });
 
-// メール認証ステータス
-final emailVerificationStatusProvider = StreamProvider<bool>((ref) {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return Stream.value(true);
-
-  return FirebaseFirestore.instance
-      .collection('users')
-      .doc(user.uid)
-      .snapshots()
-      .map((snapshot) {
-    if (!snapshot.exists) return false;
-    final data = snapshot.data();
-    return (data?['emailVerified'] as bool?) == true;
-  }).handleError((error) {
-    debugPrint('Error fetching email verification status: $error');
-    return false;
-  });
+// メールOTPが必要かどうか
+final emailOtpRequiredProvider = StreamProvider<bool>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value(false);
+      return FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .map((snapshot) {
+        if (!snapshot.exists) return true;
+        final data = snapshot.data();
+        return (data?['emailOtpRequired'] as bool?) ?? true;
+      }).handleError((error) {
+        debugPrint('Error fetching email OTP required status: $error');
+        return true;
+      });
+    },
+    loading: () => Stream.value(true),
+    error: (_, __) => Stream.value(true),
+  );
 });
 
 // 現在のユーザーが店舗オーナーかどうか
@@ -210,8 +215,9 @@ class AuthService {
                'createdAt': FieldValue.serverTimestamp(),
                'isOwner': false, // デフォルトでfalse（一般店舗）
                'isStoreOwner': true, // 店舗アカウント作成時はオーナーフラグを立てる
-               'emailVerified': false, // メール認証状態を初期化
-               'emailVerifiedAt': null,
+              'emailVerified': false, // メール認証状態を初期化
+              'emailVerifiedAt': null,
+              'emailOtpRequired': true, // ログイン時のOTP必須フラグ
              }, SetOptions(merge: true));
       
     } catch (e) {
@@ -273,6 +279,16 @@ class AuthService {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
         'emailVerified': isVerified,
         'emailVerifiedAt': isVerified ? FieldValue.serverTimestamp() : null,
+      });
+    }
+  }
+
+  // ログイン時OTP必須フラグを更新
+  Future<void> setEmailOtpRequired(bool required) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'emailOtpRequired': required,
       });
     }
   }
