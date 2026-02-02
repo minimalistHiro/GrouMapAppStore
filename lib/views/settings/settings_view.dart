@@ -8,6 +8,7 @@ import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
 import 'store_settings_view.dart';
 import 'store_selection_view.dart';
+import 'store_activation_settings_view.dart';
 import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
@@ -263,6 +264,18 @@ class SettingsView extends ConsumerWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const BadgeManageView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.settings,
+                      title: '店舗設定',
+                      subtitle: '店舗の有効・無効を切り替え',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const StoreActivationSettingsView(),
                           ),
                         );
                       },
