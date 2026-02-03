@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
@@ -157,8 +158,14 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     return bottomTabIndex >= placeholderIndex ? bottomTabIndex + 1 : bottomTabIndex;
   }
 
-  List<BottomNavigationBarItem> _bottomNavItemsWithPlaceholder(List<_MainTab> bottomTabs) {
-    final items = _navItemsForTabs(bottomTabs);
+  List<BottomNavigationBarItem> _bottomNavItemsWithPlaceholder(
+    List<_MainTab> bottomTabs, {
+    int settingsBadgeCount = 0,
+  }) {
+    final items = _navItemsForTabs(
+      bottomTabs,
+      settingsBadgeCount: settingsBadgeCount,
+    );
     final placeholderIndex = _placeholderIndexFor(bottomTabs);
     if (placeholderIndex >= 0 && placeholderIndex <= items.length) {
       items.insert(
@@ -286,7 +293,10 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     }
   }
 
-  List<BottomNavigationBarItem> _navItemsForTabs(List<_MainTab> tabs) {
+  List<BottomNavigationBarItem> _navItemsForTabs(
+    List<_MainTab> tabs, {
+    int settingsBadgeCount = 0,
+  }) {
     return tabs.map((tab) {
       switch (tab) {
         case _MainTab.home:
@@ -310,8 +320,8 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
             label: 'クーポン',
           );
         case _MainTab.settings:
-          return const BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
+          return BottomNavigationBarItem(
+            icon: _buildSettingsNavIcon(settingsBadgeCount),
             label: '設定',
           );
       }
@@ -676,7 +686,6 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     }
 
     final bottomTabs = _bottomTabsFor();
-    final items = _bottomNavItemsWithPlaceholder(bottomTabs);
     final placeholderIndex = _placeholderIndexFor(bottomTabs);
     final currentTab = _tabs[safeIndex];
     final bottomIndex = bottomTabs.isEmpty
@@ -688,40 +697,89 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
                 placeholderIndex,
               );
 
-    return Scaffold(
-      body: _pageForTab(currentTab),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _onQrFabPressed,
-        backgroundColor: const Color(0xFFFF6B35),
-        shape: const CircleBorder(),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.qr_code_scanner, color: Colors.white),
-            SizedBox(height: 2),
-            Text(
-              '読み取り',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                height: 1,
-              ),
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('stores').snapshots(),
+      builder: (context, snapshot) {
+        final pendingCount = _pendingStoresCount(snapshot.data?.docs);
+        final items = _bottomNavItemsWithPlaceholder(
+          bottomTabs,
+          settingsBadgeCount: pendingCount,
+        );
+
+        return Scaffold(
+          body: _pageForTab(currentTab),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _onQrFabPressed,
+            backgroundColor: const Color(0xFFFF6B35),
+            shape: const CircleBorder(),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.qr_code_scanner, color: Colors.white),
+                SizedBox(height: 2),
+                Text(
+                  '読み取り',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
+          floatingActionButtonLocation: const _LoweredFabLocation(_fabVerticalOffset),
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: bottomIndex,
+            onTap: _onBottomTabChanged,
+            selectedItemColor: const Color(0xFFFF6B35),
+            unselectedItemColor: Colors.grey,
+            iconSize: 24,
+            selectedLabelStyle: const TextStyle(fontSize: 10),
+            unselectedLabelStyle: const TextStyle(fontSize: 10),
+            items: items,
+          ),
+        );
+      },
+    );
+  }
+
+  int _pendingStoresCount(List<QueryDocumentSnapshot<Object?>>? docs) {
+    if (docs == null) return 0;
+    int pendingCount = 0;
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final isApproved = data['isApproved'] ?? false;
+      final status = data['approvalStatus'] ?? 'pending';
+      if (!isApproved && status == 'pending') {
+        pendingCount++;
+      }
+    }
+    return pendingCount;
+  }
+
+  Widget _buildSettingsNavIcon(int badgeCount) {
+    if (badgeCount <= 0) {
+      return const Icon(Icons.settings);
+    }
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.settings),
+        Positioned(
+          right: -4,
+          top: -2,
+          child: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
-      ),
-      floatingActionButtonLocation: const _LoweredFabLocation(_fabVerticalOffset),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: bottomIndex,
-        onTap: _onBottomTabChanged,
-        selectedItemColor: const Color(0xFFFF6B35),
-        unselectedItemColor: Colors.grey,
-        iconSize: 24,
-        selectedLabelStyle: const TextStyle(fontSize: 10),
-        unselectedLabelStyle: const TextStyle(fontSize: 10),
-        items: items,
-      ),
+      ],
     );
   }
 
