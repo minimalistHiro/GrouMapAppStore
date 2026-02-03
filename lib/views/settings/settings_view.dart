@@ -20,6 +20,7 @@ import '../stores/pending_stores_view.dart';
 import '../feedback/feedback_send_view.dart';
 import '../feedback/feedback_manage_view.dart';
 import '../badges/badge_manage_view.dart';
+import '../notifications/create_announcement_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -300,6 +301,18 @@ class SettingsView extends ConsumerWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const OwnerSettingsView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.announcement,
+                      title: 'お知らせ作成',
+                      subtitle: 'お知らせを作成して配信',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const CreateAnnouncementView(),
                           ),
                         );
                       },

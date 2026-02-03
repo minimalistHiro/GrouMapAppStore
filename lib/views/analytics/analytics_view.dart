@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
+import '../../providers/coupon_provider.dart';
 import 'store_user_trend_view.dart';
 import 'new_customer_trend_view.dart';
 import 'point_issue_trend_view.dart';
@@ -21,15 +22,6 @@ class AnalyticsView extends ConsumerWidget {
         title: const Text('分析'),
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // データを再読み込み
-              _refreshData(ref);
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -281,7 +273,7 @@ class AnalyticsView extends ConsumerWidget {
               Icon(Icons.calendar_month, color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
-                '月間ポイント統計',
+                '月間来店者数',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -305,27 +297,162 @@ class AnalyticsView extends ConsumerWidget {
                   
                   return monthlyStatsAsync.when(
                     data: (monthlyStats) {
-                      final pointsIssued = monthlyStats['monthlyPointsIssued'] ?? 0;
-                      final pointsUsed = monthlyStats['monthlyPointsUsed'] ?? 0;
-                      final specialPointsUsed = monthlyStats['monthlySpecialPointsUsed'] ?? 0;
+                      final visitorCount = monthlyStats['visitorCount'] ?? 0;
+                      final newCustomers = monthlyStats['newCustomers'] ?? 0;
+                      final monthlyCouponUsageAsync =
+                          ref.watch(monthlyCouponUsageCountProvider(storeId));
 
-                      return _buildStatsGrid([
-                        {'label': '月間ポイント付与数', 'value': '$pointsIssued', 'icon': Icons.add_circle_outline, 'color': Colors.green},
-                        {
-                          'label': '月間ポイント利用数',
-                          'value': '$pointsUsed',
-                          'subValue': '特別ポイント: $specialPointsUsed',
-                          'icon': Icons.remove_circle_outline,
-                          'color': Colors.orange,
+                      return monthlyCouponUsageAsync.when(
+                        data: (monthlyCouponUsage) {
+                          return _buildMonthlyStatsRow([
+                            {
+                              'label': '月間来店者数',
+                              'value': '$visitorCount',
+                              'icon': Icons.people,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間新規顧客数',
+                              'value': '$newCustomers',
+                              'icon': Icons.person_add,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間クーポン使用者数',
+                              'value': '$monthlyCouponUsage',
+                              'icon': Icons.local_offer,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                          ]);
                         },
-                      ]);
+                        loading: () {
+                          return _buildMonthlyStatsRow([
+                            {
+                              'label': '月間来店者数',
+                              'value': '$visitorCount',
+                              'icon': Icons.people,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間新規顧客数',
+                              'value': '$newCustomers',
+                              'icon': Icons.person_add,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間クーポン使用者数',
+                              'value': '...',
+                              'icon': Icons.local_offer,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                          ]);
+                        },
+                        error: (_, __) {
+                          return _buildMonthlyStatsRow([
+                            {
+                              'label': '月間来店者数',
+                              'value': '$visitorCount',
+                              'icon': Icons.people,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間新規顧客数',
+                              'value': '$newCustomers',
+                              'icon': Icons.person_add,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '月間クーポン使用者数',
+                              'value': '0',
+                              'icon': Icons.local_offer,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                          ]);
+                        },
+                      );
                     },
-                    loading: () => _buildStatsGridPlaceholder(count: 2),
-                    error: (error, stackTrace) => _buildStatsGridPlaceholder(count: 2),
+                    loading: () => _buildMonthlyStatsRow([
+                      {
+                        'label': '月間来店者数',
+                        'value': '...',
+                        'icon': Icons.people,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '月間新規顧客数',
+                        'value': '...',
+                        'icon': Icons.person_add,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '月間クーポン使用者数',
+                        'value': '...',
+                        'icon': Icons.local_offer,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                    ]),
+                    error: (error, stackTrace) => _buildMonthlyStatsRow([
+                      {
+                        'label': '月間来店者数',
+                        'value': '0',
+                        'icon': Icons.people,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '月間新規顧客数',
+                        'value': '0',
+                        'icon': Icons.person_add,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '月間クーポン使用者数',
+                        'value': '0',
+                        'icon': Icons.local_offer,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                    ]),
                   );
                 },
-                loading: () => _buildStatsGridPlaceholder(count: 2),
-                error: (error, stackTrace) => _buildStatsGridPlaceholder(count: 2),
+                loading: () => _buildMonthlyStatsRow([
+                  {
+                    'label': '月間来店者数',
+                    'value': '...',
+                    'icon': Icons.people,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                  {
+                    'label': '月間新規顧客数',
+                    'value': '...',
+                    'icon': Icons.person_add,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                  {
+                    'label': '月間クーポン使用者数',
+                    'value': '...',
+                    'icon': Icons.local_offer,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                ]),
+                error: (error, stackTrace) => _buildMonthlyStatsRow([
+                  {
+                    'label': '月間来店者数',
+                    'value': '0',
+                    'icon': Icons.people,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                  {
+                    'label': '月間新規顧客数',
+                    'value': '0',
+                    'icon': Icons.person_add,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                  {
+                    'label': '月間クーポン使用者数',
+                    'value': '0',
+                    'icon': Icons.local_offer,
+                    'color': const Color(0xFFFF6B35),
+                  },
+                ]),
               );
             },
           ),
@@ -334,15 +461,19 @@ class AnalyticsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(List<Map<String, dynamic>> stats) {
+  Widget _buildStatsGrid(
+    List<Map<String, dynamic>> stats, {
+    double childAspectRatio = 1.5,
+    int crossAxisCount = 2,
+  }) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.5,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: stats.length,
       itemBuilder: (context, index) {
@@ -405,15 +536,19 @@ class AnalyticsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGridPlaceholder({int count = 4}) {
+  Widget _buildStatsGridPlaceholder({
+    int count = 4,
+    int crossAxisCount = 2,
+    double childAspectRatio = 1.5,
+  }) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.5,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: count,
       itemBuilder: (context, index) {
@@ -447,6 +582,59 @@ class AnalyticsView extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMonthlyStatsRow(List<Map<String, dynamic>> stats) {
+    final dividerColor = Colors.grey[200];
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: List.generate(stats.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            return SizedBox(
+              height: 72,
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: dividerColor,
+              ),
+            );
+          }
+          final stat = stats[index ~/ 2];
+          final label = stat['label'] as String;
+          final value = stat['value'] as String;
+          final icon = stat['icon'] as IconData;
+          final color = stat['color'] as Color;
+          return Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 

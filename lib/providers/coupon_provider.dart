@@ -153,6 +153,44 @@ final todayCouponUsageCountProvider = FutureProvider.family<int, String>((ref, s
   }
 });
 
+// 月間クーポン使用数プロバイダー（usedByサブコレクションから取得）
+final monthlyCouponUsageCountProvider = FutureProvider.family<int, String>((ref, storeId) async {
+  try {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+
+    final couponsSnapshot = await FirebaseFirestore.instance
+        .collection('coupons')
+        .doc(storeId)
+        .collection('coupons')
+        .get();
+
+    int totalUsedThisMonth = 0;
+    for (final couponDoc in couponsSnapshot.docs) {
+      try {
+        final usedBySnapshot = await FirebaseFirestore.instance
+            .collection('coupons')
+            .doc(storeId)
+            .collection('coupons')
+            .doc(couponDoc.id)
+            .collection('usedBy')
+            .where('usedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+            .where('usedAt', isLessThanOrEqualTo: Timestamp.fromDate(now))
+            .get();
+
+        totalUsedThisMonth += usedBySnapshot.docs.length;
+      } catch (e) {
+        debugPrint('Error fetching usedBy for coupon ${couponDoc.id}: $e');
+      }
+    }
+
+    return totalUsedThisMonth;
+  } catch (e) {
+    debugPrint('Error fetching monthly coupon usage count: $e');
+    return 0;
+  }
+});
+
 // クーポンサービスクラス
 class CouponService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

@@ -717,6 +717,9 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
         onTap: _onBottomTabChanged,
         selectedItemColor: const Color(0xFFFF6B35),
         unselectedItemColor: Colors.grey,
+        iconSize: 24,
+        selectedLabelStyle: const TextStyle(fontSize: 10),
+        unselectedLabelStyle: const TextStyle(fontSize: 10),
         items: items,
       ),
     );

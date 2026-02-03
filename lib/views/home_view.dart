@@ -16,9 +16,7 @@ import 'posts/posts_manage_view.dart';
 import 'coupons/coupons_manage_view.dart';
 import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
-import 'notifications/create_announcement_view.dart';
 import 'qr/qr_scanner_view.dart';
-import 'visitors/today_visitors_view.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -1010,7 +1008,7 @@ class HomeView extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '店舗統計',
+            '今日の統計',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1029,195 +1027,114 @@ class HomeView extends ConsumerWidget {
               return todayStatsAsync.when(
                 data: (stats) {
                   final visitorCount = stats['visitorCount'] ?? 0;
-                  final totalPointsAwarded = stats['pointsIssued'] ?? 0;
                   
                   return todayNewCustomersAsync.when(
                     data: (newCustomerCount) {
                       return todayCouponUsageAsync.when(
                         data: (couponUsageCount) {
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatItem(
-                                  '今日の来店者',
-                                  visitorCount.toString(),
-                                  Icons.people,
-                                  const Color(0xFFFF6B35),
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildStatItem(
-                                  '今日の新規顧客',
-                                  newCustomerCount.toString(),
-                                  Icons.person_add,
-                                  const Color(0xFFFF6B35),
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildStatItem(
-                                  '今日の配布ポイント',
-                                  totalPointsAwarded.toString(),
-                                  Icons.monetization_on,
-                                  const Color(0xFFFF6B35),
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildStatItem(
-                                  '今日のクーポン使用',
-                                  couponUsageCount.toString(),
-                                  Icons.local_offer,
-                                  const Color(0xFFFF6B35),
-                                ),
-                              ),
-                            ],
-                          );
+                          return _buildDailyStatsRow([
+                            {
+                              'label': '今日の来店者',
+                              'value': visitorCount.toString(),
+                              'icon': Icons.people,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '今日の新規顧客',
+                              'value': newCustomerCount.toString(),
+                              'icon': Icons.person_add,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                            {
+                              'label': '今日のクーポン使用',
+                              'value': couponUsageCount.toString(),
+                              'icon': Icons.local_offer,
+                              'color': const Color(0xFFFF6B35),
+                            },
+                          ]);
                         },
-                        loading: () => Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の来店者',
-                                visitorCount.toString(),
-                                Icons.people,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の新規顧客',
-                                newCustomerCount.toString(),
-                                Icons.person_add,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の配布ポイント',
-                                totalPointsAwarded.toString(),
-                                Icons.monetization_on,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日のクーポン使用',
-                                '...',
-                                Icons.local_offer,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                          ],
-                        ),
-                        error: (_, __) => Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の来店者',
-                                visitorCount.toString(),
-                                Icons.people,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の新規顧客',
-                                newCustomerCount.toString(),
-                                Icons.person_add,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日の配布ポイント',
-                                totalPointsAwarded.toString(),
-                                Icons.monetization_on,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildStatItem(
-                                '今日のクーポン使用',
-                                '0',
-                                Icons.local_offer,
-                                const Color(0xFFFF6B35),
-                              ),
-                            ),
-                          ],
-                        ),
+                        loading: () => _buildDailyStatsRow([
+                          {
+                            'label': '今日の来店者',
+                            'value': visitorCount.toString(),
+                            'icon': Icons.people,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                          {
+                            'label': '今日の新規顧客',
+                            'value': newCustomerCount.toString(),
+                            'icon': Icons.person_add,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                          {
+                            'label': '今日のクーポン使用',
+                            'value': '...',
+                            'icon': Icons.local_offer,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                        ]),
+                        error: (_, __) => _buildDailyStatsRow([
+                          {
+                            'label': '今日の来店者',
+                            'value': visitorCount.toString(),
+                            'icon': Icons.people,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                          {
+                            'label': '今日の新規顧客',
+                            'value': newCustomerCount.toString(),
+                            'icon': Icons.person_add,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                          {
+                            'label': '今日のクーポン使用',
+                            'value': '0',
+                            'icon': Icons.local_offer,
+                            'color': const Color(0xFFFF6B35),
+                          },
+                        ]),
                       );
                     },
-                    loading: () => Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の来店者',
-                            visitorCount.toString(),
-                            Icons.people,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の新規顧客',
-                            '...',
-                            Icons.person_add,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の配布ポイント',
-                            totalPointsAwarded.toString(),
-                            Icons.monetization_on,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日のクーポン使用',
-                            '...',
-                            Icons.local_offer,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                      ],
-                    ),
-                    error: (_, __) => Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の来店者',
-                            visitorCount.toString(),
-                            Icons.people,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の新規顧客',
-                            '0',
-                            Icons.person_add,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日の配布ポイント',
-                            totalPointsAwarded.toString(),
-                            Icons.monetization_on,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStatItem(
-                            '今日のクーポン使用',
-                            '0',
-                            Icons.local_offer,
-                            const Color(0xFFFF6B35),
-                          ),
-                        ),
-                      ],
-                    ),
+                    loading: () => _buildDailyStatsRow([
+                      {
+                        'label': '今日の来店者',
+                        'value': visitorCount.toString(),
+                        'icon': Icons.people,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '今日の新規顧客',
+                        'value': '...',
+                        'icon': Icons.person_add,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '今日のクーポン使用',
+                        'value': '...',
+                        'icon': Icons.local_offer,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                    ]),
+                    error: (_, __) => _buildDailyStatsRow([
+                      {
+                        'label': '今日の来店者',
+                        'value': visitorCount.toString(),
+                        'icon': Icons.people,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '今日の新規顧客',
+                        'value': '0',
+                        'icon': Icons.person_add,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                      {
+                        'label': '今日のクーポン使用',
+                        'value': '0',
+                        'icon': Icons.local_offer,
+                        'color': const Color(0xFFFF6B35),
+                      },
+                    ]),
                   );
                 },
                 loading: () => const CircularProgressIndicator(),
@@ -1233,36 +1150,55 @@ class HomeView extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildDailyStatsRow(List<Map<String, dynamic>> stats) {
+    final dividerColor = Colors.grey[200];
     return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: List.generate(stats.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            return SizedBox(
+              height: 72,
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: dividerColor,
+              ),
+            );
+          }
+          final stat = stats[index ~/ 2];
+          final label = stat['label'] as String;
+          final value = stat['value'] as String;
+          final icon = stat['icon'] as IconData;
+          final color = stat['color'] as Color;
+          return Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
@@ -1274,11 +1210,6 @@ class HomeView extends ConsumerWidget {
         children: [
           // 店舗メニューグリッド
           _buildStoreMenuGrid(context, ref, storeId),
-          
-          const SizedBox(height: 20),
-          
-          // 今日の訪問者セクション
-          _buildTodayVisitorsSection(context, ref, storeId),
           
           const SizedBox(height: 20),
           
@@ -1299,7 +1230,6 @@ class HomeView extends ConsumerWidget {
       {'icon': Icons.history, 'label': 'ポイント履歴'},
       {'icon': Icons.local_offer, 'label': 'クーポン管理'},
       {'icon': Icons.article, 'label': '投稿管理'},
-      {'icon': Icons.announcement, 'label': 'お知らせ作成'},
     ];
 
     return Container(
@@ -1494,12 +1424,6 @@ class HomeView extends ConsumerWidget {
               builder: (context) => const PointsHistoryView(),
             ),
           );
-        } else if (title == 'お知らせ作成') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const CreateAnnouncementView(),
-            ),
-          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$title は準備中です')),
@@ -1532,86 +1456,6 @@ class HomeView extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTodayVisitorsSection(BuildContext context, WidgetRef ref, String storeId) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Row(
-            children: [
-              const Text(
-                '今日の訪問者',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  // 訪問者一覧画面に遷移
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => TodayVisitorsView(storeId: storeId),
-                    ),
-                  );
-                },
-                child: const Text(
-                  '全て見る＞',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 120,
-          child: ref.watch(todayVisitorsProvider(storeId)).when(
-            data: (visitors) {
-              if (visitors.isEmpty) {
-                return const Center(
-                  child: Text(
-                    '今日の訪問者はいません',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                );
-              }
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: visitors.length,
-                itemBuilder: (context, index) {
-                  final visitor = visitors[index];
-                  return _buildVisitorCard(visitor);
-                },
-              );
-            },
-            loading: () => const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFFF6B35),
-              ),
-            ),
-            error: (error, _) => const Center(
-              child: Text(
-                '訪問者情報の取得に失敗しました',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1960,144 +1804,6 @@ class HomeView extends ConsumerWidget {
             const SizedBox(height: 5),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildVisitorCard(Map<String, dynamic> visitor) {
-    // 訪問時間の表示用フォーマット
-    String formatVisitTime() {
-      try {
-        final timestamp = visitor['timestamp'];
-        if (timestamp == null) return '時間不明';
-        
-        final date = timestamp is DateTime ? timestamp : timestamp.toDate();
-        final now = DateTime.now();
-        final difference = now.difference(date).inMinutes;
-        
-        if (difference < 1) return 'たった今';
-        if (difference < 60) return '${difference}分前';
-        if (difference < 1440) return '${(difference / 60).floor()}時間前';
-        
-        return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-      } catch (e) {
-        return '時間不明';
-      }
-    }
-
-    return Container(
-      width: 150,
-      height: 120,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // ユーザーアイコン
-            _buildVisitorAvatar(visitor),
-            
-            const SizedBox(height: 4),
-            
-            // ユーザー名
-            Text(
-              visitor['userName'] ?? 'ゲストユーザー',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-            
-            const SizedBox(height: 4),
-            
-            // 獲得ポイント
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '+${visitor['pointsEarned'] ?? 0}pt',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 4),
-            
-            // 訪問時間
-            Text(
-              formatVisitTime(),
-              style: const TextStyle(
-                fontSize: 8,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVisitorAvatar(Map<String, dynamic> visitor) {
-    final photoUrl = visitor['userPhotoUrl'];
-    if (photoUrl is String && photoUrl.isNotEmpty) {
-      return ClipOval(
-        child: Container(
-          width: 40,
-          height: 40,
-          color: Colors.grey[200],
-          child: Image.network(
-            photoUrl,
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 40,
-                height: 40,
-                color: Colors.blue[100],
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.blue,
-                  size: 24,
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    }
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.blue[100],
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.person,
-        color: Colors.blue,
-        size: 24,
       ),
     );
   }
