@@ -178,6 +178,7 @@ class AuthService {
         'updatedAt': FieldValue.serverTimestamp(),
         'isActive': false,
         'isApproved': false,
+        'approvalStatus': 'pending',
         'goldStamps': 0,
         'totalVisitors': 0,
         'averageRating': 0.0,

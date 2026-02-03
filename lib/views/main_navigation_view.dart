@@ -6,7 +6,6 @@ import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/owner_settings_provider.dart';
-import '../services/push_notification_service.dart';
 import '../widgets/app_update_gate.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_view.dart';
@@ -242,8 +241,6 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
     // ホーム画面のデータ読み込み
     await _loadStoreData(storeId);
     await _loadCouponData(storeId);
-    final pushService = ref.read(pushNotificationServiceProvider);
-    await pushService.syncForUser(userId);
   }
 
   Future<void> _loadAnalyticsData(String storeId) async {

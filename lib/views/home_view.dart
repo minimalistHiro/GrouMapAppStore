@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
-import '../providers/announcement_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/owner_settings_provider.dart';
 import '../widgets/custom_button.dart';
@@ -601,41 +601,39 @@ class HomeView extends ConsumerWidget {
                 authState.when(
                   data: (user) {
                     if (user == null) return const SizedBox.shrink();
-                    
-                    final unreadCountAsync = ref.watch(unreadAnnouncementCountProvider(user.uid));
-                    
-                    return unreadCountAsync.when(
-                      data: (unreadCount) {
-                        if (unreadCount > 0) {
-                          return Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
-                              ),
-                              child: Text(
-                                unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
+
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance.collection('stores').snapshots(),
+                      builder: (context, snapshot) {
+                        final pendingCount = _pendingStoresCount(snapshot.data?.docs);
+                        if (pendingCount <= 0) {
+                          return const SizedBox.shrink();
                         }
-                        return const SizedBox.shrink();
+                        return Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              pendingCount > 99 ? '99+' : pendingCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
                       },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
                     );
                   },
                   loading: () => const SizedBox.shrink(),
@@ -654,6 +652,20 @@ class HomeView extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  int _pendingStoresCount(List<QueryDocumentSnapshot<Object?>>? docs) {
+    if (docs == null) return 0;
+    int pendingCount = 0;
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final isApproved = data['isApproved'] ?? false;
+      final status = data['approvalStatus'] ?? 'pending';
+      if (!isApproved && status == 'pending') {
+        pendingCount++;
+      }
+    }
+    return pendingCount;
   }
 
   Widget? _buildMaintenanceGate(BuildContext context, WidgetRef ref) {

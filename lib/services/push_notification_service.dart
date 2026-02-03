@@ -48,6 +48,10 @@ class PushNotificationService {
     _currentUserId = null;
   }
 
+  Future<void> registerForUser(String userId) async {
+    await syncForUser(userId, force: true);
+  }
+
   Future<void> syncForUser(String userId, {bool force = false}) async {
     _currentUserId = userId;
     await initialize();

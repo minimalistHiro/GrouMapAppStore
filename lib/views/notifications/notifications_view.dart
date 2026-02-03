@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/announcement_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/notification_model.dart' as model;
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_top_tab_bar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'announcement_detail_view.dart';
+import 'notification_detail_view.dart';
 
 // ユーザーデータプロバイダー（usersコレクションから直接取得）
-final userDataProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, userId) {
+final userDataProvider = StreamProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, userId) {
   try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.uid != userId) {
+      return Stream.value(null);
+    }
     return FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -39,76 +45,53 @@ class NotificationsView extends ConsumerStatefulWidget {
 }
 
 class _NotificationsViewState extends ConsumerState<NotificationsView> {
-  final Set<String> _knownAnnouncementIds = <String>{};
-  bool _hasAnnouncementsLoaded = false;
-  ProviderSubscription<AsyncValue<List<Map<String, dynamic>>>>? _announcementsSubscription;
-
   @override
   void initState() {
     super.initState();
-    _announcementsSubscription = ref.listenManual<AsyncValue<List<Map<String, dynamic>>>>(
-      announcementsProvider,
-      (previous, next) {
-        next.whenData(_handleAnnouncementsUpdate);
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _announcementsSubscription?.close();
-    super.dispose();
-  }
-
-  void _handleAnnouncementsUpdate(List<Map<String, dynamic>> announcements) {
-    final ids = announcements
-        .map((announcement) => announcement['id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toSet();
-
-    if (!_hasAnnouncementsLoaded) {
-      _knownAnnouncementIds
-        ..clear()
-        ..addAll(ids);
-      _hasAnnouncementsLoaded = true;
-      return;
-    }
-
-    final newIds = ids.difference(_knownAnnouncementIds);
-    if (newIds.isNotEmpty) {
-      SystemSound.play(SystemSoundType.alert);
-    }
-
-    _knownAnnouncementIds
-      ..clear()
-      ..addAll(ids);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(announcementsProvider);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('お知らせ'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
-      ),
-      body: authState.when(
-        data: (user) {
-          if (user != null) {
-            return _buildAnnouncementsList(context, ref, user.uid);
-          } else {
-            return const Center(
-              child: Text('ログインが必要です'),
-            );
-          }
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('お知らせ'),
+          backgroundColor: const Color(0xFFFF6B35),
+          foregroundColor: Colors.white,
+          bottom: const CustomTopTabBar(
+            tabs: [
+              Tab(text: 'お知らせ'),
+              Tab(text: '通知'),
+            ],
+          ),
         ),
-        error: (error, _) => Center(
-          child: Text('エラー: $error'),
+        body: authState.when(
+          data: (user) {
+            if (user != null) {
+              return TabBarView(
+                children: [
+                  _buildAnnouncementsList(context, ref, user.uid),
+                  _buildNotificationsList(context, ref, user.uid),
+                ],
+              );
+            } else {
+              return const Center(
+                child: Text('ログインが必要です'),
+              );
+            }
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          error: (error, _) => Center(
+            child: Text('エラー: $error'),
+          ),
         ),
       ),
     );
@@ -116,11 +99,6 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
 
   Widget _buildAnnouncementsList(BuildContext context, WidgetRef ref, String userId) {
     final announcementsAsync = ref.watch(announcementsProvider);
-    final isOwnerAsync = ref.watch(userIsOwnerProvider);
-    final isOwner = isOwnerAsync.maybeWhen(
-      data: (value) => value,
-      orElse: () => false,
-    );
 
     return announcementsAsync.when(
       data: (announcements) {
@@ -148,7 +126,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
           itemCount: announcements.length,
           itemBuilder: (context, index) {
             final announcement = announcements[index];
-            return _buildAnnouncementItem(context, ref, announcement, userId, isOwner);
+            return _buildAnnouncementItem(context, ref, announcement, userId);
           },
         );
       },
@@ -266,7 +244,6 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
     WidgetRef ref,
     Map<String, dynamic> announcement,
     String userId,
-    bool isOwner,
   ) {
     return ref.watch(userDataProvider(userId)).when(
       data: (userData) {
@@ -340,16 +317,6 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
                           color: Colors.grey[600],
                         ),
                       ),
-                      if (isOwner) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 18),
-                          color: Colors.red[600],
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () => _deleteAnnouncement(context, ref, announcement['id']),
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -374,37 +341,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.visibility,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${announcement['totalViews']} 回閲覧',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.person,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${announcement['readCount']} 人が既読',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
+                  // 閲覧回数や既読数はDB保存のみ。UI表示は削除。
                 ],
               ),
             ),
@@ -474,16 +411,11 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
             ),
           ],
         ),
-        trailing: notification.isRead
-            ? IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => _deleteNotification(context, ref, notification.id),
-              )
-            : IconButton(
-                icon: const Icon(Icons.mark_email_read),
-                onPressed: () => _markAsRead(context, ref, notification.id),
-              ),
-        onTap: () => _showNotificationDetails(context, notification),
+        trailing: IconButton(
+          icon: const Icon(Icons.mark_email_read),
+          onPressed: () => _markAsRead(context, ref, notification),
+        ),
+        onTap: () => _navigateToNotificationDetail(context, notification),
       ),
     );
   }
@@ -496,73 +428,17 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
     );
   }
 
-  void _showNotificationDetails(BuildContext context, model.NotificationModel notification) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Text(notification.type.icon),
-            const SizedBox(width: 8),
-            Expanded(child: Text(notification.title)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(notification.body),
-            if (notification.imageUrl != null) ...[
-              const SizedBox(height: 16),
-              Image.network(notification.imageUrl!),
-            ],
-            const SizedBox(height: 16),
-            _buildDetailRow('タイプ:', notification.type.displayName),
-            _buildDetailRow('作成日時:', _formatDateTime(notification.createdAt)),
-            _buildDetailRow('既読:', notification.isRead ? 'はい' : 'いいえ'),
-            if (notification.tags.isNotEmpty)
-              _buildDetailRow('タグ:', notification.tags.join(', ')),
-          ],
-        ),
-        actions: [
-          if (notification.actionUrl != null)
-            TextButton(
-              onPressed: () {
-                // TODO: アクションURLを開く
-                Navigator.of(context).pop();
-              },
-              child: const Text('アクション'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('閉じる'),
-          ),
-        ],
+  void _navigateToNotificationDetail(BuildContext context, model.NotificationModel notification) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => NotificationDetailView(notification: notification),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  void _markAsRead(BuildContext context, WidgetRef ref, String notificationId) {
-    ref.read(notificationProvider).markAsRead(notificationId);
+  void _markAsRead(BuildContext context, WidgetRef ref, model.NotificationModel notification) {
+    final source = notification.data?['source'] as String?;
+    ref.read(notificationProvider).markAsRead(notification.userId, notification.id, source: source);
   }
 
   void _markAllAsRead(BuildContext context, WidgetRef ref) {
@@ -575,43 +451,6 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
         );
       }
     });
-  }
-
-  void _deleteNotification(BuildContext context, WidgetRef ref, String notificationId) {
-    ref.read(notificationProvider).deleteNotification(notificationId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('通知を削除しました')),
-    );
-  }
-
-  Future<void> _deleteAnnouncement(BuildContext context, WidgetRef ref, String announcementId) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('お知らせを削除'),
-        content: const Text('このお知らせを削除しますか？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('削除'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldDelete != true) {
-      return;
-    }
-
-    ref.read(announcementProvider).deleteAnnouncement(announcementId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('お知らせを削除しました')),
-    );
   }
 
   Color _getCategoryColor(String category) {
@@ -698,18 +537,4 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
     }
   }
 
-  String _formatDateTime(dynamic timestamp) {
-    if (timestamp == null) return '日時不明';
-    
-    DateTime date;
-    if (timestamp is Timestamp) {
-      date = timestamp.toDate();
-    } else if (timestamp is DateTime) {
-      date = timestamp;
-    } else {
-      return '日時不明';
-    }
-    return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} '
-           '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
 }
