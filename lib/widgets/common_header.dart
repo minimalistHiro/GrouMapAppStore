@@ -28,7 +28,10 @@ class CommonHeader extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: showBack,
       leading: showBack
           ? IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: Icon(
+                Icons.chevron_left,
+                size: 36,
+              ),
               onPressed: onBack ?? () => Navigator.of(context).pop(),
             )
           : null,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
+import '../providers/announcement_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/post_provider.dart';
@@ -602,13 +603,26 @@ class HomeView extends ConsumerWidget {
                   data: (user) {
                     if (user == null) return const SizedBox.shrink();
 
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance.collection('stores').snapshots(),
-                      builder: (context, snapshot) {
-                        final pendingCount = _pendingStoresCount(snapshot.data?.docs);
-                        if (pendingCount <= 0) {
+                    return ref.watch(userDataProvider(user.uid)).when(
+                      data: (userData) {
+                        if (userData == null) return const SizedBox.shrink();
+
+                        final readNotifications = List<String>.from(userData['readNotifications'] ?? []);
+                        final unreadAnnouncements = ref.watch(announcementsProvider).maybeWhen(
+                              data: (announcements) => announcements
+                                  .where((announcement) => !readNotifications.contains(announcement['id']))
+                                  .length,
+                              orElse: () => 0,
+                            );
+                        final unreadNotifications = ref
+                            .watch(unreadNotificationCountProvider(user.uid))
+                            .maybeWhen(data: (count) => count, orElse: () => 0);
+                        final totalUnread = unreadAnnouncements + unreadNotifications;
+
+                        if (totalUnread <= 0) {
                           return const SizedBox.shrink();
                         }
+
                         return Positioned(
                           right: 0,
                           top: 0,
@@ -623,7 +637,7 @@ class HomeView extends ConsumerWidget {
                               minHeight: 16,
                             ),
                             child: Text(
-                              pendingCount > 99 ? '99+' : pendingCount.toString(),
+                              totalUnread > 99 ? '99+' : totalUnread.toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -634,6 +648,8 @@ class HomeView extends ConsumerWidget {
                           ),
                         );
                       },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     );
                   },
                   loading: () => const SizedBox.shrink(),
@@ -652,20 +668,6 @@ class HomeView extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  int _pendingStoresCount(List<QueryDocumentSnapshot<Object?>>? docs) {
-    if (docs == null) return 0;
-    int pendingCount = 0;
-    for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final isApproved = data['isApproved'] ?? false;
-      final status = data['approvalStatus'] ?? 'pending';
-      if (!isApproved && status == 'pending') {
-        pendingCount++;
-      }
-    }
-    return pendingCount;
   }
 
   Widget? _buildMaintenanceGate(BuildContext context, WidgetRef ref) {

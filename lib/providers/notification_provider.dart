@@ -258,6 +258,7 @@ class NotificationService {
   Future<void> markAsRead(String userId, String notificationId, {String? source}) async {
     try {
       final resolvedSource = source ?? 'global';
+      debugPrint('通知既読更新: id=$notificationId, userId=$userId, source=$resolvedSource');
       if (resolvedSource == 'user') {
         await _firestore
             .collection('users')
@@ -271,6 +272,31 @@ class NotificationService {
             .doc(notificationId)
             .update({'isRead': true});
       }
+    } on FirebaseException catch (e) {
+      if (e.code == 'not-found') {
+        // source が不正な場合に備えて反対側へフォールバック更新
+        try {
+          if (source == 'user') {
+            await _firestore
+                .collection('notifications')
+                .doc(notificationId)
+                .update({'isRead': true});
+          } else {
+            await _firestore
+                .collection('users')
+                .doc(userId)
+                .collection('notifications')
+                .doc(notificationId)
+                .update({'isRead': true});
+          }
+          debugPrint('通知既読更新: not-found フォールバック成功 id=$notificationId');
+          return;
+        } catch (fallbackError) {
+          debugPrint('通知既読更新: フォールバック失敗 id=$notificationId, error=$fallbackError');
+          rethrow;
+        }
+      }
+      rethrow;
     } catch (e) {
       debugPrint('Error marking notification as read: $e');
       throw Exception('通知の既読化に失敗しました: $e');

@@ -104,6 +104,7 @@ class NotificationDetailView extends ConsumerWidget {
   void _markAsReadAutomatically(WidgetRef ref) {
     if (notification.isRead) return;
     final source = notification.data?['source'] as String?;
+    debugPrint('通知既読（自動）: id=${notification.id}, userId=${notification.userId}, source=${source ?? "null"}');
     ref.read(notificationProvider).markAsRead(notification.userId, notification.id, source: source);
   }
 
