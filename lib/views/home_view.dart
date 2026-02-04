@@ -1241,55 +1241,35 @@ class HomeView extends ConsumerWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const iconSize = 32.0;
-          const fontSize = 12.0;
-          const itemHeight = 80.0;
-          const mainAxisSpacing = 8.0;
-          const crossAxisSpacing = 8.0;
-          final rows = (menuItems.length / 4).ceil();
-          final itemWidth = (constraints.maxWidth - (crossAxisSpacing * 3)) / 4;
-          final aspectRatio = itemWidth / itemHeight;
-          final gridHeight = (itemHeight * rows) + (mainAxisSpacing * (rows - 1));
-          final backgroundHeight = gridHeight + 32;
-
-          return SizedBox(
-            height: backgroundHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: backgroundHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    child: GridView.count(
-                      crossAxisCount: 4,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: aspectRatio,
-                      mainAxisSpacing: mainAxisSpacing,
-                      crossAxisSpacing: crossAxisSpacing,
-                      children: menuItems.map((item) => _buildStoreMenuButton(
-                        context,
-                        item['label'] as String,
-                        item['icon'] as IconData,
-                        iconSize: iconSize,
-                        fontSize: fontSize,
-                      )).toList(),
-                    ),
-                  ),
-                ),
-              ],
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            height: 80,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
             ),
-          );
-        },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: menuItems.map((item) {
+                return Expanded(
+                  child: _buildStoreMenuButton(
+                    context,
+                    item['label'] as String,
+                    item['icon'] as IconData,
+                    iconSize: 26.0,
+                    fontSize: 10.0,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

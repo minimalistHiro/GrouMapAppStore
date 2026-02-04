@@ -51,7 +51,7 @@ class CustomTextField extends StatelessWidget {
       maxLines: maxLines,
       minLines: minLines,
       maxLength: maxLength,
-      style: const TextStyle(color: Colors.black),
+      style: const TextStyle(color: Colors.black, height: 1.5),
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,

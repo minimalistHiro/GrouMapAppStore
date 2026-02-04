@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/dismiss_keyboard.dart';
 import '../auth/store_location_picker_view.dart';
 
 class StoreProfileEditView extends ConsumerStatefulWidget {
@@ -753,13 +754,14 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
         backgroundColor: const Color(0xFFFF6B35),
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: DismissKeyboard(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // 基本情報セクション
               _buildSection(
                 title: '基本情報',
@@ -1013,7 +1015,8 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
                   ),
                 ),
               if (_hasFormError) const SizedBox(height: 16),
-            ],
+              ],
+            ),
           ),
         ),
       ),
