@@ -17,7 +17,7 @@ class AppUpdateGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOwner = ref.watch(userIsOwnerProvider).maybeWhen(
+    final isOwner = ref.watch(userIsAdminOwnerProvider).maybeWhen(
           data: (value) => value,
           orElse: () => false,
         );
