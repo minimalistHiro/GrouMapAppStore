@@ -9,8 +9,12 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:latlong2/latlong.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/icon_image_picker_field.dart';
+import '../../widgets/image_picker_field.dart';
+import '../../utils/icon_image_flow.dart';
 import 'sign_up_view.dart';
 import 'store_location_picker_view.dart';
+import '../settings/store_icon_crop_view.dart';
 
 class StoreInfoView extends ConsumerStatefulWidget {
   const StoreInfoView({Key? key}) : super(key: key);
@@ -302,30 +306,20 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   Future<void> _pickIconImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 80,
+      final Uint8List? cropped = await pickAndCropIconImage(
+        context: context,
+        picker: picker,
+        buildCropView: (bytes) => StoreIconCropView(imageBytes: bytes),
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
-      
-      if (image != null) {
-        if (kIsWeb) {
-          final bytes = await image.readAsBytes();
-          setState(() {
-            _webIconImageBytes = bytes;
-            _selectedIconImage = null;
-            _iconImageUrl = null; // 新しい画像を選択したらURLをリセット
-          });
-        } else {
-          setState(() {
-            _selectedIconImage = File(image.path);
-            _webIconImageBytes = null;
-            _iconImageUrl = null; // 新しい画像を選択したらURLをリセット
-          });
-        }
-        
-        // Firebase Storageにアップロード
+      if (!mounted) return;
+      if (cropped != null) {
+        setState(() {
+          _webIconImageBytes = cropped;
+          _selectedIconImage = null;
+          _iconImageUrl = null;
+        });
         await _uploadIconImage();
       }
     } catch (e) {
@@ -338,6 +332,22 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         );
       }
     }
+  }
+
+  void _removeIconImage() {
+    setState(() {
+      _webIconImageBytes = null;
+      _selectedIconImage = null;
+      _iconImageUrl = null;
+    });
+  }
+
+  void _removeStoreImage() {
+    setState(() {
+      _webStoreImageBytes = null;
+      _selectedStoreImage = null;
+      _storeImageUrl = null;
+    });
   }
   
   // 店舗イメージ画像を選択
@@ -394,7 +404,7 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
 
       String downloadUrl;
       
-      if (kIsWeb && _webIconImageBytes != null) {
+      if (_webIconImageBytes != null) {
         final uploadTask = storageRef.putData(_webIconImageBytes!);
         final snapshot = await uploadTask;
         downloadUrl = await snapshot.ref.getDownloadURL();
@@ -1459,49 +1469,17 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: Column(
-            children: [
-              if (_selectedIconImage != null || _webIconImageBytes != null)
-                Container(
-                  width: 120,
-                  height: 120,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(60),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(60),
-                    child: _buildIconImage(),
-                  ),
-                ),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _pickIconImage,
-                  icon: const Icon(Icons.photo_library, size: 18),
-                  label: const Text('画像を選択'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '推奨サイズ: 512x512px、JPG形式',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
+        Center(
+          child: IconImagePickerField(
+            size: 120,
+            onTap: _pickIconImage,
+            onRemove: _removeIconImage,
+            showRemove: (_webIconImageBytes != null) ||
+                (_selectedIconImage != null) ||
+                (_iconImageUrl?.isNotEmpty ?? false),
+            backgroundColor: Colors.grey[100]!,
+            borderColor: Colors.grey[300]!,
+            child: _buildIconImage(),
           ),
         ),
       ],
@@ -1521,50 +1499,14 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: Column(
-            children: [
-              if (_selectedStoreImage != null || _webStoreImageBytes != null)
-                Container(
-                  width: 400,
-                  height: 200,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: _buildStoreImage(),
-                  ),
-                ),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _pickStoreImage,
-                  icon: const Icon(Icons.photo_library, size: 18),
-                  label: const Text('店舗イメージ画像を選択'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '推奨サイズ: 1600x800px（2:1比率）、JPG形式',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
-          ),
+        ImagePickerField(
+          aspectRatio: 2 / 1,
+          onTap: _pickStoreImage,
+          child: _buildStoreImage(),
+          showRemove: (_webStoreImageBytes != null) || (_selectedStoreImage != null) || (_storeImageUrl?.isNotEmpty ?? false),
+          onRemove: _removeStoreImage,
+          borderColor: Colors.grey[300]!,
+          backgroundColor: Colors.grey[100]!,
         ),
       ],
     );
@@ -1603,16 +1545,7 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     } 
     // どちらもない場合はデフォルトアイコン
     else {
-      return Container(
-        width: 120,
-        height: 120,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.store,
-          size: 60,
-          color: Colors.grey,
-        ),
-      );
+      return _buildDefaultStoreIconPreview(120);
     }
   }
 
@@ -1664,16 +1597,71 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         ),
       );
     } else {
-      return Container(
-        width: 120,
-        height: 120,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.store,
-          size: 60,
-          color: Colors.grey,
-        ),
-      );
+      return _buildDefaultStoreIconPreview(120);
+    }
+  }
+
+  Widget _buildDefaultStoreIconPreview(double size) {
+    final category = _selectedCategory ?? 'その他';
+    final baseColor = _getDefaultStoreColor(category);
+    return Container(
+      width: size,
+      height: size,
+      color: baseColor.withOpacity(0.1),
+      alignment: Alignment.center,
+      child: Icon(
+        _getDefaultStoreIcon(category),
+        color: baseColor,
+        size: size * 0.5,
+      ),
+    );
+  }
+
+  Color _getDefaultStoreColor(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Colors.red;
+      case 'カフェ':
+      case 'カフェ・喫茶店':
+        return Colors.brown;
+      case 'ショップ':
+        return Colors.blue;
+      case '美容院':
+        return Colors.pink;
+      case '薬局':
+        return Colors.green;
+      case 'コンビニ':
+        return Colors.orange;
+      case 'スーパー':
+        return Colors.lightGreen;
+      case '書店':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getDefaultStoreIcon(String category) {
+    switch (category) {
+      case 'レストラン':
+        return Icons.restaurant;
+      case 'カフェ':
+      case 'カフェ・喫茶店':
+        return Icons.local_cafe;
+      case 'ショップ':
+        return Icons.shopping_bag;
+      case '美容院':
+        return Icons.content_cut;
+      case '薬局':
+        return Icons.local_pharmacy;
+      case 'コンビニ':
+        return Icons.store;
+      case 'スーパー':
+        return Icons.shopping_cart;
+      case '書店':
+        return Icons.menu_book;
+      default:
+        return Icons.store;
     }
   }
 
@@ -1683,16 +1671,12 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     if (_storeImageUrl != null && _storeImageUrl!.isNotEmpty) {
       return Image.network(
         _storeImageUrl!,
-        width: 400,
-        height: 200,
         fit: BoxFit.cover,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) {
             return child;
           }
           return Container(
-            width: 400,
-            height: 200,
             color: Colors.grey[300],
             child: const CircularProgressIndicator(
               color: Color(0xFFFF6B35),
@@ -1710,16 +1694,7 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     } 
     // どちらもない場合はデフォルトアイコン
     else {
-      return Container(
-        width: 400,
-        height: 200,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.store,
-          size: 60,
-          color: Colors.grey,
-        ),
-      );
+      return _buildStoreImagePlaceholder();
     }
   }
 
@@ -1732,25 +1707,12 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           if (snapshot.hasData) {
             return Image.memory(
               snapshot.data!,
-              width: 400,
-              height: 200,
               fit: BoxFit.cover,
             );
           } else if (snapshot.hasError) {
-            return Container(
-              width: 400,
-              height: 200,
-              color: Colors.grey[300],
-              child: const Icon(
-                Icons.store,
-                size: 60,
-                color: Colors.grey,
-              ),
-            );
+            return _buildStoreImagePlaceholder();
           } else {
             return Container(
-              width: 400,
-              height: 200,
               color: Colors.grey[300],
               child: const CircularProgressIndicator(
                 color: Color(0xFFFF6B35),
@@ -1762,25 +1724,24 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     } else if (_webStoreImageBytes != null) {
       return Image.memory(
         _webStoreImageBytes!,
-        width: 400,
-        height: 200,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.store, size: 60, color: Colors.grey),
-        ),
+        errorBuilder: (context, error, stackTrace) => _buildStoreImagePlaceholder(),
       );
     } else {
-      return Container(
-        width: 400,
-        height: 200,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.store,
-          size: 60,
-          color: Colors.grey,
-        ),
-      );
+      return _buildStoreImagePlaceholder();
     }
+  }
+
+  Widget _buildStoreImagePlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: const ImagePickerPlaceholder(
+        aspectRatio: 2 / 1,
+      ),
+    );
   }
 }

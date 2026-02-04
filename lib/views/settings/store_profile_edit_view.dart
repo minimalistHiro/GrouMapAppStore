@@ -12,7 +12,11 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/dismiss_keyboard.dart';
+import '../../widgets/icon_image_picker_field.dart';
+import '../../widgets/image_picker_field.dart';
 import '../auth/store_location_picker_view.dart';
+import 'store_icon_crop_view.dart';
+import '../../utils/icon_image_flow.dart';
 
 class StoreProfileEditView extends ConsumerStatefulWidget {
   const StoreProfileEditView({Key? key}) : super(key: key);
@@ -312,17 +316,15 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
 
   Future<void> _pickIconImage() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
+      final Uint8List? cropped = await pickAndCropIconImage(
+        context: context,
+        picker: _picker,
+        buildCropView: (bytes) => StoreIconCropView(imageBytes: bytes),
       );
-
-      if (image != null) {
-        final Uint8List imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+      if (cropped != null) {
         setState(() {
-          _selectedIconImage = imageBytes;
+          _selectedIconImage = cropped;
         });
       }
     } catch (e) {
@@ -1066,14 +1068,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
       title: '店舗画像',
       children: [
         // アイコン画像
-        _buildImageField(
-          label: '店舗アイコン',
-          currentImageUrl: _currentIconImageUrl,
-          selectedImage: _selectedIconImage,
-          onPick: _pickIconImage,
-          onRemove: _removeIconImage,
-          useDefaultIcon: true,
-        ),
+        _buildStoreIconField(),
         
         const SizedBox(height: 16),
         
@@ -1149,6 +1144,72 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     );
   }
 
+  Widget _buildStoreIconField() {
+    const double iconPreviewSize = 96;
+    final bool hasImage = _selectedIconImage != null || (_currentIconImageUrl?.isNotEmpty ?? false);
+    Widget child;
+    if (_selectedIconImage != null) {
+      child = Image.memory(
+        _selectedIconImage!,
+        width: iconPreviewSize,
+        height: iconPreviewSize,
+        fit: BoxFit.cover,
+      );
+    } else if (_currentIconImageUrl != null && _currentIconImageUrl!.isNotEmpty) {
+      child = Image.network(
+        _currentIconImageUrl!,
+        width: iconPreviewSize,
+        height: iconPreviewSize,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildDefaultStoreIconPreview(iconPreviewSize);
+        },
+      );
+    } else {
+      child = _buildDefaultStoreIconPreview(iconPreviewSize);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '店舗アイコン',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        IconImagePickerField(
+          size: iconPreviewSize,
+          child: child,
+          onTap: _pickIconImage,
+          onRemove: _removeIconImage,
+          showRemove: hasImage,
+          backgroundColor: Colors.grey[100]!,
+          borderColor: Colors.grey[300]!,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultStoreIconPreview(double size) {
+    final category = _selectedCategory ?? 'その他';
+    final baseColor = _getDefaultStoreColor(category);
+    return Container(
+      width: size,
+      height: size,
+      color: baseColor.withOpacity(0.1),
+      alignment: Alignment.center,
+      child: Icon(
+        _getDefaultStoreIcon(category),
+        color: baseColor,
+        size: size * 0.5,
+      ),
+    );
+  }
+
   Widget _buildImageField({
     required String label,
     String? currentImageUrl,
@@ -1157,6 +1218,67 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     required VoidCallback onRemove,
     bool useDefaultIcon = false,
   }) {
+    const double iconPreviewSize = 96;
+    Widget buildCircularFallbackIcon() {
+      final category = _selectedCategory ?? 'その他';
+      final baseColor = _getDefaultStoreColor(category);
+      return Container(
+        color: baseColor.withOpacity(0.1),
+        alignment: Alignment.center,
+        child: Icon(
+          _getDefaultStoreIcon(category),
+          color: baseColor,
+          size: 40,
+        ),
+      );
+    }
+    Widget buildCircularImage(Widget image) {
+      return Center(
+        child: Container(
+          width: iconPreviewSize,
+          height: iconPreviewSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.grey[100],
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: ClipOval(child: image),
+        ),
+      );
+    }
+    Widget buildCircularPreview(Widget image) {
+      return Center(
+        child: SizedBox(
+          width: iconPreviewSize,
+          height: iconPreviewSize,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              buildCircularImage(image),
+              Positioned(
+                top: -2,
+                right: -2,
+                child: GestureDetector(
+                  onTap: onRemove,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.remove,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1169,154 +1291,193 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          height: 120,
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: selectedImage != null
-                ? Stack(
-                    children: [
-                      Image.memory(
-                        selectedImage,
-                        width: double.infinity,
-                        height: 120,
-                        fit: BoxFit.cover,
+        GestureDetector(
+          onTap: onPick,
+          child: Container(
+            width: double.infinity,
+            height: useDefaultIcon ? 120 : null,
+            decoration: BoxDecoration(
+              color: useDefaultIcon ? Colors.transparent : Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: useDefaultIcon ? null : Border.all(color: Colors.grey[300]!),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: useDefaultIcon
+                  ? _buildImageContent(
+                      useDefaultIcon: useDefaultIcon,
+                      selectedImage: selectedImage,
+                      currentImageUrl: currentImageUrl,
+                      onPick: onPick,
+                      onRemove: onRemove,
+                      buildCircularPreview: buildCircularPreview,
+                      buildCircularFallbackIcon: buildCircularFallbackIcon,
+                      iconPreviewSize: iconPreviewSize,
+                    )
+                  : AspectRatio(
+                      aspectRatio: 2 / 1,
+                      child: _buildImageContent(
+                        useDefaultIcon: useDefaultIcon,
+                        selectedImage: selectedImage,
+                        currentImageUrl: currentImageUrl,
+                        onPick: onPick,
+                        onRemove: onRemove,
+                        buildCircularPreview: buildCircularPreview,
+                        buildCircularFallbackIcon: buildCircularFallbackIcon,
+                        iconPreviewSize: iconPreviewSize,
                       ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: GestureDetector(
-                          onTap: onRemove,
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : currentImageUrl != null
-                    ? Stack(
-                        children: [
-                          Image.network(
-                            currentImageUrl,
-                            width: double.infinity,
-                            height: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildImagePlaceholder(onPick, useDefaultIcon: useDefaultIcon);
-                            },
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: GestureDetector(
-                              onTap: onRemove,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : _buildImagePlaceholder(onPick, useDefaultIcon: useDefaultIcon),
+                    ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildImagePlaceholder(VoidCallback onPick, {required bool useDefaultIcon}) {
+  Widget _buildImageContent({
+    required bool useDefaultIcon,
+    required Uint8List? selectedImage,
+    required String? currentImageUrl,
+    required VoidCallback onPick,
+    required VoidCallback onRemove,
+    required Widget Function(Widget image) buildCircularPreview,
+    required Widget Function() buildCircularFallbackIcon,
+    required double iconPreviewSize,
+  }) {
+    if (selectedImage != null) {
+      return Stack(
+        children: [
+          useDefaultIcon
+              ? buildCircularPreview(
+                  Image.memory(
+                    selectedImage,
+                    width: iconPreviewSize,
+                    height: iconPreviewSize,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Image.memory(
+                  selectedImage,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+          if (!useDefaultIcon)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.remove,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    if (currentImageUrl != null) {
+      return Stack(
+        children: [
+          useDefaultIcon
+              ? buildCircularPreview(
+                  Image.network(
+                    currentImageUrl,
+                    width: iconPreviewSize,
+                    height: iconPreviewSize,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return buildCircularFallbackIcon();
+                    },
+                  ),
+                )
+              : Image.network(
+                  currentImageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildImagePlaceholder(
+                      onPick,
+                      useDefaultIcon: useDefaultIcon,
+                      iconPreviewSize: iconPreviewSize,
+                    );
+                  },
+                ),
+          if (!useDefaultIcon)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.remove,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return _buildImagePlaceholder(onPick, useDefaultIcon: useDefaultIcon, iconPreviewSize: iconPreviewSize);
+  }
+
+  Widget _buildImagePlaceholder(
+    VoidCallback onPick, {
+    required bool useDefaultIcon,
+    required double iconPreviewSize,
+  }) {
     if (useDefaultIcon) {
       final category = _selectedCategory ?? 'その他';
       final baseColor = _getDefaultStoreColor(category);
-      return GestureDetector(
-        onTap: onPick,
-        child: Container(
-          width: double.infinity,
-          height: 120,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: baseColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: baseColor.withOpacity(0.3)),
-                ),
-                child: Icon(
-                  _getDefaultStoreIcon(category),
-                  color: baseColor,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '画像を選択',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return GestureDetector(
-      onTap: onPick,
-      child: Container(
+      return SizedBox(
         width: double.infinity,
         height: 120,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.add_photo_alternate,
-              size: 32,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '画像を選択',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+            Container(
+              width: iconPreviewSize,
+              height: iconPreviewSize,
+              decoration: BoxDecoration(
+                color: baseColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: baseColor.withOpacity(0.3)),
+              ),
+              child: Icon(
+                _getDefaultStoreIcon(category),
+                color: baseColor,
+                size: iconPreviewSize * 0.5,
               ),
             ),
           ],
         ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      height: 120,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const ImagePickerPlaceholder(
+        aspectRatio: 2 / 1,
       ),
     );
   }
