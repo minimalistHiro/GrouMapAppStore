@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../widgets/custom_button.dart';
@@ -15,6 +16,7 @@ import 'app_info_view.dart';
 import 'notification_settings_view.dart';
 import 'interior_images_view.dart';
 import 'owner_settings_view.dart';
+import 'live_chat_user_list_view.dart';
 import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
 import '../stores/pending_stores_view.dart';
@@ -271,6 +273,19 @@ class SettingsView extends ConsumerWidget {
                       },
                     ),
                     _buildSettingsItem(
+                      icon: Icons.chat,
+                      title: 'ライブチャット',
+                      subtitle: 'ユーザーからの問い合わせを確認',
+                      trailing: _buildLiveChatUnreadTrailing(),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const LiveChatUserListView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
                       icon: Icons.settings,
                       title: '店舗設定',
                       subtitle: '店舗の有効・無効を切り替え',
@@ -471,6 +486,59 @@ class SettingsView extends ConsumerWidget {
       subtitle: Text(subtitle),
       trailing: trailing ?? const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildLiveChatUnreadTrailing() {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.data == null) {
+          return const Icon(Icons.chevron_right);
+        }
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collectionGroup('messages')
+              .where('senderRole', isEqualTo: 'user')
+              .where('readByOwnerAt', isNull: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Icon(Icons.chevron_right);
+            }
+            final totalUnread = snapshot.data?.docs.length ?? 0;
+
+            if (totalUnread <= 0) {
+              return const Icon(Icons.chevron_right);
+            }
+
+            final badgeText = totalUnread > 99 ? '99+' : totalUnread.toString();
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

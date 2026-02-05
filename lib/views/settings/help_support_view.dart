@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'email_support_view.dart';
@@ -179,6 +181,7 @@ class HelpSupportView extends StatelessWidget {
           icon: Icons.chat,
           title: 'ライブチャット',
           subtitle: 'オンラインで質問',
+          trailing: _buildLiveChatUnreadTrailing(),
           onTap: () => _showChatDialog(),
         ),
       ],
@@ -189,6 +192,7 @@ class HelpSupportView extends StatelessWidget {
     required IconData icon,
     required String title,
     required String subtitle,
+    Widget? trailing,
     required VoidCallback onTap,
   }) {
     return ListTile(
@@ -218,8 +222,61 @@ class HelpSupportView extends StatelessWidget {
           color: Colors.grey,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: trailing ?? const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildLiveChatUnreadTrailing() {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.data == null) {
+          return const Icon(Icons.chevron_right);
+        }
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collectionGroup('messages')
+              .where('senderRole', isEqualTo: 'user')
+              .where('readByOwnerAt', isNull: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Icon(Icons.chevron_right);
+            }
+            final totalUnread = snapshot.data?.docs.length ?? 0;
+
+            if (totalUnread <= 0) {
+              return const Icon(Icons.chevron_right);
+            }
+
+            final badgeText = totalUnread > 99 ? '99+' : totalUnread.toString();
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

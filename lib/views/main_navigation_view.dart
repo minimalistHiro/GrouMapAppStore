@@ -698,47 +698,88 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
       stream: FirebaseFirestore.instance.collection('stores').snapshots(),
       builder: (context, snapshot) {
         final pendingCount = _pendingStoresCount(snapshot.data?.docs);
-        final items = _bottomNavItemsWithPlaceholder(
-          bottomTabs,
-          settingsBadgeCount: pendingCount,
-        );
+        return StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, authSnapshot) {
+            if (authSnapshot.data == null) {
+              final items = _bottomNavItemsWithPlaceholder(
+                bottomTabs,
+                settingsBadgeCount: pendingCount,
+              );
+              return _buildBottomScaffold(
+                currentTab: currentTab,
+                bottomIndex: bottomIndex,
+                items: items,
+              );
+            }
 
-        return Scaffold(
-          body: _pageForTab(currentTab),
-          floatingActionButton: FloatingActionButton(
-            onPressed: _onQrFabPressed,
-            backgroundColor: const Color(0xFFFF6B35),
-            shape: const CircleBorder(),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.qr_code_scanner, color: Colors.white),
-                SizedBox(height: 2),
-                Text(
-                  '読み取り',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          floatingActionButtonLocation: const _LoweredFabLocation(_fabVerticalOffset),
-          bottomNavigationBar: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            currentIndex: bottomIndex,
-            onTap: _onBottomTabChanged,
-            selectedItemColor: const Color(0xFFFF6B35),
-            unselectedItemColor: Colors.grey,
-            iconSize: 24,
-            selectedLabelStyle: const TextStyle(fontSize: 10),
-            unselectedLabelStyle: const TextStyle(fontSize: 10),
-            items: items,
-          ),
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collectionGroup('messages')
+                  .where('senderRole', isEqualTo: 'user')
+                  .where('readByOwnerAt', isNull: true)
+                  .snapshots(),
+              builder: (context, unreadSnapshot) {
+                final unreadCount = unreadSnapshot.hasError
+                    ? 0
+                    : (unreadSnapshot.data?.docs.length ?? 0);
+                final totalBadgeCount = pendingCount + unreadCount;
+                final items = _bottomNavItemsWithPlaceholder(
+                  bottomTabs,
+                  settingsBadgeCount: totalBadgeCount,
+                );
+                return _buildBottomScaffold(
+                  currentTab: currentTab,
+                  bottomIndex: bottomIndex,
+                  items: items,
+                );
+              },
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildBottomScaffold({
+    required _MainTab currentTab,
+    required int bottomIndex,
+    required List<BottomNavigationBarItem> items,
+  }) {
+    return Scaffold(
+      body: _pageForTab(currentTab),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _onQrFabPressed,
+        backgroundColor: const Color(0xFFFF6B35),
+        shape: const CircleBorder(),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.qr_code_scanner, color: Colors.white),
+            SizedBox(height: 2),
+            Text(
+              '読み取り',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: const _LoweredFabLocation(_fabVerticalOffset),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: bottomIndex,
+        onTap: _onBottomTabChanged,
+        selectedItemColor: const Color(0xFFFF6B35),
+        unselectedItemColor: Colors.grey,
+        iconSize: 24,
+        selectedLabelStyle: const TextStyle(fontSize: 10),
+        unselectedLabelStyle: const TextStyle(fontSize: 10),
+        items: items,
+      ),
     );
   }
 
