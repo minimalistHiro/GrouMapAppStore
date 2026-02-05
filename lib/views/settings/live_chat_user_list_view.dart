@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -208,9 +209,24 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
   bool _isSending = false;
   bool _didMarkRead = false;
   bool _isMarkingMessageRead = false;
+  bool _isNearBottom = true;
+  bool _forceScrollOnSend = false;
+  String? _lastSeenMessageId;
+  Timer? _markReadTimer;
+  bool _hasAutoScrolledToBottom = true;
+
+  static const double _autoScrollThreshold = 120;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+  }
 
   @override
   void dispose() {
+    _markReadTimer?.cancel();
+    _scrollController.removeListener(_handleScroll);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -248,6 +264,7 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
       });
 
       _messageController.clear();
+      _forceScrollOnSend = true;
       _scrollToBottom();
     } finally {
       if (mounted) {
@@ -262,12 +279,18 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }
     });
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    _isNearBottom = position.pixels <= _autoScrollThreshold;
   }
 
   Future<void> _markAsRead() async {
@@ -309,6 +332,31 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
     }
   }
 
+  void _scheduleMarkRead(List<QueryDocumentSnapshot> docs) {
+    _markReadTimer?.cancel();
+    _markReadTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      _markAsRead();
+      _markMessagesAsRead(docs);
+    });
+  }
+
+  void _handleNewSnapshot(List<QueryDocumentSnapshot> docs) {
+    if (docs.isEmpty) return;
+    final latestId = docs.last.id;
+    if (latestId == _lastSeenMessageId) return;
+    _lastSeenMessageId = latestId;
+
+    final shouldScroll = _forceScrollOnSend || _isNearBottom;
+    if (shouldScroll) {
+      _forceScrollOnSend = false;
+      _scrollToBottom();
+    }
+    if (shouldScroll) {
+      _scheduleMarkRead(docs);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -333,9 +381,9 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
                     stream: FirebaseFirestore.instance
                         .collection('service_chat_rooms')
                         .doc(widget.roomId)
-                        .collection('messages')
-                        .orderBy('createdAt')
-                        .snapshots(),
+                    .collection('messages')
+                    .orderBy('createdAt', descending: true)
+                    .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
@@ -350,14 +398,11 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
                         );
                       }
 
-                      _markAsRead();
-                      _markMessagesAsRead(docs);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _scrollToBottom();
-                      });
+                      _handleNewSnapshot(docs);
 
                       return ListView.separated(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                         itemCount: docs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),

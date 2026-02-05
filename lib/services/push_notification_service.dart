@@ -23,16 +23,18 @@ class PushNotificationService {
   Future<void> initialize() async {
     if (kIsWeb) {
       debugPrint('Push notifications are not configured for web.');
+      debugPrint('FCM token on web requires a service worker + VAPID key.');
       return;
     }
 
     try {
       await _messaging.setAutoInitEnabled(true);
-      await _messaging.requestPermission(
+      final settings = await _messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
+      debugPrint('Push permission status: ${settings.authorizationStatus}');
       await _messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
@@ -54,8 +56,10 @@ class PushNotificationService {
 
   Future<void> syncForUser(String userId, {bool force = false}) async {
     _currentUserId = userId;
+    debugPrint('Sync FCM token for user $userId (force=$force)');
     await initialize();
     await _ensureTokenListener();
+    await _logApnsToken();
 
     final token = await _getFcmTokenWithRetry();
     if (token == null || token.isEmpty) {
@@ -78,12 +82,14 @@ class PushNotificationService {
       if (_currentUserId == null) {
         return;
       }
+      debugPrint('FCM token refreshed for user $_currentUserId');
       _saveToken(_currentUserId!, token);
     });
   }
 
   Future<String?> _getFcmTokenWithRetry() async {
     if (kIsWeb) {
+      debugPrint('Skip FCM token fetch on web.');
       return null;
     }
     try {
@@ -106,6 +112,7 @@ class PushNotificationService {
 
   Future<void> _saveToken(String userId, String token) async {
     try {
+      debugPrint('Saving FCM token for user $userId...');
       await _firestore.collection('users').doc(userId).set(
         {
           'fcmToken': token,
@@ -116,6 +123,22 @@ class PushNotificationService {
       debugPrint('Saved FCM token for user $userId');
     } catch (e) {
       debugPrint('Failed to save FCM token for user $userId: $e');
+    }
+  }
+
+  Future<void> _logApnsToken() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return;
+    }
+    try {
+      final apnsToken = await _messaging.getAPNSToken();
+      if (apnsToken == null) {
+        debugPrint('APNs token is null');
+        return;
+      }
+      debugPrint('APNs token: ${_previewToken(apnsToken)}');
+    } catch (e) {
+      debugPrint('Failed to fetch APNs token: $e');
     }
   }
 
