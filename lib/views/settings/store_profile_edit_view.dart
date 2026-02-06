@@ -14,6 +14,7 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/dismiss_keyboard.dart';
 import '../../widgets/icon_image_picker_field.dart';
 import '../../widgets/image_picker_field.dart';
+import '../../widgets/common_header.dart';
 import '../auth/store_location_picker_view.dart';
 import 'store_icon_crop_view.dart';
 import '../../utils/icon_image_flow.dart';
@@ -252,14 +253,24 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
         if (mounted) {
           setState(() {
             _selectedCategory = storeData['category'];
+            final rawSubCategory = storeData['subCategory'];
+            final normalizedSubCategory =
+                (rawSubCategory == null || (rawSubCategory is String && rawSubCategory.trim().isEmpty))
+                    ? null
+                    : rawSubCategory;
             _selectedSubCategory =
-                storeData['subCategory'] == storeData['category'] ? null : storeData['subCategory'];
+                normalizedSubCategory == storeData['category'] ? null : normalizedSubCategory;
             _isRegularHoliday = storeData['isRegularHoliday'] ?? false;
           });
         } else {
           _selectedCategory = storeData['category'];
+          final rawSubCategory = storeData['subCategory'];
+          final normalizedSubCategory =
+              (rawSubCategory == null || (rawSubCategory is String && rawSubCategory.trim().isEmpty))
+                  ? null
+                  : rawSubCategory;
           _selectedSubCategory =
-              storeData['subCategory'] == storeData['category'] ? null : storeData['subCategory'];
+              normalizedSubCategory == storeData['category'] ? null : normalizedSubCategory;
           _isRegularHoliday = storeData['isRegularHoliday'] ?? false;
         }
         
@@ -667,7 +678,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           .update({
         'name': _nameController.text.trim(),
         'category': _selectedCategory,
-        'subCategory': _selectedSubCategory ?? '',
+        'subCategory': _selectedSubCategory,
         'address': combinedAddress,
         'phone': _phoneController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -739,11 +750,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('店舗プロフィール編集'),
-          backgroundColor: const Color(0xFFFF6B35),
-          foregroundColor: Colors.white,
-        ),
+        appBar: const CommonHeader(title: '店舗プロフィール編集'),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -751,11 +758,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('店舗プロフィール編集'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
-      ),
+      appBar: const CommonHeader(title: '店舗プロフィール編集'),
       body: DismissKeyboard(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

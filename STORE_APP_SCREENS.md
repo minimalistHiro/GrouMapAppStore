@@ -239,11 +239,11 @@
 ## 設定・サポート・法務
 
 ### StoreProfileEditView (`lib/views/settings/store_profile_edit_view.dart`)
-- 構成: 店舗情報フォーム、画像/タグ/営業時間編集
+- 構成: 共通ヘッダー、店舗情報フォーム、画像/タグ/営業時間編集
 - 説明: 店舗プロフィール編集画面
 
 ### StoreLocationEditView (`lib/views/settings/store_location_edit_view.dart`)
-- 構成: マップ、位置選択、保存
+- 構成: マップ、位置選択、保存（初回描画後にマップ移動）
 - 説明: 店舗位置情報編集画面
 
 ### StoreSettingsView (`lib/views/settings/store_settings_view.dart`)

@@ -22,6 +22,8 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
   bool _isLoading = false;
   bool _isSaving = false;
   String _address = '';
+  bool _mapReady = false;
+  LatLng? _pendingMoveLocation;
   
   // デフォルトの座標（東京駅周辺）
   static const LatLng _defaultLocation = LatLng(35.6812, 139.7671);
@@ -90,7 +92,7 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
       
       // 地図を選択された位置に移動
       if (_selectedLocation != null) {
-        _mapController.move(_selectedLocation!, 15.0);
+        _moveMapTo(_selectedLocation!, 15.0);
       }
     } catch (e) {
       if (mounted) {
@@ -295,7 +297,7 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
         setState(() {
           _selectedLocation = _currentLocation;
         });
-        _mapController.move(_currentLocation!, 15.0);
+        _moveMapTo(_currentLocation!, 15.0);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -304,6 +306,14 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  void _moveMapTo(LatLng location, double zoom) {
+    if (_mapReady) {
+      _mapController.move(location, zoom);
+    } else {
+      _pendingMoveLocation = location;
     }
   }
 
@@ -337,6 +347,13 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
               initialCenter: _selectedLocation ?? _currentLocation ?? _defaultLocation,
               initialZoom: 15.0,
               onTap: _onMapTap,
+              onMapReady: () {
+                _mapReady = true;
+                if (_pendingMoveLocation != null) {
+                  _mapController.move(_pendingMoveLocation!, 15.0);
+                  _pendingMoveLocation = null;
+                }
+              },
             ),
             children: [
               // OpenStreetMapタイルレイヤー
