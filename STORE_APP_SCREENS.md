@@ -250,6 +250,10 @@
 - 構成: 店舗ID/名称/説明、QR保存
 - 説明: QR検証に必要な店舗設定画面
 
+### InstagramSyncView (`lib/views/settings/instagram_sync_view.dart`)
+- 構成: 連携状況、OAuth手順案内、コード入力、同期/解除ボタン
+- 説明: Instagram連携の設定・同期管理画面
+
 ### MenuEditView (`lib/views/settings/menu_edit_view.dart`)
 - 構成: メニュー一覧、カテゴリ管理、追加/編集導線
 - 説明: メニュー管理画面
@@ -371,6 +375,7 @@
             │  └─ メニュー項目編集（MenuItemEditView）
             ├─ 店内画像設定（InteriorImagesView）
             ├─ QRコード設定（StoreSettingsView）
+            ├─ Instagram連携（InstagramSyncView）
             ├─ 通知設定（NotificationSettingsView）
             ├─ プラン・契約情報（PlanContractView）
             ├─ フィードバック送信（FeedbackSendView）

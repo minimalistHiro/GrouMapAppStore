@@ -17,6 +17,7 @@ import 'notification_settings_view.dart';
 import 'interior_images_view.dart';
 import 'owner_settings_view.dart';
 import 'live_chat_user_list_view.dart';
+import 'instagram_sync_view.dart';
 import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
 import '../stores/pending_stores_view.dart';
@@ -161,6 +162,18 @@ class SettingsView extends ConsumerWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const StoreSettingsView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.camera_alt,
+                  title: 'Instagram同期',
+                  subtitle: 'Instagram投稿の同期設定',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const InstagramSyncView(),
                       ),
                     );
                   },
