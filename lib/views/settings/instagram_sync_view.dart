@@ -33,6 +33,44 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
     super.dispose();
   }
 
+  Future<void> _showLinkCompletedDialog(String count) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('連携が完了しました'),
+          content: Text('Instagram連携が完了しました。（取得: $count 件）'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showSyncCompletedDialog(String count) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('同期が完了しました'),
+          content: Text('Instagram同期が完了しました。（取得: $count 件）'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _runSync(String storeId) async {
     if (_isSyncing) return;
     setState(() {
@@ -48,6 +86,7 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
       setState(() {
         _statusMessage = '同期が完了しました（取得: $count 件）';
       });
+      await _showSyncCompletedDialog(count);
     } catch (e) {
       ErrorDialog.show(
         context,
@@ -124,6 +163,7 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
         _statusMessage = '連携が完了しました（取得: $count 件）';
       });
       _authCodeController.clear();
+      await _showLinkCompletedDialog(count);
     } catch (e) {
       ErrorDialog.show(
         context,
@@ -241,174 +281,144 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildInfoCard(
-                        title: '連携状態',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isLinked ? '連携済み' : '未連携',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isLinked ? Colors.green[700] : Colors.red[700],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              instagramLink.isNotEmpty
-                                  ? 'Instagram: $instagramLink'
-                                  : 'Instagramリンクが未設定です',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '最終同期: ${_formatSyncAt(lastSyncAt)}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            if (lastSyncCount != null) ...[
-                              const SizedBox(height: 4),
+                      if (!isLinked) ...[
+                        _buildInfoCard(
+                          title: 'Instagram連携手順',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                '取得件数: $lastSyncCount 件',
-                                style: const TextStyle(
-                                  fontSize: 13,
+                                instagramLink.isNotEmpty
+                                    ? '対象アカウント: $instagramLink'
+                                    : 'Instagramリンクが未設定です',
+                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '1. 「連携を開始する」を押してInstagramにログイン',
+                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                '2. 表示された認可コードをコピー',
+                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                '3. 下の入力欄に貼り付けて連携を完了',
+                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 12),
+                              CustomButton(
+                                text: '連携を開始する',
+                                isLoading: _isStartingAuth,
+                                onPressed: _isStartingAuth ? null : () => _startInstagramAuth(storeId),
+                              ),
+                              const SizedBox(height: 12),
+                              CustomTextField(
+                                controller: _authCodeController,
+                                labelText: '認可コード',
+                                hintText: '認可コードまたはURLを貼り付け',
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                '※「https://.../instagram-auth?code=...」のURLを貼り付けてもOKです',
+                                style: TextStyle(
+                                  fontSize: 12,
                                   color: Colors.grey,
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        title: '連携手順',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '1. 「連携を開始する」を押してInstagramにログイン',
-                              style: TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              '2. 表示された認可コードをコピー',
-                              style: TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              '3. 下の入力欄に貼り付けて連携を完了',
-                              style: TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 12),
-                            CustomButton(
-                              text: '連携を開始する',
-                              isLoading: _isStartingAuth,
-                              onPressed: _isStartingAuth ? null : () => _startInstagramAuth(storeId),
-                            ),
-                            const SizedBox(height: 12),
-                            CustomTextField(
-                              controller: _authCodeController,
-                              labelText: '認可コード',
-                              hintText: '認可コードまたはURLを貼り付け',
-                              maxLines: 2,
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              '※「https://.../instagram-auth?code=...」のURLを貼り付けてもOKです',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                              const SizedBox(height: 12),
+                              CustomButton(
+                                text: '連携を完了する',
+                                isLoading: _isExchanging,
+                                onPressed: _isExchanging ? null : () => _exchangeInstagramCode(storeId),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            CustomButton(
-                              text: '連携を完了する',
-                              isLoading: _isExchanging,
-                              onPressed: _isExchanging ? null : () => _exchangeInstagramCode(storeId),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        title: '同期について',
-                        child: const Text(
-                          'Instagramの最新投稿（動画を除外）を取得し、'
-                          'ユーザーアプリに表示するための同期です。'
-                          '\n連携が未設定の場合は同期できません。',
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_statusMessage != null) ...[
-                        _buildInfoCard(
-                          title: '同期結果',
-                          child: Text(
-                            _statusMessage!,
-                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),
                       ],
-                      CustomButton(
-                        text: '今すぐ同期する',
-                        isLoading: _isSyncing,
-                        onPressed: _isSyncing
-                            ? null
-                            : () {
-                                if (!isLinked) {
-                                  ErrorDialog.show(
-                                    context,
-                                    title: '連携が必要です',
-                                    message: 'Instagram連携が未設定のため同期できません。',
-                                  );
-                                  return;
-                                }
-                                _runSync(storeId);
-                              },
-                      ),
-                      const SizedBox(height: 16),
-                      CustomButton(
-                        text: 'Instagram連携を解除する',
-                        isLoading: _isUnlinking,
-                        backgroundColor: Colors.white,
-                        textColor: Colors.red,
-                        borderColor: Colors.red,
-                        onPressed: (!isLinked || _isUnlinking)
-                            ? null
-                            : () async {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (dialogContext) => AlertDialog(
-                                    title: const Text('連携解除の確認'),
-                                    content: const Text('Instagram連携を解除しますか？'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                                        child: const Text('キャンセル'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                                        child: const Text(
-                                          '解除する',
-                                          style: TextStyle(color: Colors.red),
+                      if (isLinked) ...[
+                        _buildInfoCard(
+                          title: '同期項目',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '最終同期: ${_formatSyncAt(lastSyncAt)}',
+                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                              if (lastSyncCount != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  '前回取得件数: $lastSyncCount 件',
+                                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Instagramの最新投稿（動画を除外）を取得し、'
+                                'ユーザーアプリに表示するための同期です。',
+                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_statusMessage != null) ...[
+                          _buildInfoCard(
+                            title: '同期結果',
+                            child: Text(
+                              _statusMessage!,
+                              style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        CustomButton(
+                          text: '今すぐ同期する',
+                          isLoading: _isSyncing,
+                          onPressed: _isSyncing ? null : () => _runSync(storeId),
+                        ),
+                        const SizedBox(height: 16),
+                        CustomButton(
+                          text: 'Instagram連携を解除する',
+                          isLoading: _isUnlinking,
+                          backgroundColor: Colors.white,
+                          textColor: Colors.red,
+                          borderColor: Colors.red,
+                          onPressed: _isUnlinking
+                              ? null
+                              : () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogContext) => AlertDialog(
+                                      title: const Text('連携解除の確認'),
+                                      content: const Text('Instagram連携を解除しますか？'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(dialogContext).pop(false),
+                                          child: const Text('キャンセル'),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirmed == true) {
-                                  _unlinkInstagram(storeId);
-                                }
-                              },
-                      ),
-                      const SizedBox(height: 16),
+                                        TextButton(
+                                          onPressed: () => Navigator.of(dialogContext).pop(true),
+                                          child: const Text(
+                                            '解除する',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirmed == true) {
+                                    _unlinkInstagram(storeId);
+                                  }
+                                },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ],
                   ),
                 ),
