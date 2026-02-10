@@ -78,6 +78,10 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
   final _tagController = TextEditingController();
   List<String> _tags = [];
 
+  // 経営情報
+  final _businessNameController = TextEditingController();
+  String _businessType = 'individual';
+
   final List<String> _categories = [
     'カフェ・喫茶店',
     'レストラン',
@@ -209,6 +213,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     _facebookController.dispose();
     _websiteController.dispose();
     _tagController.dispose();
+    _businessNameController.dispose();
     super.dispose();
   }
 
@@ -246,6 +251,8 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
         
         // フォームにデータを設定
         _nameController.text = storeData['name'] ?? '';
+        _businessType = storeData['businessType'] as String? ?? 'individual';
+        _businessNameController.text = storeData['businessName'] as String? ?? '';
         final rawPhone = storeData['phone'] ?? '';
         _phoneController.text = rawPhone.toString().replaceAll(RegExp(r'\\D'), '');
         _descriptionController.text = storeData['description'] ?? '';
@@ -677,6 +684,8 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           .doc(_selectedStoreId)
           .update({
         'name': _nameController.text.trim(),
+        'businessType': _businessType,
+        'businessName': _businessNameController.text.trim(),
         'category': _selectedCategory,
         'subCategory': _selectedSubCategory,
         'address': combinedAddress,
@@ -778,6 +787,25 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return '店舗名を入力してください';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  _buildBusinessTypeSection(),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _businessNameController,
+                    labelText: _businessType == 'corporate' ? '法人名 *' : '代表者名 *',
+                    hintText: _businessType == 'corporate'
+                        ? '例：株式会社GrouMap'
+                        : '例：山田 太郎',
+                    maxLength: 100,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return _businessType == 'corporate'
+                            ? '法人名を入力してください'
+                            : '代表者名を入力してください';
                       }
                       return null;
                     },
@@ -1683,6 +1711,59 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildBusinessTypeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '経営形態 *',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              RadioListTile<String>(
+                title: const Text('個人事業'),
+                value: 'individual',
+                groupValue: _businessType,
+                activeColor: const Color(0xFFFF6B35),
+                onChanged: (value) {
+                  setState(() {
+                    _businessType = value!;
+                    _businessNameController.clear();
+                  });
+                },
+              ),
+              const Divider(height: 1),
+              RadioListTile<String>(
+                title: const Text('法人'),
+                value: 'corporate',
+                groupValue: _businessType,
+                activeColor: const Color(0xFFFF6B35),
+                onChanged: (value) {
+                  setState(() {
+                    _businessType = value!;
+                    _businessNameController.clear();
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

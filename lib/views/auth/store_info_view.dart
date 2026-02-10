@@ -67,6 +67,10 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   Uint8List? _webStoreImageBytes;
   String? _storeImageUrl;
 
+  // 経営情報の状態
+  final _businessNameController = TextEditingController();
+  String _businessType = 'individual';
+
   final List<String> _categories = [
     'カフェ・喫茶店',
     'レストラン',
@@ -507,6 +511,8 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         final combinedAddress = '${_selectedPrefecture ?? ''}${_selectedCity ?? ''}$addressDetail';
         final storeInfo = {
           'name': _storeNameController.text.trim(),
+          'businessType': _businessType,
+          'businessName': _businessNameController.text.trim(),
           'category': _selectedCategory,
           'subCategory': _selectedSubCategory ?? '',
           'address': combinedAddress,
@@ -814,9 +820,34 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
                     return null;
                   },
                 ),
-                
+
+                const SizedBox(height: 24),
+
+                // 経営形態選択
+                _buildBusinessTypeSection(),
+
                 const SizedBox(height: 16),
-                
+
+                // 法人名/代表者名入力
+                CustomTextField(
+                  controller: _businessNameController,
+                  labelText: _businessType == 'corporate' ? '法人名 *' : '代表者名 *',
+                  hintText: _businessType == 'corporate'
+                      ? '例：株式会社GrouMap'
+                      : '例：山田 太郎',
+                  maxLength: 100,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return _businessType == 'corporate'
+                          ? '法人名を入力してください'
+                          : '代表者名を入力してください';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
                 // 店舗アイコン画像
                 _buildIconImageSection(),
                 
@@ -1742,6 +1773,59 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
       child: const ImagePickerPlaceholder(
         aspectRatio: 2 / 1,
       ),
+    );
+  }
+
+  Widget _buildBusinessTypeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '経営形態 *',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              RadioListTile<String>(
+                title: const Text('個人事業'),
+                value: 'individual',
+                groupValue: _businessType,
+                activeColor: const Color(0xFFFF6B35),
+                onChanged: (value) {
+                  setState(() {
+                    _businessType = value!;
+                    _businessNameController.clear();
+                  });
+                },
+              ),
+              const Divider(height: 1),
+              RadioListTile<String>(
+                title: const Text('法人'),
+                value: 'corporate',
+                groupValue: _businessType,
+                activeColor: const Color(0xFFFF6B35),
+                onChanged: (value) {
+                  setState(() {
+                    _businessType = value!;
+                    _businessNameController.clear();
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

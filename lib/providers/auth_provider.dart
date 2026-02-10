@@ -186,6 +186,8 @@ class AuthService {
       await FirebaseFirestore.instance.collection('stores').doc(storeId).set({
         'storeId': storeId,
         'name': storeInfo['name'],
+        'businessType': storeInfo['businessType'] ?? 'individual',
+        'businessName': storeInfo['businessName'] ?? '',
         'category': storeInfo['category'],
         'subCategory': storeInfo['subCategory'] ?? '',
         'address': storeInfo['address'],

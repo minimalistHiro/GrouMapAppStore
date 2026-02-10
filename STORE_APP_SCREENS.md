@@ -31,8 +31,8 @@
 - 説明: パスワード再設定画面
 
 ### StoreInfoView (`lib/views/auth/store_info_view.dart`)
-- 構成: 店舗情報フォーム（名前/住所/カテゴリ/営業時間/タグ/画像など）
-- 説明: 店舗登録情報の入力画面
+- 構成: 店舗情報フォーム（名前/経営形態/法人名または代表者名/住所/カテゴリ/営業時間/タグ/画像など）
+- 説明: 店舗登録情報の入力画面（経営形態選択と名称入力を含む）
 
 ### StoreLocationPickerView (`lib/views/auth/store_location_picker_view.dart`)
 - 構成: マップ、現在地/地点選択、確定
@@ -239,8 +239,8 @@
 ## 設定・サポート・法務
 
 ### StoreProfileEditView (`lib/views/settings/store_profile_edit_view.dart`)
-- 構成: 共通ヘッダー、店舗情報フォーム、画像/タグ/営業時間編集
-- 説明: 店舗プロフィール編集画面
+- 構成: 共通ヘッダー、店舗情報フォーム（経営形態/法人名または代表者名を含む）、画像/タグ/営業時間編集
+- 説明: 店舗プロフィール編集画面（経営形態と名称の編集機能を含む）
 
 ### StoreLocationEditView (`lib/views/settings/store_location_edit_view.dart`)
 - 構成: マップ、位置選択、保存（初回描画後にマップ移動）
