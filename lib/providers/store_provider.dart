@@ -264,125 +264,60 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
       }
       
       debugPrint('Date Range: ${startDate.toLocal()} to ${endDate.toLocal()}');
-      
-      // 全ユーザーを取得
-      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
-      debugPrint('Found ${usersSnapshot.docs.length} users');
-      
-      final List<Map<String, dynamic>> allTransactions = [];
+
+      // store_stats/{storeId}/daily から日次統計を取得
+      final Map<String, int> dailyVisitorCounts = {};
       DateTime? earliestDate;
-      
-      // 各ユーザーのトランザクションを取得
-      for (final userDoc in usersSnapshot.docs) {
-        final userId = userDoc.id;
-        final transactionsSnapshot = await FirebaseFirestore.instance
-            .collection('point_transactions')
+
+      // 期間内の各日のデータを取得
+      for (var date = startDate;
+          !date.isAfter(endDate);
+          date = date.add(const Duration(days: 1))) {
+        final dateKey = _buildDateKey(date);
+
+        final dailyDoc = await FirebaseFirestore.instance
+            .collection('store_stats')
             .doc(storeId)
-            .collection(userId)
+            .collection('daily')
+            .doc(dateKey)
             .get();
-        
-        debugPrint('User $userId: ${transactionsSnapshot.docs.length} transactions');
-        
-        for (final transDoc in transactionsSnapshot.docs) {
-          final data = transDoc.data();
-          data['userId'] = userId;
-          data['transactionId'] = transDoc.id;
-          final createdAt = _parseCreatedAt(data['createdAt']);
-          if (createdAt != null && (earliestDate == null || createdAt.isBefore(earliestDate!))) {
-            earliestDate = createdAt;
+
+        if (dailyDoc.exists) {
+          final data = dailyDoc.data();
+          if (data != null) {
+            final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+            dailyVisitorCounts[dateKey] = visitorCount;
+
+            // 最古の日付を記録
+            if (earliestDate == null || date.isBefore(earliestDate!)) {
+              earliestDate = date;
+            }
           }
-          allTransactions.add(data);
         }
       }
-      
-      debugPrint('Total transactions: ${allTransactions.length}');
-      
-      // ポイント付与のトランザクションのみフィルタ
-      final pointAwardTransactions = allTransactions.where((data) {
-        return data['description'] == 'ポイント付与';
-      }).toList();
-      
-      debugPrint('Point award transactions: ${pointAwardTransactions.length}');
-      
-      // 日付範囲でフィルタ
-      final filteredTransactions = pointAwardTransactions.where((data) {
-        final createdAt = data['createdAt'];
-        if (createdAt == null) return false;
-        
-        DateTime docDate;
-        if (createdAt is DateTime) {
-          docDate = createdAt;
-        } else if (createdAt is Timestamp) {
-          docDate = createdAt.toDate();
-        } else if (createdAt is String) {
-          try {
-            docDate = DateTime.parse(createdAt);
-          } catch (e) {
-            return false;
-          }
-        } else {
-          return false;
-        }
-        
-        if (period == 'day' || period == 'month') {
-          return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
-        }
-        return docDate.isAfter(startDate) && docDate.isBefore(endDate);
-      }).toList();
-      
-      debugPrint('Filtered transactions in date range: ${filteredTransactions.length}');
-      
-      // 日付ごとにユーザーIDをグループ化
-      final Map<String, Set<String>> dailyUsers = {};
-      
-      for (final data in filteredTransactions) {
-        final createdAt = data['createdAt'];
-        DateTime docDate;
-        
-        if (createdAt is DateTime) {
-          docDate = createdAt;
-        } else if (createdAt is Timestamp) {
-          docDate = createdAt.toDate();
-        } else if (createdAt is String) {
-          try {
-            docDate = DateTime.parse(createdAt);
-          } catch (e) {
-            continue;
-          }
-        } else {
-          continue;
-        }
-        
-        final userId = data['userId'] as String?;
-        if (userId == null) continue;
-        
-        final dateKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
-        dailyUsers.putIfAbsent(dateKey, () => <String>{});
-        dailyUsers[dateKey]!.add(userId);
-      }
-      
-      debugPrint('Daily users: ${dailyUsers.keys.length} days');
-      
-      // 期間に応じてグループ化
-      final Map<String, Set<String>> groupedData = {};
-      
-      for (final entry in dailyUsers.entries) {
+
+      debugPrint('Retrieved ${dailyVisitorCounts.length} days of visitor data');
+
+      // 期間に応じてデータをグループ化
+      final Map<String, int> groupedData = {};
+
+      for (final entry in dailyVisitorCounts.entries) {
         final dateStr = entry.key;
-        final users = entry.value;
-        
+        final visitorCount = entry.value;
+
         final dateParts = dateStr.split('-');
         if (dateParts.length != 3) continue;
-        
+
         final year = int.parse(dateParts[0]);
         final month = int.parse(dateParts[1]);
         final day = int.parse(dateParts[2]);
         final docDate = DateTime(year, month, day);
-        
+
         String groupKey;
         switch (period) {
           case 'day':
           case 'week':
-            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            groupKey = dateStr;
             break;
           case 'month':
             groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
@@ -391,11 +326,10 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
             groupKey = '${docDate.year}';
             break;
           default:
-            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            groupKey = dateStr;
         }
-        
-        groupedData.putIfAbsent(groupKey, () => <String>{});
-        groupedData[groupKey]!.addAll(users);
+
+        groupedData[groupKey] = (groupedData[groupKey] ?? 0) + visitorCount;
       }
       
       // 結果をリストに変換してソート
@@ -408,7 +342,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           final key = _buildDateKey(date);
           days.add({
             'date': key,
-            'userCount': groupedData[key]?.length ?? 0,
+            'userCount': groupedData[key] ?? 0,
           });
         }
         result = days;
@@ -420,7 +354,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
           months.add({
             'date': key,
-            'userCount': groupedData[key]?.length ?? 0,
+            'userCount': groupedData[key] ?? 0,
           });
         }
         result = months;
@@ -428,7 +362,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
         result = groupedData.entries.map((entry) {
           return {
             'date': entry.key,
-            'userCount': entry.value.length,
+            'userCount': entry.value,
           };
         }).toList();
       }

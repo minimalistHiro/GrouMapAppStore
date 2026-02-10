@@ -402,9 +402,7 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     List<Map<String, dynamic>> trendData, {
     required String valueKey,
   }) {
-    if (_selectedPeriod == 'day' || _selectedPeriod == 'month' || _selectedPeriod == 'year') {
-      return _buildBarChart(trendData, valueKey: valueKey);
-    }
+    // すべての期間で折れ線グラフを使用
     return _buildLineChart(trendData, valueKey: valueKey);
   }
 
@@ -446,13 +444,14 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: 1,
+                interval: _calculateInterval(trendData.length),
                 getTitlesWidget: (double value, TitleMeta meta) {
-                  if (value.toInt() < trendData.length) {
-                    final date = trendData[value.toInt()]['date'] as String;
-                    return _buildBottomTitle(date);
+                  final index = value.toInt();
+                  if (index < 0 || index >= trendData.length) {
+                    return const SizedBox.shrink();
                   }
-                  return const Text('');
+                  final date = trendData[index]['date'] as String;
+                  return _buildBottomTitle(date);
                 },
               ),
             ),
@@ -542,13 +541,14 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: 1,
+                interval: _calculateInterval(trendData.length),
                 getTitlesWidget: (double value, TitleMeta meta) {
-                  if (value.toInt() < trendData.length) {
-                    final date = trendData[value.toInt()]['date'] as String;
-                    return _buildBottomTitle(date);
+                  final index = value.toInt();
+                  if (index < 0 || index >= trendData.length) {
+                    return const SizedBox.shrink();
                   }
-                  return const Text('');
+                  final date = trendData[index]['date'] as String;
+                  return _buildBottomTitle(date);
                 },
               ),
             ),
@@ -574,14 +574,45 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
             show: true,
             border: Border.all(color: Colors.grey[300]!),
           ),
+          lineTouchData: LineTouchData(
+            enabled: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                return touchedSpots.map((spot) {
+                  final index = spot.x.toInt();
+                  if (index < 0 || index >= trendData.length) return null;
+
+                  final data = trendData[index];
+                  final date = data['date'] as String;
+                  final value = _getValue(data, valueKey);
+                  final formattedDate = _formatDateForTooltip(date);
+
+                  return LineTooltipItem(
+                    '$formattedDate\n${_formatValue(value)}',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                }).toList();
+              },
+              getTooltipColor: (LineBarSpot spot) => const Color(0xFFFF6B35).withOpacity(0.9),
+              tooltipRoundedRadius: 8,
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+            ),
+            handleBuiltInTouches: true,
+          ),
           minX: 0,
-          maxX: (trendData.length - 1).toDouble(),
+          maxX: trendData.length <= 1 ? 0.0 : (trendData.length - 1).toDouble(),
           minY: 0,
           maxY: maxValue == 0 ? 1 : maxValue.toDouble() * 1.1,
           lineBarsData: [
             LineChartBarData(
               spots: spots,
-              isCurved: true,
+              isCurved: false,
               gradient: const LinearGradient(
                 colors: [
                   Color(0xFFFF6B35),
@@ -1031,59 +1062,91 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
         : 0;
     final avgValue = trendData.isNotEmpty ? (total / trendData.length).round() : 0;
 
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.5,
-      children: [
-        _buildStatCard(widget.statsConfig.totalLabel, total, widget.statsConfig.totalIcon, widget.statsConfig.totalColor),
-        _buildStatCard(widget.statsConfig.maxLabel, maxValue, widget.statsConfig.maxIcon, widget.statsConfig.maxColor),
-        _buildStatCard(widget.statsConfig.minLabel, minValue, widget.statsConfig.minIcon, widget.statsConfig.minColor),
-        _buildStatCard(widget.statsConfig.avgLabel, avgValue, widget.statsConfig.avgIcon, widget.statsConfig.avgColor),
-      ],
-    );
+    // 統計データを配列形式で定義
+    final stats = [
+      {
+        'label': widget.statsConfig.totalLabel,
+        'value': _formatValue(total),
+        'icon': widget.statsConfig.totalIcon,
+        'color': widget.statsConfig.totalColor,
+      },
+      {
+        'label': widget.statsConfig.maxLabel,
+        'value': _formatValue(maxValue),
+        'icon': widget.statsConfig.maxIcon,
+        'color': widget.statsConfig.maxColor,
+      },
+      {
+        'label': widget.statsConfig.minLabel,
+        'value': _formatValue(minValue),
+        'icon': widget.statsConfig.minIcon,
+        'color': widget.statsConfig.minColor,
+      },
+      {
+        'label': widget.statsConfig.avgLabel,
+        'value': _formatValue(avgValue),
+        'icon': widget.statsConfig.avgIcon,
+        'color': widget.statsConfig.avgColor,
+      },
+    ];
+
+    return _buildStatsRow(stats);
   }
 
-  Widget _buildStatCard(String title, int value, IconData icon, Color color) {
+  Widget _buildStatsRow(List<Map<String, dynamic>> stats) {
+    final dividerColor = Colors.grey[200];
+
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w500,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: List.generate(stats.length * 2 - 1, (index) {
+          // 奇数インデックスは区切り線
+          if (index.isOdd) {
+            return SizedBox(
+              height: 80,
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: dividerColor,
+              ),
+            );
+          }
+
+          // 偶数インデックスは統計項目
+          final stat = stats[index ~/ 2];
+          final label = stat['label'] as String;
+          final value = stat['value'] as String;
+          final icon = stat['icon'] as IconData;
+          final color = stat['color'] as Color;
+
+          return Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _formatValue(value),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
@@ -1267,6 +1330,29 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     );
   }
 
+  // データポイント数に応じて適切なintervalを計算
+  double _calculateInterval(int dataLength) {
+    if (dataLength <= 1) {
+      // データが1つ以下の場合、intervalを無効化
+      return double.maxFinite;
+    } else if (dataLength <= 3) {
+      // データが2-3個の場合、すべて表示
+      return 1.0;
+    } else if (dataLength <= 7) {
+      // データが4-7個の場合、間隔1
+      return 1.0;
+    } else if (dataLength <= 14) {
+      // データが8-14個の場合、2つおき
+      return 2.0;
+    } else if (dataLength <= 31) {
+      // データが15-31個の場合、3つおき
+      return 3.0;
+    } else {
+      // それ以上の場合、適切な間隔を計算
+      return (dataLength / 10).ceilToDouble();
+    }
+  }
+
   int _getValue(Map<String, dynamic> data, String valueKey) {
     final value = data[valueKey];
     if (value is int) return value;
@@ -1280,5 +1366,31 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
       return widget.valueFormatter!(value);
     }
     return value.toString();
+  }
+
+  String _formatDateForTooltip(String date) {
+    switch (_selectedPeriod) {
+      case 'day':
+        // 例: "2025-02-10" → "2月10日"
+        final parts = date.split('-');
+        return '${int.parse(parts[1])}月${int.parse(parts[2])}日';
+
+      case 'week':
+        // 例: "2025-02-10" → "2月10日"
+        final parts = date.split('-');
+        return '${int.parse(parts[1])}月${int.parse(parts[2])}日';
+
+      case 'month':
+        // 例: "2025-02" → "2月"
+        final parts = date.split('-');
+        return '${int.parse(parts[1])}月';
+
+      case 'year':
+        // 例: "2025" → "2025年"
+        return '${date}年';
+
+      default:
+        return date;
+    }
   }
 }
