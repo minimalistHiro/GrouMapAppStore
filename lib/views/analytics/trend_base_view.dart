@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common_header.dart';
 
 class TrendStatsConfig {
   const TrendStatsConfig({
@@ -108,10 +109,8 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
+      appBar: CommonHeader(
+        title: widget.title,
       ),
       body: Consumer(
         builder: (context, ref, child) {

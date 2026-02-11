@@ -67,32 +67,20 @@
 ## 分析（推移画面）
 
 ### TrendBaseView (`lib/views/analytics/trend_base_view.dart`)
-- 構成: 期間切替、グラフ、統計カード
+- 構成: CommonHeader、期間切替、グラフ、統計カード
 - 説明: 各種推移表示の共通ベース画面
 
 ### NewCustomerTrendView (`lib/views/analytics/new_customer_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
+- 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 新規顧客の推移表示
 
 ### StoreUserTrendView (`lib/views/analytics/store_user_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
+- 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 店舗ユーザー数の推移表示
 
 ### AllUserTrendView (`lib/views/analytics/all_user_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
+- 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 全ユーザー推移の表示
-
-### PointIssueTrendView (`lib/views/analytics/point_issue_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
-- 説明: ポイント発行推移の表示
-
-### TotalPointIssueTrendView (`lib/views/analytics/total_point_issue_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
-- 説明: 累計ポイント発行推移の表示
-
-### PointUsageUserTrendView (`lib/views/analytics/point_usage_user_trend_view.dart`)
-- 構成: 推移グラフ、統計カード
-- 説明: ポイント利用ユーザー推移の表示
 
 ## ポイント・会計
 
@@ -355,9 +343,7 @@
          │  ├─ 新規顧客推移（NewCustomerTrendView）
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
-         │  ├─ ポイント発行推移（PointIssueTrendView）
-         │  ├─ 累計発行推移（TotalPointIssueTrendView）
-         │  └─ 利用ユーザー推移（PointUsageUserTrendView）
+         │  └─ ランキング（LeaderboardView）
          │
          ├─ QR（QRScannerView）
          │  └─ 会計・押印フロー（上記と同様）

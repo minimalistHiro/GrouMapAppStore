@@ -43,10 +43,10 @@ class AllUserTrendView extends StatelessWidget {
         maxIcon: Icons.trending_up,
         minIcon: Icons.trending_down,
         avgIcon: Icons.analytics,
-        totalColor: Colors.blue,
-        maxColor: Colors.green,
-        minColor: Colors.orange,
-        avgColor: Colors.purple,
+        totalColor: Color(0xFFFF6B35),
+        maxColor: Color(0xFFFF6B35),
+        minColor: Color(0xFFFF6B35),
+        avgColor: Color(0xFFFF6B35),
       ),
     );
   }
