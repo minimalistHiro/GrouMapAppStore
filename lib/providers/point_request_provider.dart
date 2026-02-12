@@ -440,6 +440,49 @@ class PointRequestNotifier extends StateNotifier<void> {
         .doc(transactionId)
         .set(pointTransactionData);
 
+    // ユーザープロフィールからgender/birthDateを取得し、属性情報をデノーマライズ保存
+    String? userGender;
+    String? userAgeGroup;
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        userGender = userData?['gender'] as String?;
+        final birthDateRaw = userData?['birthDate'];
+        DateTime? birthDate;
+        if (birthDateRaw is Timestamp) {
+          birthDate = birthDateRaw.toDate();
+        } else if (birthDateRaw is DateTime) {
+          birthDate = birthDateRaw;
+        } else if (birthDateRaw is String) {
+          birthDate = DateTime.tryParse(birthDateRaw);
+        }
+        if (birthDate != null) {
+          final nowDate = DateTime.now();
+          int age = nowDate.year - birthDate.year;
+          if (nowDate.month < birthDate.month ||
+              (nowDate.month == birthDate.month && nowDate.day < birthDate.day)) {
+            age--;
+          }
+          if (age < 20) {
+            userAgeGroup = '~19';
+          } else if (age < 30) {
+            userAgeGroup = '20s';
+          } else if (age < 40) {
+            userAgeGroup = '30s';
+          } else if (age < 50) {
+            userAgeGroup = '40s';
+          } else if (age < 60) {
+            userAgeGroup = '50s';
+          } else {
+            userAgeGroup = '60+';
+          }
+        }
+      }
+    } catch (_) {
+      // プロフィール取得失敗時はnullで続行
+    }
+
     await _firestore
         .collection('stores')
         .doc(storeId)
@@ -456,6 +499,8 @@ class PointRequestNotifier extends StateNotifier<void> {
       'paymentMethod': 'points',
       'status': 'completed',
       'source': 'point_request',
+      'userGender': userGender,
+      'userAgeGroup': userAgeGroup,
       'createdAt': FieldValue.serverTimestamp(),
       'createdAtClient': now,
       'approvedBy': approverId,
@@ -468,22 +513,8 @@ class PointRequestNotifier extends StateNotifier<void> {
       if (request.campaignId != null) 'campaignId': request.campaignId,
     });
 
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    await _firestore
-        .collection('store_stats')
-        .doc(storeId)
-        .collection('daily')
-        .doc(todayStr)
-        .set({
-      'date': todayStr,
-      'pointsIssued': FieldValue.increment(totalPoints),
-      'totalPointsAwarded': FieldValue.increment(totalPoints),
-      'totalSales': FieldValue.increment(request.amount),
-      'totalTransactions': FieldValue.increment(1),
-      'visitorCount': FieldValue.increment(1),
-      'lastUpdated': FieldValue.serverTimestamp(),
-      if (specialPoints > 0) 'specialPointsIssued': FieldValue.increment(specialPoints),
-    }, SetOptions(merge: true));
+    // store_stats の更新は Cloud Function (updateStoreDailyStats) に一元化
+    // クライアント側での二重カウントを防止
   }
 
   // リクエストを削除

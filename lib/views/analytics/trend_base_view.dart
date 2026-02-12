@@ -68,6 +68,7 @@ class TrendBaseView extends ConsumerStatefulWidget {
     this.initialPeriod,
     this.onFetchWithDate,
     this.minAvailableDateResolver,
+    this.filterWidget,
   }) : super(key: key);
 
   final String title;
@@ -86,6 +87,7 @@ class TrendBaseView extends ConsumerStatefulWidget {
   final String? initialPeriod;
   final TrendFetchWithDate? onFetchWithDate;
   final DateTime? Function(WidgetRef ref)? minAvailableDateResolver;
+  final Widget? filterWidget;
 
   @override
   ConsumerState<TrendBaseView> createState() => _TrendBaseViewState();
@@ -158,6 +160,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildPeriodSelector(storeId),
+                        if (widget.filterWidget != null) ...[
+                          const SizedBox(height: 16),
+                          widget.filterWidget!,
+                        ],
                         const SizedBox(height: 24),
                         _buildChartSectionWithData(
                           trendData,
@@ -188,6 +194,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildPeriodSelector(storeId),
+                      if (widget.filterWidget != null) ...[
+                        const SizedBox(height: 16),
+                        widget.filterWidget!,
+                      ],
                       const SizedBox(height: 24),
                       _buildLoadingChart(storeId, widget.chartTitle),
                       if (_hasSecondaryChart) ...[
@@ -205,6 +215,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildPeriodSelector(storeId),
+                      if (widget.filterWidget != null) ...[
+                        const SizedBox(height: 16),
+                        widget.filterWidget!,
+                      ],
                       const SizedBox(height: 24),
                       _buildErrorChart(storeId, widget.chartTitle),
                       if (_hasSecondaryChart) ...[

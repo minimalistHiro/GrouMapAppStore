@@ -75,8 +75,9 @@
 - 説明: 新規顧客の推移表示
 
 ### StoreUserTrendView (`lib/views/analytics/store_user_trend_view.dart`)
-- 構成: 推移グラフ、統計カード（オレンジ統一）
+- 構成: 推移グラフ、統計カード（オレンジ統一）、フィルター機能
 - 説明: 店舗ユーザー数の推移表示
+- フィルター: 性別（男性/女性/その他）、年代（~19歳/20代/30代/40代/50代/60歳~）で絞り込み可能
 
 ### AllUserTrendView (`lib/views/analytics/all_user_trend_view.dart`)
 - 構成: 推移グラフ、統計カード（オレンジ統一）

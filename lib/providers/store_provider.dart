@@ -230,13 +230,31 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
   DateTime? _minAvailableDate;
   DateTime? get minAvailableDate => _minAvailableDate;
 
-  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
+  // 最後のフェッチパラメータを保持（フィルター変更時の再フェッチ用）
+  String? _lastStoreId;
+  String _lastPeriod = 'day';
+  DateTime? _lastAnchorDate;
+  String? get lastPeriod => _lastPeriod;
+  DateTime? get lastAnchorDate => _lastAnchorDate;
+
+  Future<void> fetchTrendData(
+    String storeId,
+    String period, {
+    DateTime? anchorDate,
+    String? genderFilter,
+    String? ageGroupFilter,
+  }) async {
     try {
       debugPrint('=== StoreUserTrendNotifier START ===');
-      debugPrint('StoreId: $storeId, Period: $period');
-      
+      debugPrint('StoreId: $storeId, Period: $period, Gender: $genderFilter, AgeGroup: $ageGroupFilter');
+
+      // パラメータを保存
+      _lastStoreId = storeId;
+      _lastPeriod = period;
+      _lastAnchorDate = anchorDate;
+
       state = const AsyncValue.loading();
-      
+
       DateTime startDate;
       DateTime endDate;
       final baseDate = anchorDate ?? DateTime.now();
@@ -262,35 +280,55 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           endDate = baseDate;
           startDate = endDate.subtract(const Duration(days: 7));
       }
-      
+
       debugPrint('Date Range: ${startDate.toLocal()} to ${endDate.toLocal()}');
 
-      // store_stats/{storeId}/daily から日次統計を取得
+      final bool hasFilter = genderFilter != null || ageGroupFilter != null;
+
       final Map<String, int> dailyVisitorCounts = {};
       DateTime? earliestDate;
 
-      // 期間内の各日のデータを取得
-      for (var date = startDate;
-          !date.isAfter(endDate);
-          date = date.add(const Duration(days: 1))) {
-        final dateKey = _buildDateKey(date);
-
-        final dailyDoc = await FirebaseFirestore.instance
-            .collection('store_stats')
-            .doc(storeId)
-            .collection('daily')
-            .doc(dateKey)
-            .get();
-
-        if (dailyDoc.exists) {
-          final data = dailyDoc.data();
-          if (data != null) {
-            final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
-            dailyVisitorCounts[dateKey] = visitorCount;
-
-            // 最古の日付を記録
-            if (earliestDate == null || date.isBefore(earliestDate!)) {
+      if (hasFilter) {
+        // フィルター時: stores/{storeId}/transactions から個別トランザクションを取得
+        dailyVisitorCounts.addAll(
+          await _fetchFilteredDailyData(
+            storeId, startDate, endDate,
+            genderFilter: genderFilter,
+            ageGroupFilter: ageGroupFilter,
+          ),
+        );
+        for (final dateKey in dailyVisitorCounts.keys) {
+          final parts = dateKey.split('-');
+          if (parts.length == 3) {
+            final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+            if (earliestDate == null || date.isBefore(earliestDate)) {
               earliestDate = date;
+            }
+          }
+        }
+      } else {
+        // フィルター無し: 既存の store_stats 高速パス
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final dateKey = _buildDateKey(date);
+
+          final dailyDoc = await FirebaseFirestore.instance
+              .collection('store_stats')
+              .doc(storeId)
+              .collection('daily')
+              .doc(dateKey)
+              .get();
+
+          if (dailyDoc.exists) {
+            final data = dailyDoc.data();
+            if (data != null) {
+              final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+              dailyVisitorCounts[dateKey] = visitorCount;
+
+              if (earliestDate == null || date.isBefore(earliestDate!)) {
+                earliestDate = date;
+              }
             }
           }
         }
@@ -331,7 +369,7 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
 
         groupedData[groupKey] = (groupedData[groupKey] ?? 0) + visitorCount;
       }
-      
+
       // 結果をリストに変換してソート
       final List<Map<String, dynamic>> result;
       if (period == 'day') {
@@ -366,9 +404,9 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
           };
         }).toList();
       }
-      
+
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
-      
+
       debugPrint('Result: ${result.length} data points');
       if (result.isNotEmpty) {
         debugPrint('Sample data: ${result.take(3)}');
@@ -382,6 +420,80 @@ class StoreUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, d
       debugPrint('StackTrace: $stackTrace');
       state = AsyncValue.error(e, stackTrace);
     }
+  }
+
+  /// フィルター変更時に最後の期間設定で再フェッチ
+  Future<void> refetchWithFilters({
+    String? genderFilter,
+    String? ageGroupFilter,
+  }) async {
+    if (_lastStoreId == null) return;
+    await fetchTrendData(
+      _lastStoreId!,
+      _lastPeriod,
+      anchorDate: _lastAnchorDate,
+      genderFilter: genderFilter,
+      ageGroupFilter: ageGroupFilter,
+    );
+  }
+
+  /// フィルター適用時のデータ取得
+  /// stores/{storeId}/transactions から日付範囲のトランザクションを取得し、
+  /// トランザクション内のuserGender/userAgeGroupで直接フィルタリングして
+  /// 日別ユニークユーザー数を返す
+  Future<Map<String, int>> _fetchFilteredDailyData(
+    String storeId,
+    DateTime startDate,
+    DateTime endDate, {
+    String? genderFilter,
+    String? ageGroupFilter,
+  }) async {
+    // 1. stores/{storeId}/transactions を日付範囲で取得
+    final transactionsSnapshot = await FirebaseFirestore.instance
+        .collection('stores')
+        .doc(storeId)
+        .collection('transactions')
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .get();
+
+    debugPrint('Filtered query: ${transactionsSnapshot.docs.length} transactions found');
+
+    // 2. トランザクション内の属性で直接フィルター＋日別ユニークユーザー集計
+    final Map<String, Set<String>> dailyUniqueUsers = {};
+
+    for (final doc in transactionsSnapshot.docs) {
+      final data = doc.data();
+      final userId = data['userId'] as String?;
+      if (userId == null) continue;
+
+      // 性別フィルター（トランザクションに保存されたuserGenderで判定）
+      if (genderFilter != null) {
+        final userGender = data['userGender'] as String?;
+        if (genderFilter == 'その他') {
+          if (userGender != 'その他' && userGender != '回答しない') continue;
+        } else {
+          if (userGender != genderFilter) continue;
+        }
+      }
+
+      // 年代フィルター（トランザクションに保存されたuserAgeGroupで判定）
+      if (ageGroupFilter != null) {
+        final userAgeGroup = data['userAgeGroup'] as String?;
+        if (userAgeGroup != ageGroupFilter) continue;
+      }
+
+      final createdAt = _parseCreatedAt(data['createdAt'] ?? data['createdAtClient']);
+      if (createdAt == null) continue;
+
+      final dateKey = _buildDateKey(createdAt);
+      dailyUniqueUsers.putIfAbsent(dateKey, () => {}).add(userId);
+    }
+
+    debugPrint('Filtered daily data: ${dailyUniqueUsers.length} days');
+
+    // 3. ユニークユーザー数のMapに変換
+    return dailyUniqueUsers.map((key, value) => MapEntry(key, value.length));
   }
 }
 
