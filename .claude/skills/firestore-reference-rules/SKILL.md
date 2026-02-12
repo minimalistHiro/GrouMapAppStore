@@ -16,3 +16,12 @@ description: Firestore/データベースに関する作業で必ずFIRESTORE.md
 
 - FIRESTORE.md の内容に沿って設計・変更内容を判断する。
 - スキーマの追加/変更がある場合は、FIRESTORE.md 側の追記・更新も検討する（必要時のみ）。
+
+## デプロイルール
+
+- Cloud Functions（`backend/functions/src/index.ts`）に変更を加えた場合は、コード変更後にデプロイまで実行する。
+- デプロイ手順:
+  1. ビルド: `cd /Users/kanekohiroki/Desktop/groumapapp/backend/functions && npm run build`
+  2. デプロイ: `cd /Users/kanekohiroki/Desktop/groumapapp && firebase deploy --only functions:<変更した関数名>`
+  3. 変更した関数のみを `--only functions:<関数名>` で指定してデプロイする。
+- デプロイが成功したことを確認してからユーザーに報告する。

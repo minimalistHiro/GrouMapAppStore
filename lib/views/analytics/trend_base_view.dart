@@ -35,6 +35,26 @@ class TrendStatsConfig {
   final Color avgColor;
 }
 
+enum TrendStatType { total, max, min, avg, lastValue }
+
+class TrendStatItem {
+  const TrendStatItem({
+    required this.type,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+  final TrendStatType type;
+  final String label;
+  final IconData icon;
+  final Color color;
+}
+
+class ChartStatsConfig {
+  const ChartStatsConfig({required this.items});
+  final List<TrendStatItem> items;
+}
+
 class TrendPeriodOption {
   const TrendPeriodOption(this.label, this.value);
 
@@ -69,6 +89,8 @@ class TrendBaseView extends ConsumerStatefulWidget {
     this.onFetchWithDate,
     this.minAvailableDateResolver,
     this.filterWidget,
+    this.primaryChartStats,
+    this.secondaryChartStats,
   }) : super(key: key);
 
   final String title;
@@ -88,6 +110,8 @@ class TrendBaseView extends ConsumerStatefulWidget {
   final TrendFetchWithDate? onFetchWithDate;
   final DateTime? Function(WidgetRef ref)? minAvailableDateResolver;
   final Widget? filterWidget;
+  final ChartStatsConfig? primaryChartStats;
+  final ChartStatsConfig? secondaryChartStats;
 
   @override
   ConsumerState<TrendBaseView> createState() => _TrendBaseViewState();
@@ -154,6 +178,9 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
 
               return trendDataAsync.when(
                 data: (trendData) {
+                  final secondaryData = _hasSecondaryChart
+                      ? (widget.secondaryDataBuilder?.call(trendData) ?? trendData)
+                      : <Map<String, dynamic>>[];
                   return SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -172,18 +199,28 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                           valueKey: widget.valueKey,
                           storeId: storeId,
                         ),
+                        if (_hasInlineStats && widget.primaryChartStats != null) ...[
+                          const SizedBox(height: 16),
+                          _buildInlineStats(trendData, widget.valueKey, widget.primaryChartStats!),
+                        ],
                         if (_hasSecondaryChart) ...[
                           const SizedBox(height: 24),
                           _buildChartSectionWithData(
-                            widget.secondaryDataBuilder?.call(trendData) ?? trendData,
+                            secondaryData,
                             chartTitle: widget.secondaryChartTitle!,
                             emptyDetail: widget.secondaryEmptyDetail ?? widget.emptyDetail,
                             valueKey: widget.secondaryValueKey!,
                             storeId: storeId,
                           ),
+                          if (_hasInlineStats && widget.secondaryChartStats != null) ...[
+                            const SizedBox(height: 16),
+                            _buildInlineStats(secondaryData, widget.secondaryValueKey!, widget.secondaryChartStats!),
+                          ],
                         ],
-                        const SizedBox(height: 24),
-                        _buildStatsSectionWithData(trendData),
+                        if (!_hasInlineStats) ...[
+                          const SizedBox(height: 24),
+                          _buildStatsSectionWithData(trendData),
+                        ],
                       ],
                     ),
                   );
@@ -204,8 +241,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                         const SizedBox(height: 24),
                         _buildLoadingChart(storeId, widget.secondaryChartTitle!),
                       ],
-                      const SizedBox(height: 24),
-                      _buildLoadingStatsCard(),
+                      if (!_hasInlineStats) ...[
+                        const SizedBox(height: 24),
+                        _buildLoadingStatsCard(),
+                      ],
                     ],
                   ),
                 ),
@@ -225,8 +264,10 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
                         const SizedBox(height: 24),
                         _buildErrorChart(storeId, widget.secondaryChartTitle!),
                       ],
-                      const SizedBox(height: 24),
-                      _buildErrorStatsCard(),
+                      if (!_hasInlineStats) ...[
+                        const SizedBox(height: 24),
+                        _buildErrorStatsCard(),
+                      ],
                     ],
                   ),
                 ),
@@ -1063,6 +1104,77 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
     } else {
       widget.onFetch(ref, storeId, _selectedPeriod);
     }
+  }
+
+  bool get _hasInlineStats => widget.primaryChartStats != null || widget.secondaryChartStats != null;
+
+  int _computeStatValue(TrendStatType type, List<Map<String, dynamic>> data, String valueKey) {
+    if (data.isEmpty) return 0;
+    switch (type) {
+      case TrendStatType.total:
+        return data.fold<int>(0, (sum, d) => sum + _getValue(d, valueKey));
+      case TrendStatType.max:
+        return data.map((d) => _getValue(d, valueKey)).reduce((a, b) => a > b ? a : b);
+      case TrendStatType.min:
+        return data.map((d) => _getValue(d, valueKey)).reduce((a, b) => a < b ? a : b);
+      case TrendStatType.avg:
+        final total = data.fold<int>(0, (sum, d) => sum + _getValue(d, valueKey));
+        return (total / data.length).round();
+      case TrendStatType.lastValue:
+        return _getValue(data.last, valueKey);
+    }
+  }
+
+  Widget _buildInlineStats(List<Map<String, dynamic>> trendData, String valueKey, ChartStatsConfig config) {
+    if (trendData.isEmpty) return const SizedBox.shrink();
+
+    final stats = config.items.map((item) {
+      final value = _computeStatValue(item.type, trendData, valueKey);
+      return {
+        'label': item.label,
+        'value': _formatValue(value),
+        'icon': item.icon,
+        'color': item.color,
+      };
+    }).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.analytics, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '統計情報',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildStatsRow(stats),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatsCards(List<Map<String, dynamic>> trendData) {

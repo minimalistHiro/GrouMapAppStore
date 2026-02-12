@@ -48,27 +48,35 @@ class AllUserTrendView extends StatelessWidget {
         minColor: Color(0xFFFF6B35),
         avgColor: Color(0xFFFF6B35),
       ),
+      primaryChartStats: const ChartStatsConfig(
+        items: [
+          TrendStatItem(type: TrendStatType.max, label: '最大ユーザー数', icon: Icons.trending_up, color: Color(0xFFFF6B35)),
+          TrendStatItem(type: TrendStatType.min, label: '最小ユーザー数', icon: Icons.trending_down, color: Color(0xFFFF6B35)),
+          TrendStatItem(type: TrendStatType.avg, label: '平均ユーザー数', icon: Icons.analytics, color: Color(0xFFFF6B35)),
+        ],
+      ),
+      secondaryChartStats: const ChartStatsConfig(
+        items: [
+          TrendStatItem(type: TrendStatType.lastValue, label: '総ユーザー数', icon: Icons.group, color: Color(0xFFFF6B35)),
+        ],
+      ),
     );
   }
 
   static List<Map<String, dynamic>> _buildCumulativeTrendData(List<Map<String, dynamic>> trendData) {
-    final sortedData = List<Map<String, dynamic>>.from(trendData)
-      ..sort((a, b) => (a['date'] as String? ?? '').compareTo(b['date'] as String? ?? ''));
-
-    var cumulative = 0;
-    return sortedData.map((data) {
-      final value = data['totalUsers'];
-      int count;
+    // fetchTrendData で事前計算済みの cumulativeUsers をそのまま使用
+    return trendData.map((data) {
+      final value = data['cumulativeUsers'];
+      int cumulative;
       if (value is int) {
-        count = value;
+        cumulative = value;
       } else if (value is double) {
-        count = value.round();
+        cumulative = value.round();
       } else if (value is num) {
-        count = value.toInt();
+        cumulative = value.toInt();
       } else {
-        count = 0;
+        cumulative = 0;
       }
-      cumulative += count;
       return {
         'date': data['date'],
         'cumulativeUsers': cumulative,

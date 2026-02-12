@@ -1003,33 +1003,46 @@ class AllUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dyn
       final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final Map<String, int> groupedUsers = {};
       DateTime? earliestDate;
+      int baseCumulative = 0;
 
       for (final userDoc in usersSnapshot.docs) {
         final data = userDoc.data();
+        // isOwner/isStoreOwner を除外
+        if (data['isOwner'] == true || data['isStoreOwner'] == true) continue;
+
         final createdAt = _parseCreatedAt(data['createdAt']);
         if (createdAt == null) continue;
         if (earliestDate == null || createdAt.isBefore(earliestDate!)) {
           earliestDate = createdAt;
         }
-        final isWithinRange = period == 'day' || period == 'month'
-            ? !createdAt.isBefore(startDate) && !createdAt.isAfter(endDate)
-            : _isWithinRange(createdAt, startDate, endDate);
-        if (!isWithinRange) continue;
+
+        // 表示期間より前のユーザーは baseCumulative にカウント
+        if (createdAt.isBefore(startDate)) {
+          baseCumulative++;
+          continue;
+        }
+
+        // 表示期間より後のユーザーはスキップ
+        if (createdAt.isAfter(endDate)) continue;
 
         final groupKey = _buildGroupKey(createdAt, period);
         groupedUsers[groupKey] = (groupedUsers[groupKey] ?? 0) + 1;
       }
 
       final List<Map<String, dynamic>> result;
+      var cumulative = baseCumulative;
       if (period == 'day') {
         final days = <Map<String, dynamic>>[];
         for (var date = startDate;
             !date.isAfter(endDate);
             date = date.add(const Duration(days: 1))) {
           final key = _buildDateKey(date);
+          final newUsers = groupedUsers[key] ?? 0;
+          cumulative += newUsers;
           days.add({
             'date': key,
-            'totalUsers': groupedUsers[key] ?? 0,
+            'totalUsers': newUsers,
+            'cumulativeUsers': cumulative,
           });
         }
         result = days;
@@ -1039,19 +1052,28 @@ class AllUserTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dyn
         final maxMonth = baseDate.year == now.year ? now.month : 12;
         for (var month = 1; month <= maxMonth; month++) {
           final key = _buildGroupKey(DateTime(baseDate.year, month, 1), period);
+          final newUsers = groupedUsers[key] ?? 0;
+          cumulative += newUsers;
           months.add({
             'date': key,
-            'totalUsers': groupedUsers[key] ?? 0,
+            'totalUsers': newUsers,
+            'cumulativeUsers': cumulative,
           });
         }
         result = months;
       } else {
-        result = groupedUsers.entries.map((entry) {
-          return {
+        final sorted = groupedUsers.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+        final items = <Map<String, dynamic>>[];
+        for (final entry in sorted) {
+          cumulative += entry.value;
+          items.add({
             'date': entry.key,
             'totalUsers': entry.value,
-          };
-        }).toList();
+            'cumulativeUsers': cumulative,
+          });
+        }
+        result = items;
       }
 
       result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
