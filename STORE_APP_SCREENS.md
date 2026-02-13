@@ -259,6 +259,10 @@
 - 構成: 店内画像一覧、追加/並び替え、保存
 - 説明: 店内画像管理画面
 
+### PaymentMethodsSettingsView (`lib/views/settings/payment_methods_settings_view.dart`)
+- 構成: 決済方法カテゴリ別一覧（現金/カード/電子マネー/QR決済）、各項目トグル切替、保存
+- 説明: 店舗で利用可能な決済方法の設定画面
+
 ### StoreIconCropView (`lib/views/settings/store_icon_crop_view.dart`)
 - 構成: 画像プレビュー、切り抜き、保存
 - 説明: 店舗アイコンのトリミング画面
@@ -366,6 +370,7 @@
             ├─ メニュー編集（MenuEditView）
             │  └─ メニュー項目編集（MenuItemEditView）
             ├─ 店内画像設定（InteriorImagesView）
+            ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
             ├─ QRコード設定（StoreSettingsView）
             ├─ Instagram連携（InstagramSyncView）
             ├─ 通知設定（NotificationSettingsView）

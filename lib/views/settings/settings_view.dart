@@ -15,6 +15,7 @@ import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
 import 'interior_images_view.dart';
+import 'payment_methods_settings_view.dart';
 import 'owner_settings_view.dart';
 import 'live_chat_user_list_view.dart';
 import 'instagram_sync_view.dart';
@@ -141,6 +142,19 @@ class SettingsView extends ConsumerWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const InteriorImagesView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.payment,
+                  title: '店舗決済方法設定',
+                  subtitle: '利用可能な決済方法を設定',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const PaymentMethodsSettingsView(),
                       ),
                     );
                   },
