@@ -287,12 +287,12 @@ class HelpSupportView extends StatelessWidget {
       children: [
         _buildInfoItem(
           label: 'アプリバージョン',
-          value: '1.0.7',
+          value: '1.1.0',
           copyable: false,
         ),
         _buildInfoItem(
           label: '最終更新日',
-          value: '2026年2月3日',
+          value: '2026年2月13日',
           copyable: false,
         ),
         _buildInfoItem(
