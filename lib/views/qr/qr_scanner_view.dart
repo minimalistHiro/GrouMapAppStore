@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -261,11 +262,52 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
             const SizedBox(height: 16),
             TextField(
               controller: _manualInputController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'QRコード',
                 hintText: 'Base64エンコードされたJSON文字列',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.qr_code),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.qr_code),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.content_paste),
+                  tooltip: 'クリップボードから貼り付け',
+                  onPressed: () async {
+                    try {
+                      final clipboardData = await Clipboard.getData('text/plain');
+                      if (clipboardData != null && clipboardData.text != null) {
+                        _manualInputController.text = clipboardData.text!;
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('クリップボードから貼り付けました'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('クリップボードにテキストがありません'),
+                              backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      print('クリップボード読み取りエラー: $e');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('貼り付けに失敗しました: $e'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
                 helperText: 'お客様アプリからコピーした文字列を貼り付けてください',
               ),
               autofocus: true,

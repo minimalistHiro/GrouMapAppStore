@@ -79,6 +79,10 @@
 - 説明: 店舗ユーザー数の推移表示
 - フィルター: 性別（男性/女性/その他）、年代（~19歳/20代/30代/40代/50代/60歳~）で絞り込み可能
 
+### CouponUsageTrendView (`lib/views/analytics/coupon_usage_trend_view.dart`)
+- 構成: 推移グラフ、統計カード（オレンジ統一）
+- 説明: クーポン利用者の推移表示
+
 ### AllUserTrendView (`lib/views/analytics/all_user_trend_view.dart`)
 - 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 全ユーザー推移の表示
@@ -342,6 +346,7 @@
          │
          ├─ 分析（AnalyticsView）
          │  ├─ 新規顧客推移（NewCustomerTrendView）
+         │  ├─ クーポン利用者推移（CouponUsageTrendView）
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
          │  └─ ランキング（LeaderboardView）
