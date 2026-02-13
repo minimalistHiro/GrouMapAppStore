@@ -61,7 +61,7 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
 
                 // タイトル
                 const Text(
-                  'GrouMap Store',
+                  'ぐるまっぷ店舗用',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,

@@ -577,7 +577,7 @@ class HomeView extends ConsumerWidget {
               ),
               const SizedBox(width: 12),
               const Text(
-                'GrouMap Store',
+                'ぐるまっぷ店舗用',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1968,7 +1968,7 @@ class HomeView extends ConsumerWidget {
             
             // アプリ名
             const Text(
-              'GrouMap Store',
+              'ぐるまっぷ店舗用',
               style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,

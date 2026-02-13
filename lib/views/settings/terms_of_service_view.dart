@@ -77,7 +77,7 @@ class TermsOfServiceView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'GrouMap Storeサービスの利用条件について',
+            'ぐるまっぷ店舗用サービスの利用条件について',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white70,
@@ -134,7 +134,7 @@ class TermsOfServiceView extends StatelessWidget {
     final sections = [
       {
         'title': '第1条（適用）',
-        'content': '''本利用規約（以下「本規約」といいます。）は、GrouMap Inc.（以下「当社」といいます。）が提供するGrouMap Storeサービス（以下「本サービス」といいます。）の利用条件を定めるものです。登録ユーザーの皆さま（以下「ユーザー」といいます。）には、本規約に従って、本サービスをご利用いただきます。''',
+        'content': '''本利用規約（以下「本規約」といいます。）は、ぐるまっぷ Inc.（以下「当社」といいます。）が提供するぐるまっぷ店舗用サービス（以下「本サービス」といいます。）の利用条件を定めるものです。登録ユーザーの皆さま（以下「ユーザー」といいます。）には、本規約に従って、本サービスをご利用いただきます。''',
       },
       {
         'title': '第2条（利用登録）',

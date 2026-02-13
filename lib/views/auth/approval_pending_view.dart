@@ -344,7 +344,7 @@ class _ApprovalPendingViewState extends ConsumerState<ApprovalPendingView> {
                       
                       // タイトル
                       const Text(
-                        'GrouMap Store',
+                        'ぐるまっぷ店舗用',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,

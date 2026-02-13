@@ -798,7 +798,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
                     controller: _businessNameController,
                     labelText: _businessType == 'corporate' ? '法人名 *' : '代表者名 *',
                     hintText: _businessType == 'corporate'
-                        ? '例：株式会社GrouMap'
+                        ? '例：株式会社ぐるまっぷ'
                         : '例：山田 太郎',
                     maxLength: 100,
                     validator: (value) {

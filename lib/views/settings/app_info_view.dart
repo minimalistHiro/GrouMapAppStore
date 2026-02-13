@@ -94,7 +94,7 @@ class AppInfoView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'GrouMap Store',
+            'ぐるまっぷ店舗用',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -130,7 +130,7 @@ class AppInfoView extends StatelessWidget {
       children: [
         _buildInfoItem(
           label: 'アプリ名',
-          value: 'GrouMap Store',
+          value: 'ぐるまっぷ店舗用',
           copyable: true,
         ),
         _buildInfoItem(
@@ -169,12 +169,12 @@ class AppInfoView extends StatelessWidget {
       children: [
         _buildInfoItem(
           label: '開発会社',
-          value: 'GrouMap Inc.',
+          value: 'ぐるまっぷ Inc.',
           copyable: true,
         ),
         _buildInfoItem(
           label: '開発チーム',
-          value: 'GrouMap Development Team',
+          value: 'ぐるまっぷ Development Team',
           copyable: false,
         ),
         _buildInfoItem(

@@ -77,7 +77,7 @@ class SecurityPolicyView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'GrouMap Storeにおける情報セキュリティについて',
+            'ぐるまっぷ店舗用における情報セキュリティについて',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white70,
@@ -134,7 +134,7 @@ class SecurityPolicyView extends StatelessWidget {
     final sections = [
       {
         'title': '1. 情報セキュリティの基本方針',
-        'content': '''GrouMap Inc.（以下「当社」）は、お客様の大切な情報を保護するため、情報セキュリティマネジメントシステム（ISMS）を構築し、継続的な改善を行っています。
+        'content': '''ぐるまっぷ Inc.（以下「当社」）は、お客様の大切な情報を保護するため、情報セキュリティマネジメントシステム（ISMS）を構築し、継続的な改善を行っています。
 
 当社は以下の基本方針に基づき、情報セキュリティを推進します：
 

@@ -77,7 +77,7 @@ class PrivacyPolicyView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'GrouMap Storeにおける個人情報の取り扱いについて',
+            'ぐるまっぷ店舗用における個人情報の取り扱いについて',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white70,
@@ -134,7 +134,7 @@ class PrivacyPolicyView extends StatelessWidget {
     final sections = [
       {
         'title': '1. 個人情報の収集について',
-        'content': '''GrouMap Storeでは、以下の個人情報を収集する場合があります：
+        'content': '''ぐるまっぷ店舗用では、以下の個人情報を収集する場合があります：
 
 • アカウント情報（氏名、メールアドレス、電話番号）
 • 店舗情報（店舗名、住所、営業時間、連絡先）
