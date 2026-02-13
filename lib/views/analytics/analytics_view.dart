@@ -811,31 +811,25 @@ class AnalyticsView extends ConsumerWidget {
                 stats: [
                   {'label': '新規来店者数', 'value': '-', 'change': '-'},
                   {'label': '週間来店者数', 'value': '-', 'change': '-'},
-                  {'label': '週間売上', 'value': '-', 'change': '-'},
-                  {'label': '平均客単価', 'value': '-', 'change': '-'},
                   {'label': 'リピート率', 'value': '-', 'change': '-'},
                 ],
               );
             }
-            
+
             final weeklyStatsAsync = ref.watch(weeklyStatsProvider(storeId));
-            
+
             return weeklyStatsAsync.when(
               data: (weeklyStats) {
                 final newCustomers = weeklyStats['newCustomers'] ?? 0;
                 final visitorCount = weeklyStats['visitorCount'] ?? 0;
-                final totalSales = weeklyStats['totalSales'] ?? 0;
-                final avgSpending = weeklyStats['avgSpending'] ?? 0;
                 final repeatRate = weeklyStats['repeatRate'] ?? 0;
-                
+
                 return _buildStatsSection(
                   title: '週間統計',
                   icon: Icons.calendar_view_week,
                   stats: [
                     {'label': '新規来店者数', 'value': '$newCustomers', 'change': '-'},
                     {'label': '週間来店者数', 'value': '$visitorCount', 'change': '-'},
-                    {'label': '週間売上', 'value': '¥${totalSales.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
-                    {'label': '平均客単価', 'value': '¥${avgSpending.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
                     {'label': 'リピート率', 'value': '$repeatRate%', 'change': '-'},
                   ],
                 );
@@ -846,8 +840,6 @@ class AnalyticsView extends ConsumerWidget {
                 stats: [
                   {'label': '新規来店者数', 'value': '読込中...', 'change': '-'},
                   {'label': '週間来店者数', 'value': '読込中...', 'change': '-'},
-                  {'label': '週間売上', 'value': '読込中...', 'change': '-'},
-                  {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
                   {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
                 ],
               ),
@@ -859,8 +851,6 @@ class AnalyticsView extends ConsumerWidget {
                   stats: [
                     {'label': '新規来店者数', 'value': '-', 'change': '-'},
                     {'label': '週間来店者数', 'value': '-', 'change': '-'},
-                    {'label': '週間売上', 'value': '-', 'change': '-'},
-                    {'label': '平均客単価', 'value': '-', 'change': '-'},
                     {'label': 'リピート率', 'value': '-', 'change': '-'},
                   ],
                 );
@@ -873,8 +863,6 @@ class AnalyticsView extends ConsumerWidget {
             stats: [
               {'label': '新規来店者数', 'value': '読込中...', 'change': '-'},
               {'label': '週間来店者数', 'value': '読込中...', 'change': '-'},
-              {'label': '週間売上', 'value': '読込中...', 'change': '-'},
-              {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
               {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
             ],
           ),
@@ -884,8 +872,6 @@ class AnalyticsView extends ConsumerWidget {
             stats: [
               {'label': '新規来店者数', 'value': '-', 'change': '-'},
               {'label': '週間来店者数', 'value': '-', 'change': '-'},
-              {'label': '週間売上', 'value': '-', 'change': '-'},
-              {'label': '平均客単価', 'value': '-', 'change': '-'},
               {'label': 'リピート率', 'value': '-', 'change': '-'},
             ],
           ),
@@ -908,31 +894,25 @@ class AnalyticsView extends ConsumerWidget {
                 stats: [
                   {'label': '新規来店者数', 'value': '-', 'change': '-'},
                   {'label': '月間来店者数', 'value': '-', 'change': '-'},
-                  {'label': '月間売上', 'value': '-', 'change': '-'},
-                  {'label': '平均客単価', 'value': '-', 'change': '-'},
                   {'label': 'リピート率', 'value': '-', 'change': '-'},
                 ],
               );
             }
-            
+
             final monthlyStatsAsync = ref.watch(monthlyStatsProvider(storeId));
-            
+
             return monthlyStatsAsync.when(
               data: (monthlyStats) {
                 final newCustomers = monthlyStats['newCustomers'] ?? 0;
                 final visitorCount = monthlyStats['visitorCount'] ?? 0;
-                final totalSales = monthlyStats['totalSales'] ?? 0;
-                final avgSpending = monthlyStats['avgSpending'] ?? 0;
                 final repeatRate = monthlyStats['repeatRate'] ?? 0;
-                
+
                 return _buildStatsSection(
                   title: '月間統計',
                   icon: Icons.calendar_month,
                   stats: [
                     {'label': '新規来店者数', 'value': '$newCustomers', 'change': '-'},
                     {'label': '月間来店者数', 'value': '$visitorCount', 'change': '-'},
-                    {'label': '月間売上', 'value': '¥${totalSales.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
-                    {'label': '平均客単価', 'value': '¥${avgSpending.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 'change': '-'},
                     {'label': 'リピート率', 'value': '$repeatRate%', 'change': '-'},
                   ],
                 );
@@ -943,8 +923,6 @@ class AnalyticsView extends ConsumerWidget {
                 stats: [
                   {'label': '新規来店者数', 'value': '読込中...', 'change': '-'},
                   {'label': '月間来店者数', 'value': '読込中...', 'change': '-'},
-                  {'label': '月間売上', 'value': '読込中...', 'change': '-'},
-                  {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
                   {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
                 ],
               ),
@@ -956,8 +934,6 @@ class AnalyticsView extends ConsumerWidget {
                   stats: [
                     {'label': '新規来店者数', 'value': '-', 'change': '-'},
                     {'label': '月間来店者数', 'value': '-', 'change': '-'},
-                    {'label': '月間売上', 'value': '-', 'change': '-'},
-                    {'label': '平均客単価', 'value': '-', 'change': '-'},
                     {'label': 'リピート率', 'value': '-', 'change': '-'},
                   ],
                 );
@@ -970,8 +946,6 @@ class AnalyticsView extends ConsumerWidget {
             stats: [
               {'label': '新規来店者数', 'value': '読込中...', 'change': '-'},
               {'label': '月間来店者数', 'value': '読込中...', 'change': '-'},
-              {'label': '月間売上', 'value': '読込中...', 'change': '-'},
-              {'label': '平均客単価', 'value': '読込中...', 'change': '-'},
               {'label': 'リピート率', 'value': '読込中...', 'change': '-'},
             ],
           ),
@@ -981,8 +955,6 @@ class AnalyticsView extends ConsumerWidget {
             stats: [
               {'label': '新規来店者数', 'value': '-', 'change': '-'},
               {'label': '月間来店者数', 'value': '-', 'change': '-'},
-              {'label': '月間売上', 'value': '-', 'change': '-'},
-              {'label': '平均客単価', 'value': '-', 'change': '-'},
               {'label': 'リピート率', 'value': '-', 'change': '-'},
             ],
           ),

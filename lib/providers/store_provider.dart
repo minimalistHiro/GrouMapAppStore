@@ -1256,7 +1256,7 @@ final weeklyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>(
           .collection('stores')
           .doc(storeId)
           .collection('transactions')
-          .where('type', isEqualTo: 'award')
+          .where('type', isEqualTo: 'stamp')
           .where('createdAt', isGreaterThanOrEqualTo: startOfWeek)
           .where('createdAt', isLessThanOrEqualTo: now)
           .get();
@@ -1355,7 +1355,7 @@ final monthlyStatsProvider = StreamProvider.family<Map<String, dynamic>, String>
           .collection('stores')
           .doc(storeId)
           .collection('transactions')
-          .where('type', isEqualTo: 'award')
+          .where('type', isEqualTo: 'stamp')
           .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
           .where('createdAt', isLessThanOrEqualTo: now)
           .get();
