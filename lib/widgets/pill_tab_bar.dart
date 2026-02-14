@@ -17,6 +17,7 @@ class PillTabBar extends StatelessWidget {
     this.backgroundColor,
     this.fontSize = 14,
     this.verticalPadding = 10,
+    this.disabledIndices = const {},
   });
 
   final List<String> labels;
@@ -28,6 +29,7 @@ class PillTabBar extends StatelessWidget {
   final Color? backgroundColor;
   final double fontSize;
   final double verticalPadding;
+  final Set<int> disabledIndices;
 
   @override
   Widget build(BuildContext context) {
@@ -40,24 +42,31 @@ class PillTabBar extends StatelessWidget {
       child: Row(
         children: List.generate(labels.length, (index) {
           final isSelected = selectedIndex == index;
+          final isDisabled = disabledIndices.contains(index);
           return Expanded(
             child: GestureDetector(
-              onTap: () => onChanged(index),
+              onTap: isDisabled ? null : () => onChanged(index),
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: verticalPadding),
                 decoration: BoxDecoration(
-                  color: isSelected ? activeColor : Colors.transparent,
+                  color: isSelected && !isDisabled
+                      ? activeColor
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Center(
                   child: Text(
                     labels[index],
                     style: TextStyle(
-                      color: isSelected
-                          ? activeTextColor
-                          : (inactiveTextColor ?? Colors.grey[600]),
+                      color: isDisabled
+                          ? Colors.grey[350]
+                          : isSelected
+                              ? activeTextColor
+                              : (inactiveTextColor ?? Colors.grey[600]),
                       fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                          isSelected && !isDisabled
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                       fontSize: fontSize,
                     ),
                   ),
