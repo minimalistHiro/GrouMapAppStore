@@ -9,40 +9,28 @@ import '../../widgets/common_header.dart';
 import '../../widgets/custom_button.dart';
 import 'menu_edit_view.dart';
 
-class MenuItemEditView extends ConsumerStatefulWidget {
-  final Map<String, dynamic> menuItem;
+class MenuCreateView extends ConsumerStatefulWidget {
   final String storeId;
 
-  const MenuItemEditView({
-    Key? key,
-    required this.menuItem,
-    required this.storeId,
-  }) : super(key: key);
+  const MenuCreateView({Key? key, required this.storeId}) : super(key: key);
 
   @override
-  ConsumerState<MenuItemEditView> createState() => _MenuItemEditViewState();
+  ConsumerState<MenuCreateView> createState() => _MenuCreateViewState();
 }
 
-class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
+class _MenuCreateViewState extends ConsumerState<MenuCreateView> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  
+
   bool _isSaving = false;
   String _selectedCategory = '';
-  
+
   // 画像関連
   final ImagePicker _picker = ImagePicker();
   final FirebaseStorage _storage = FirebaseStorage.instance;
   Uint8List? _selectedImage;
-  String? _currentImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMenuItemData();
-  }
 
   @override
   void dispose() {
@@ -50,14 +38,6 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
-  }
-
-  void _loadMenuItemData() {
-    _nameController.text = widget.menuItem['name'] ?? '';
-    _descriptionController.text = widget.menuItem['description'] ?? '';
-    _priceController.text = (widget.menuItem['price'] ?? 0).toString();
-    _selectedCategory = widget.menuItem['category'] ?? '';
-    _currentImageUrl = widget.menuItem['imageUrl'];
   }
 
   Future<void> _pickImage() async {
@@ -88,11 +68,49 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
   void _removeImage() {
     setState(() {
       _selectedImage = null;
-      _currentImageUrl = null;
     });
   }
 
-  Future<void> _updateMenuItem() async {
+  Future<String> _uploadImage(Uint8List imageBytes) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final fileName = '${widget.storeId}_menu_$timestamp.jpg';
+    final ref = _storage.ref().child('menu_images/$fileName');
+
+    final metadata = SettableMetadata(
+      contentType: 'image/jpeg',
+      customMetadata: {
+        'storeId': widget.storeId,
+        'uploadedBy': FirebaseAuth.instance.currentUser?.uid ?? '',
+        'uploadedAt': timestamp.toString(),
+      },
+    );
+
+    final uploadTask = ref.putData(imageBytes, metadata);
+    final snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
+  }
+
+  Future<int> _resolveNextSortOrder() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.storeId)
+          .collection('menu')
+          .orderBy('sortOrder', descending: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return 1;
+      final maxOrder = snapshot.docs.first.data()['sortOrder'];
+      if (maxOrder is int) return maxOrder + 1;
+      if (maxOrder is num) return maxOrder.toInt() + 1;
+      return 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
+  Future<void> _addMenuItem() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,41 +127,46 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
     });
 
     try {
-      // 画像をアップロード
-      String? imageUrl = _currentImageUrl;
+      String? imageUrl;
       if (_selectedImage != null) {
         imageUrl = await _uploadImage(_selectedImage!);
       }
 
-      // メニューアイテムを更新
+      final sortOrder = await _resolveNextSortOrder();
+      final menuId = FirebaseFirestore.instance.collection('stores').doc().id;
+
       await FirebaseFirestore.instance
           .collection('stores')
           .doc(widget.storeId)
           .collection('menu')
-          .doc(widget.menuItem['id'])
-          .update({
+          .doc(menuId)
+          .set({
+        'id': menuId,
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'price': double.parse(_priceController.text),
         'category': _selectedCategory,
         'imageUrl': imageUrl,
+        'isAvailable': true,
+        'sortOrder': sortOrder,
+        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('メニューアイテムを更新しました'),
+            content: Text('メニューアイテムを追加しました'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop(true); // 更新完了を通知
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('更新に失敗しました: $e'),
+            content: Text('保存に失敗しました: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -157,29 +180,10 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
     }
   }
 
-  Future<String> _uploadImage(Uint8List imageBytes) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = '${widget.storeId}_menu_$timestamp.jpg';
-    final ref = _storage.ref().child('menu_images/$fileName');
-    
-    final metadata = SettableMetadata(
-      contentType: 'image/jpeg',
-      customMetadata: {
-        'storeId': widget.storeId,
-        'uploadedBy': FirebaseAuth.instance.currentUser?.uid ?? '',
-        'uploadedAt': timestamp.toString(),
-      },
-    );
-    
-    final uploadTask = ref.putData(imageBytes, metadata);
-    final snapshot = await uploadTask;
-    return await snapshot.ref.getDownloadURL();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CommonHeader(title: 'メニュー編集'),
+      appBar: const CommonHeader(title: '新規メニュー作成'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -189,9 +193,9 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
             children: [
               // 画像選択
               _buildImageSection(),
-              
+
               const SizedBox(height: 24),
-              
+
               // カテゴリ選択
               DropdownButtonFormField<String>(
                 value: _selectedCategory.isEmpty ? null : _selectedCategory,
@@ -217,9 +221,9 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // メニュー名
               TextFormField(
                 controller: _nameController,
@@ -234,9 +238,9 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // 説明
               TextFormField(
                 controller: _descriptionController,
@@ -246,9 +250,9 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
                 ),
                 maxLines: 2,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // 価格
               TextFormField(
                 controller: _priceController,
@@ -268,13 +272,13 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // 更新ボタン
+
+              // 追加ボタン
               CustomButton(
-                text: _isSaving ? '更新中...' : 'メニューを更新',
-                onPressed: _isSaving ? () {} : _updateMenuItem,
+                text: _isSaving ? '追加中...' : 'メニューを追加',
+                onPressed: _isSaving ? () {} : _addMenuItem,
                 isLoading: _isSaving,
               ),
             ],
@@ -299,9 +303,9 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
         const SizedBox(height: 8),
         Center(
           child: AspectRatio(
-            aspectRatio: 1.0, // 1:1の比率
+            aspectRatio: 1.0,
             child: Container(
-              width: 200, // 固定幅で半分のサイズに
+              width: 200,
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(12),
@@ -338,39 +342,7 @@ class _MenuItemEditViewState extends ConsumerState<MenuItemEditView> {
                           ),
                         ],
                       )
-                    : _currentImageUrl != null
-                        ? Stack(
-                            children: [
-                              Image.network(
-                                _currentImageUrl!,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildImagePlaceholder();
-                                },
-                              ),
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: GestureDetector(
-                                  onTap: _removeImage,
-                                  child: Container(
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : _buildImagePlaceholder(),
+                    : _buildImagePlaceholder(),
               ),
             ),
           ),

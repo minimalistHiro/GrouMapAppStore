@@ -248,11 +248,15 @@
 - 説明: Instagram連携の設定・同期管理画面
 
 ### MenuEditView (`lib/views/settings/menu_edit_view.dart`)
-- 構成: メニュー一覧、カテゴリ管理、追加/編集導線
-- 説明: メニュー管理画面
+- 構成: 新規メニュー作成ボタン、カテゴリフィルタバー（コース/料理/ドリンク/デザート）、メニュー一覧（ReorderableListView）、編集/削除導線
+- 説明: メニュー管理画面。カテゴリ別にメニューをフィルタ表示し、ドラッグ&ドロップで並び替え可能
+
+### MenuCreateView (`lib/views/settings/menu_create_view.dart`)
+- 構成: メニュー画像選択、カテゴリ選択（コース/料理/ドリンク/デザート）、メニュー名/説明/価格入力フォーム、追加ボタン
+- 説明: 新規メニューアイテム作成画面
 
 ### MenuItemEditView (`lib/views/settings/menu_item_edit_view.dart`)
-- 構成: メニュー編集フォーム、画像、保存
+- 構成: メニュー編集フォーム、画像、カテゴリ選択（コース/料理/ドリンク/デザート）、保存
 - 説明: メニューアイテム編集画面
 
 ### InteriorImagesView (`lib/views/settings/interior_images_view.dart`)
@@ -368,6 +372,7 @@
             │  └─ 位置選択（StoreLocationPickerView）
             ├─ 店舗位置情報（StoreLocationEditView）
             ├─ メニュー編集（MenuEditView）
+            │  ├─ 新規メニュー作成（MenuCreateView）
             │  └─ メニュー項目編集（MenuItemEditView）
             ├─ 店内画像設定（InteriorImagesView）
             ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
