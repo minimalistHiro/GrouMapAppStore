@@ -1,6 +1,6 @@
 ---
 name: ui-ux-rules
-description: GrouMapの画面作成・画面編集でUI/UXルールを適用するためのガイド。ユーザーが「画面作成」「画面編集」「UI」「UX」「レイアウト」「デザイン」や画面の見た目・レイアウト変更を依頼したときに使う。
+description: GrouMapの画面作成・画面編集でUI/UXルールを適用するためのガイド。ユーザーが「画面作成」「画面編集」「UI」「UX」「レイアウト」「デザイン」や画面の見た目・レイアウト変更を依頼したときに使う。「スタンプ」「スタンプカード」に関するUI変更時にも使う。
 ---
 
 # UI/UX Rules
@@ -39,3 +39,6 @@ GrouMapの画面作成・編集時に、既定のUI/UXルールを必ず適用�
 - キーボードのタップ外閉じは共通化する。原則として画面の body を `DismissKeyboard` でラップする（`lib/widgets/dismiss_keyboard.dart` / `groumapapp_store/lib/widgets/dismiss_keyboard.dart`）。
   - 例外: ユーザー用アプリのマップ画面は対象外（タップ操作が多いため適用しない）。
 - スクロール可能な画面では、最下部に `SizedBox(height: 16)` 相当の余白を入れる。
+- スタンプカードの各スタンプ（5×2グリッド）は以下の仕様で統一する。
+  - **取得済みスタンプ**: 店舗のプロフィールアイコン（`iconImageUrl`）を `ClipOval` で円形にクリップし、`SizedBox.expand` + `BoxFit.cover` で隙間なく表示する。アイコン未設定時はカテゴリアイコンにフォールバックする。
+  - **未取得スタンプ**: 背景色 `Colors.grey[200]` の円形（`BoxShape.circle`）に、カテゴリアイコン（`Icons.local_cafe` 等）を `Colors.grey` で中央配置する。店舗プロフィール画像は使用しない。`ColorFiltered` や `Opacity` による色の上乗せは行わない。
