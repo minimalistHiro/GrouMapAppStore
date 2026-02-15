@@ -226,6 +226,24 @@ class AuthService {
         },
         'iconImageUrl': storeInfo['iconImageUrl'],
         'storeImageUrl': storeInfo['storeImageUrl'],
+        'facilityInfo': storeInfo['facilityInfo'] ?? {
+          'seatingCapacity': {
+            'counter': 0,
+            'table': 0,
+            'tatami': 0,
+            'terrace': 0,
+            'privateRoom': 0,
+            'sofa': 0,
+          },
+          'parking': 'none',
+          'accessInfo': '',
+          'takeout': false,
+          'smokingPolicy': 'no_smoking',
+          'hasWifi': false,
+          'barrierFree': false,
+          'childFriendly': false,
+          'petFriendly': false,
+        },
       });
       
              // 作成者の店舗リストにも追加

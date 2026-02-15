@@ -71,6 +71,22 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   final _businessNameController = TextEditingController();
   String _businessType = 'individual';
 
+  // 設備・サービス情報
+  final _counterSeatsController = TextEditingController();
+  final _tableSeatsController = TextEditingController();
+  final _tatamiSeatsController = TextEditingController();
+  final _terraceSeatsController = TextEditingController();
+  final _privateRoomSeatsController = TextEditingController();
+  final _sofaSeatsController = TextEditingController();
+  String _parkingOption = 'none';
+  final _accessInfoController = TextEditingController();
+  bool _hasTakeout = false;
+  String _smokingPolicy = 'no_smoking';
+  bool _hasWifi = false;
+  bool _isBarrierFree = false;
+  bool _isChildFriendly = false;
+  bool _isPetFriendly = false;
+
   final List<String> _categories = [
     'カフェ・喫茶店',
     'レストラン',
@@ -186,12 +202,19 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     _latitudeController.dispose();
     _longitudeController.dispose();
     _tagsController.dispose();
-    
+    _counterSeatsController.dispose();
+    _tableSeatsController.dispose();
+    _tatamiSeatsController.dispose();
+    _terraceSeatsController.dispose();
+    _privateRoomSeatsController.dispose();
+    _sofaSeatsController.dispose();
+    _accessInfoController.dispose();
+
     for (var controllers in _businessHoursControllers.values) {
       controllers['open']?.dispose();
       controllers['close']?.dispose();
     }
-    
+
     super.dispose();
   }
 
@@ -569,6 +592,24 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           },
           'iconImageUrl': iconImageUrl,
           'storeImageUrl': storeImageUrl,
+          'facilityInfo': {
+            'seatingCapacity': {
+              'counter': int.tryParse(_counterSeatsController.text.trim()) ?? 0,
+              'table': int.tryParse(_tableSeatsController.text.trim()) ?? 0,
+              'tatami': int.tryParse(_tatamiSeatsController.text.trim()) ?? 0,
+              'terrace': int.tryParse(_terraceSeatsController.text.trim()) ?? 0,
+              'privateRoom': int.tryParse(_privateRoomSeatsController.text.trim()) ?? 0,
+              'sofa': int.tryParse(_sofaSeatsController.text.trim()) ?? 0,
+            },
+            'parking': _parkingOption,
+            'accessInfo': _accessInfoController.text.trim(),
+            'takeout': _hasTakeout,
+            'smokingPolicy': _smokingPolicy,
+            'hasWifi': _hasWifi,
+            'barrierFree': _isBarrierFree,
+            'childFriendly': _isChildFriendly,
+            'petFriendly': _isPetFriendly,
+          },
         };
 
         Navigator.of(context).push(
@@ -1112,9 +1153,14 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
                 
                 // SNS・ウェブサイト
                 _buildSocialMediaSection(),
-                
+
+                const SizedBox(height: 20),
+
+                // 設備・サービス
+                _buildFacilityInfoSection(),
+
                 const SizedBox(height: 32),
-                
+
                 // 次へボタン
                 CustomButton(
                   text: _isLoading ? 'アップロード中...' : '次へ',
@@ -1482,6 +1528,214 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           controller: _facebookController,
           labelText: 'Facebook',
           hintText: '例：https://facebook.com/page',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSeatingRow(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 80,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                hintText: '0',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text('席', style: TextStyle(fontSize: 14, color: Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacilityInfoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '設備・サービス',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // 席数・収容人数
+        const Text(
+          '席数・収容人数',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSeatingRow('カウンター席', _counterSeatsController),
+        _buildSeatingRow('テーブル席', _tableSeatsController),
+        _buildSeatingRow('座敷席', _tatamiSeatsController),
+        _buildSeatingRow('テラス席', _terraceSeatsController),
+        _buildSeatingRow('個室', _privateRoomSeatsController),
+        _buildSeatingRow('ソファー席', _sofaSeatsController),
+        const SizedBox(height: 8),
+
+        // 駐車場
+        const Text(
+          '駐車場',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _parkingOption,
+          decoration: const InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          isExpanded: true,
+          items: const [
+            DropdownMenuItem(value: 'none', child: Text('なし')),
+            DropdownMenuItem(value: 'available', child: Text('あり')),
+            DropdownMenuItem(value: 'nearby_coin_parking', child: Text('近隣にコインパーキングあり')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _parkingOption = value);
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // 最寄り駅・アクセス
+        CustomTextField(
+          controller: _accessInfoController,
+          labelText: '最寄り駅・アクセス',
+          hintText: '例：渋谷駅から徒歩5分',
+        ),
+        const SizedBox(height: 16),
+
+        // テイクアウト
+        SwitchListTile(
+          title: const Text('テイクアウト対応'),
+          value: _hasTakeout,
+          activeColor: const Color(0xFFFF6B35),
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) {
+            setState(() => _hasTakeout = value);
+          },
+        ),
+
+        // 禁煙・喫煙
+        const Text(
+          '禁煙・喫煙',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _smokingPolicy,
+          decoration: const InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          isExpanded: true,
+          items: const [
+            DropdownMenuItem(value: 'no_smoking', child: Text('全席禁煙')),
+            DropdownMenuItem(value: 'separated', child: Text('分煙')),
+            DropdownMenuItem(value: 'smoking_allowed', child: Text('喫煙可')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _smokingPolicy = value);
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // Wi-Fi
+        SwitchListTile(
+          title: const Text('Wi-Fi'),
+          value: _hasWifi,
+          activeColor: const Color(0xFFFF6B35),
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) {
+            setState(() => _hasWifi = value);
+          },
+        ),
+
+        const Divider(),
+        const SizedBox(height: 8),
+        const Text(
+          'その他の対応',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // バリアフリー
+        SwitchListTile(
+          title: const Text('バリアフリー対応'),
+          value: _isBarrierFree,
+          activeColor: const Color(0xFFFF6B35),
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) {
+            setState(() => _isBarrierFree = value);
+          },
+        ),
+
+        // 子連れ対応
+        SwitchListTile(
+          title: const Text('子連れ対応'),
+          value: _isChildFriendly,
+          activeColor: const Color(0xFFFF6B35),
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) {
+            setState(() => _isChildFriendly = value);
+          },
+        ),
+
+        // ペット同伴可
+        SwitchListTile(
+          title: const Text('ペット同伴可'),
+          value: _isPetFriendly,
+          activeColor: const Color(0xFFFF6B35),
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) {
+            setState(() => _isPetFriendly = value);
+          },
         ),
       ],
     );
