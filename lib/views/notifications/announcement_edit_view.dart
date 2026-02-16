@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/common_header.dart';
 import '../../widgets/dismiss_keyboard.dart';
 
-class CreateAnnouncementView extends StatefulWidget {
-  const CreateAnnouncementView({super.key});
+class AnnouncementEditView extends ConsumerStatefulWidget {
+  final Map<String, dynamic> announcement;
+
+  const AnnouncementEditView({Key? key, required this.announcement}) : super(key: key);
 
   @override
-  State<CreateAnnouncementView> createState() => _CreateAnnouncementViewState();
+  ConsumerState<AnnouncementEditView> createState() => _AnnouncementEditViewState();
 }
 
-class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
+class _AnnouncementEditViewState extends ConsumerState<AnnouncementEditView> {
   final _formKey = GlobalKey<FormState>();
 
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _contentController;
 
-  String _selectedCategory = '一般';
-  String _selectedPriority = '通常';
+  late String _selectedCategory;
+  late String _selectedPriority;
   bool _isLoading = false;
   DateTime? _scheduledDate;
   bool _schedulePublish = false;
-
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final List<String> _categories = [
     '一般',
@@ -43,43 +42,66 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.announcement['title'] ?? '');
+    _contentController = TextEditingController(text: widget.announcement['content'] ?? '');
+    _selectedCategory = widget.announcement['category'] ?? '一般';
+    _selectedPriority = widget.announcement['priority'] ?? '通常';
+
+    // カテゴリ・優先度がリストにない場合はデフォルト値にする
+    if (!_categories.contains(_selectedCategory)) _selectedCategory = '一般';
+    if (!_priorities.contains(_selectedPriority)) _selectedPriority = '通常';
+
+    // 予約投稿の復元
+    final dynamic scheduledDateData = widget.announcement['scheduledDate'];
+    if (scheduledDateData != null) {
+      _schedulePublish = true;
+      if (scheduledDateData is Timestamp) {
+        _scheduledDate = scheduledDateData.toDate();
+      } else if (scheduledDateData is DateTime) {
+        _scheduledDate = scheduledDateData;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
   }
 
-  Future<void> _createAnnouncement() async {
+  Future<void> _updateAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_schedulePublish && _scheduledDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('予約投稿日時を選択してください'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('ユーザーがログインしていません');
-      }
-
-      final notificationId = _firestore.collection('notifications').doc().id;
-
-      await _firestore.collection('notifications').doc(notificationId).set({
-        'notificationId': notificationId,
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(widget.announcement['id'])
+          .update({
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),
         'category': _selectedCategory,
         'priority': _selectedPriority,
-        'createdBy': user.uid,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'isActive': true,
         'isPublished': !_schedulePublish,
         'scheduledDate': _schedulePublish ? Timestamp.fromDate(_scheduledDate!) : null,
         'publishedAt': !_schedulePublish ? FieldValue.serverTimestamp() : null,
-        'readCount': 0,
-        'totalViews': 0,
-        'tags': [],
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
@@ -87,10 +109,18 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('お知らせ作成に失敗しました: $e'),
-            backgroundColor: Colors.red,
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('エラー'),
+            content: Text('お知らせの更新に失敗しました: $e'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }
@@ -106,7 +136,7 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
   Future<void> _selectScheduledDate() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
+      initialDate: _scheduledDate ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -114,7 +144,9 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: _scheduledDate != null
+            ? TimeOfDay.fromDateTime(_scheduledDate!)
+            : TimeOfDay.now(),
       );
 
       if (pickedTime != null) {
@@ -139,7 +171,7 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
         body: SafeArea(
           child: Column(
             children: [
-              const CommonHeader(title: '新規お知らせ作成'),
+              const CommonHeader(title: 'お知らせを編集'),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -199,16 +231,15 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
                         _buildScheduleSection(),
                         const SizedBox(height: 32),
 
-                        // 作成ボタン
+                        // 保存ボタン
                         SizedBox(
                           width: double.infinity,
-                          height: 56,
+                          height: 52,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _createAnnouncement,
+                            onPressed: _isLoading ? null : _updateAnnouncement,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF6B35),
                               foregroundColor: Colors.white,
-                              elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -222,45 +253,16 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : Text(
-                                    _schedulePublish ? 'お知らせを予約投稿' : 'お知らせを即座に公開',
-                                    style: const TextStyle(
-                                      fontSize: 18,
+                                : const Text(
+                                    '保存',
+                                    style: TextStyle(
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 20),
-
-                        // 注意事項
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline,
-                                color: Colors.blue,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'お知らせは全ユーザーに表示されます。内容を十分確認してから公開してください。',
-                                  style: TextStyle(
-                                    color: Colors.blue[700],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -319,10 +321,7 @@ class _CreateAnnouncementViewState extends State<CreateAnnouncementView> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
         ),
       ],

@@ -175,9 +175,17 @@
 - 構成: 種別バッジ、本文、タグ/画像
 - 説明: 通知詳細画面
 
+### AnnouncementManageView (`lib/views/notifications/announcement_manage_view.dart`)
+- 構成: CommonHeader、お知らせ一覧（StreamProvider）、各カードにステータスバッジ・削除ボタン、最下部に新規作成ボタン
+- 説明: お知らせの一覧管理画面
+
 ### CreateAnnouncementView (`lib/views/notifications/create_announcement_view.dart`)
-- 構成: タイトル/本文、カテゴリ/優先度、予約投稿
-- 説明: お知らせ作成画面
+- 構成: CommonHeader、タイトル/本文、カテゴリ/優先度、予約投稿
+- 説明: 新規お知らせ作成画面
+
+### AnnouncementEditView (`lib/views/notifications/announcement_edit_view.dart`)
+- 構成: CommonHeader、タイトル/本文編集、カテゴリ/優先度編集、公開設定編集、保存ボタン
+- 説明: 既存お知らせの編集画面
 
 ## 店舗・ユーザー管理
 
@@ -421,7 +429,9 @@
             │  ├─ プライバシーポリシー（PrivacyPolicyView）
             │  ├─ 利用規約（TermsOfServiceView）
             │  └─ セキュリティポリシー（SecurityPolicyView）
-            └─ お知らせ作成（CreateAnnouncementView）
+            └─ お知らせ管理（AnnouncementManageView）
+               ├─ 新規作成（CreateAnnouncementView）
+               └─ 編集（AnnouncementEditView）
 
 補助・単独遷移
 ├─ 店舗登録情報入力（StoreInfoView）

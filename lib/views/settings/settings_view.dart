@@ -24,7 +24,7 @@ import '../stores/pending_stores_view.dart';
 import '../feedback/feedback_send_view.dart';
 import '../feedback/feedback_manage_view.dart';
 import '../badges/badge_manage_view.dart';
-import '../notifications/create_announcement_view.dart';
+import '../notifications/announcement_manage_view.dart';
 import '../news/news_manage_view.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -369,12 +369,12 @@ class SettingsView extends ConsumerWidget {
                     ),
                     _buildSettingsItem(
                       icon: Icons.announcement,
-                      title: 'お知らせ作成',
-                      subtitle: 'お知らせを作成して配信',
+                      title: 'お知らせ管理',
+                      subtitle: 'お知らせの作成・編集・管理',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const CreateAnnouncementView(),
+                            builder: (context) => const AnnouncementManageView(),
                           ),
                         );
                       },

@@ -52,6 +52,35 @@ final unreadAnnouncementCountProvider = StreamProvider.family<int, String>((ref,
   }
 });
 
+/// お知らせ管理用一覧プロバイダー（全件、作成日降順）
+final announcementManageListProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('notifications')
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'notificationId': data['notificationId'] ?? doc.id,
+          'title': data['title'] ?? 'タイトルなし',
+          'content': data['content'] ?? '内容なし',
+          'category': data['category'] ?? '一般',
+          'priority': data['priority'] ?? '通常',
+          'createdBy': data['createdBy'] ?? '',
+          'createdAt': data['createdAt'],
+          'updatedAt': data['updatedAt'],
+          'isActive': data['isActive'] ?? true,
+          'isPublished': data['isPublished'] ?? false,
+          'scheduledDate': data['scheduledDate'],
+          'publishedAt': data['publishedAt'],
+          'readCount': data['readCount'] ?? 0,
+          'totalViews': data['totalViews'] ?? 0,
+          'tags': data['tags'] ?? <String>[],
+        };
+      }).toList());
+});
+
 class AnnouncementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
