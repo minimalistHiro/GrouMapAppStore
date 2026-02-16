@@ -637,6 +637,11 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildDataSection(WidgetRef ref) {
+    final isAdminOwner = ref.watch(userIsAdminOwnerProvider).maybeWhen(
+      data: (value) => value,
+      orElse: () => false,
+    );
+
     final dataItems = [
       {
         'title': '店舗利用者推移',
@@ -650,14 +655,16 @@ class AnalyticsView extends ConsumerWidget {
         'title': 'クーポン利用者推移',
         'icon': Icons.local_offer_outlined,
       },
-      {
-        'title': '全ユーザー数推移',
-        'icon': Icons.group_outlined,
-      },
-      {
-        'title': 'ランキング',
-        'icon': Icons.emoji_events_outlined,
-      },
+      if (isAdminOwner)
+        {
+          'title': '全ユーザー数推移',
+          'icon': Icons.group_outlined,
+        },
+      if (isAdminOwner)
+        {
+          'title': 'ランキング',
+          'icon': Icons.emoji_events_outlined,
+        },
     ];
 
     return Container(

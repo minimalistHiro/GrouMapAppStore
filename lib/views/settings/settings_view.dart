@@ -78,7 +78,7 @@ class SettingsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOwnerAsync = ref.watch(userIsOwnerProvider);
+    final isAdminOwnerAsync = ref.watch(userIsAdminOwnerProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('設定'),
@@ -266,10 +266,10 @@ class SettingsView extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // オーナー管理セクション（オーナーのみ表示）
-            isOwnerAsync.when(
-              data: (isOwner) {
-                if (!isOwner) {
+            // オーナー管理セクション（管理者オーナーのみ表示）
+            isAdminOwnerAsync.when(
+              data: (isAdminOwner) {
+                if (!isAdminOwner) {
                   return const SizedBox.shrink();
                 }
                 return _buildSection(
