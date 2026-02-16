@@ -180,8 +180,12 @@
 - 説明: 管理対象店舗の切替画面
 
 ### StoreActivationSettingsView (`lib/views/settings/store_activation_settings_view.dart`)
-- 構成: 承認済み店舗の一覧、稼働ON/OFF
+- 構成: 承認済み店舗の一覧、稼働ON/OFFスイッチ、各店舗カードタップで詳細設定へ遷移
 - 説明: 店舗の稼働状態管理画面
+
+### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
+- 構成: 店舗情報カード、5つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -389,6 +393,7 @@
             ├─ オーナー設定（OwnerSettingsView）
             ├─ 店舗切替（StoreSelectionView）
             ├─ 店舗稼働設定（StoreActivationSettingsView）
+            │  └─ 店舗設定詳細（StoreSettingsDetailView）
             ├─ 店舗審査（PendingStoresView）
             │  └─ 店舗詳細（StoreDetailView）
             ├─ ヘルプ・サポート（HelpSupportView）

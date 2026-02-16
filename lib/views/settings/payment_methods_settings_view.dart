@@ -10,7 +10,8 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/error_dialog.dart';
 
 class PaymentMethodsSettingsView extends ConsumerStatefulWidget {
-  const PaymentMethodsSettingsView({Key? key}) : super(key: key);
+  final String? storeId;
+  const PaymentMethodsSettingsView({Key? key, this.storeId}) : super(key: key);
 
   @override
   ConsumerState<PaymentMethodsSettingsView> createState() =>
@@ -54,8 +55,7 @@ class _PaymentMethodsSettingsViewState
         return;
       }
 
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
+      final storeId = widget.storeId ?? ref.read(userStoreIdProvider).when(
         data: (data) => data,
         loading: () => null,
         error: (error, stackTrace) => null,

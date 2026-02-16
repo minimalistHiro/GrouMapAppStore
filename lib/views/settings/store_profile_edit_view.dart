@@ -20,7 +20,8 @@ import 'store_icon_crop_view.dart';
 import '../../utils/icon_image_flow.dart';
 
 class StoreProfileEditView extends ConsumerStatefulWidget {
-  const StoreProfileEditView({Key? key}) : super(key: key);
+  final String? storeId;
+  const StoreProfileEditView({Key? key, this.storeId}) : super(key: key);
 
   @override
   ConsumerState<StoreProfileEditView> createState() => _StoreProfileEditViewState();
@@ -250,8 +251,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
       if (user == null) return;
 
       // 店舗IDを取得
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
+      final storeId = widget.storeId ?? ref.read(userStoreIdProvider).when(
         data: (data) => data,
         loading: () => null,
         error: (error, stackTrace) => null,

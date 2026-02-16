@@ -13,7 +13,8 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/error_dialog.dart';
 
 class InteriorImagesView extends ConsumerStatefulWidget {
-  const InteriorImagesView({Key? key}) : super(key: key);
+  final String? storeId;
+  const InteriorImagesView({Key? key, this.storeId}) : super(key: key);
 
   @override
   ConsumerState<InteriorImagesView> createState() => _InteriorImagesViewState();
@@ -59,8 +60,7 @@ class _InteriorImagesViewState extends ConsumerState<InteriorImagesView> {
         return;
       }
 
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
+      final storeId = widget.storeId ?? ref.read(userStoreIdProvider).when(
         data: (data) => data,
         loading: () => null,
         error: (error, stackTrace) => null,

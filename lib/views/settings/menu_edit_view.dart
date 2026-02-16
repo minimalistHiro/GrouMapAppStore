@@ -12,7 +12,8 @@ import 'menu_item_edit_view.dart';
 class MenuEditView extends ConsumerStatefulWidget {
   static const List<String> menuCategories = ['コース', '料理', 'ドリンク', 'デザート'];
 
-  const MenuEditView({Key? key}) : super(key: key);
+  final String? storeId;
+  const MenuEditView({Key? key, this.storeId}) : super(key: key);
 
   @override
   ConsumerState<MenuEditView> createState() => _MenuEditViewState();
@@ -41,8 +42,7 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
+      final storeId = widget.storeId ?? ref.read(userStoreIdProvider).when(
         data: (data) => data,
         loading: () => null,
         error: (error, stackTrace) => null,

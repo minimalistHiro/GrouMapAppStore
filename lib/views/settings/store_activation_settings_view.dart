@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/common_header.dart';
+import 'store_settings_detail_view.dart';
 
 class StoreActivationSettingsView extends StatefulWidget {
   const StoreActivationSettingsView({Key? key}) : super(key: key);
@@ -142,41 +143,62 @@ class _StoreActivationSettingsViewState extends State<StoreActivationSettingsVie
                 final bool isUpdating = _updatingStoreIds.contains(store.id);
                 final Color baseColor = _getDefaultStoreColor(category);
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
+                return InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => StoreSettingsDetailView(
+                          storeId: store.id,
+                          storeName: name,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                            border: Border.all(
-                              color: baseColor.withOpacity(0.3),
-                              width: 2,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: baseColor.withOpacity(0.3),
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(28),
-                            child: iconImageUrl != null
-                                ? Image.network(
-                                    iconImageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(28),
+                              child: iconImageUrl != null
+                                  ? Image.network(
+                                      iconImageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        color: baseColor.withOpacity(0.1),
+                                        child: Icon(
+                                          _getDefaultStoreIcon(category),
+                                          size: 28,
+                                          color: baseColor,
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
                                       color: baseColor.withOpacity(0.1),
                                       child: Icon(
                                         _getDefaultStoreIcon(category),
@@ -184,70 +206,67 @@ class _StoreActivationSettingsViewState extends State<StoreActivationSettingsVie
                                         color: baseColor,
                                       ),
                                     ),
-                                  )
-                                : Container(
-                                    color: baseColor.withOpacity(0.1),
-                                    child: Icon(
-                                      _getDefaultStoreIcon(category),
-                                      size: 28,
-                                      color: baseColor,
-                                    ),
-                                  ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  category,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                name,
-                                style: const TextStyle(
-                                  fontSize: 16,
+                                'isActive',
+                                style: TextStyle(
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: Colors.grey[600],
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              Switch(
+                                value: isActive,
+                                onChanged: isUpdating
+                                    ? null
+                                    : (value) => _toggleStoreActive(store.id, value),
+                                activeColor: const Color(0xFF2196F3),
+                              ),
                               Text(
-                                category,
+                                isActive ? 'true' : 'false',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isActive ? Colors.green : Colors.grey,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'isActive',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Switch(
-                              value: isActive,
-                              onChanged: isUpdating
-                                  ? null
-                                  : (value) => _toggleStoreActive(store.id, value),
-                              activeColor: const Color(0xFF2196F3),
-                            ),
-                            Text(
-                              isActive ? 'true' : 'false',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.green : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Colors.grey[400],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

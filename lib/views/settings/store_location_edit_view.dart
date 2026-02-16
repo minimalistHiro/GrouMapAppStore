@@ -8,7 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 
 class StoreLocationEditView extends ConsumerStatefulWidget {
-  const StoreLocationEditView({Key? key}) : super(key: key);
+  final String? storeId;
+  const StoreLocationEditView({Key? key, this.storeId}) : super(key: key);
 
   @override
   ConsumerState<StoreLocationEditView> createState() => _StoreLocationEditViewState();
@@ -45,8 +46,7 @@ class _StoreLocationEditViewState extends ConsumerState<StoreLocationEditView> {
       if (user == null) return;
 
       // 店舗IDを取得
-      final userStoreIdAsync = ref.read(userStoreIdProvider);
-      final storeId = userStoreIdAsync.when(
+      final storeId = widget.storeId ?? ref.read(userStoreIdProvider).when(
         data: (data) => data,
         loading: () => null,
         error: (error, stackTrace) => null,
