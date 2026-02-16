@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
+import '../../providers/settings_badge_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'store_profile_edit_view.dart';
 import 'store_location_edit_view.dart';
@@ -303,7 +302,10 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.chat,
                       title: 'ライブチャット',
                       subtitle: 'ユーザーからの問い合わせを確認',
-                      trailing: _buildLiveChatUnreadTrailing(),
+                      badgeCount: ref.watch(unreadLiveChatCountProvider).maybeWhen(
+                        data: (v) => v,
+                        orElse: () => 0,
+                      ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -324,7 +326,22 @@ class SettingsView extends ConsumerWidget {
                         );
                       },
                     ),
-                    _buildPendingStoresItem(context),
+                    _buildSettingsItem(
+                      icon: Icons.storefront,
+                      title: '未承認店舗一覧',
+                      subtitle: '未承認の店舗申請を確認',
+                      badgeCount: ref.watch(pendingStoresCountProvider).maybeWhen(
+                        data: (v) => v,
+                        orElse: () => 0,
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const PendingStoresView(),
+                          ),
+                        );
+                      },
+                    ),
                     _buildSettingsItem(
                       icon: Icons.admin_panel_settings,
                       title: 'オーナー設定',
@@ -422,86 +439,42 @@ class SettingsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildPendingStoresItem(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('stores').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting || snapshot.hasError) {
-          return _buildSettingsItem(
-            icon: Icons.storefront,
-            title: '未承認店舗一覧',
-            subtitle: '未承認の店舗申請を確認',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const PendingStoresView(),
-                ),
-              );
-            },
-          );
-        }
-
-        final stores = snapshot.data?.docs ?? [];
-        int pendingCount = 0;
-
-        for (var doc in stores) {
-          final data = doc.data() as Map<String, dynamic>;
-          final isApproved = data['isApproved'] ?? false;
-          final status = data['approvalStatus'] ?? 'pending';
-          if (!isApproved && status == 'pending') {
-            pendingCount++;
-          }
-        }
-
-        final String badgeText = pendingCount > 99 ? '99+' : pendingCount.toString();
-
-        return _buildSettingsItem(
-          icon: Icons.storefront,
-          title: '未承認店舗一覧',
-          subtitle: '未承認の店舗申請を確認',
-          trailing: pendingCount > 0
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        badgeText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right),
-                  ],
-                )
-              : const Icon(Icons.chevron_right),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const PendingStoresView(),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildSettingsItem({
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
-    Widget? trailing,
+    int badgeCount = 0,
   }) {
+    Widget trailingWidget;
+    if (badgeCount > 0) {
+      final badgeText = badgeCount > 99 ? '99+' : badgeCount.toString();
+      trailingWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              badgeText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right),
+        ],
+      );
+    } else {
+      trailingWidget = const Icon(Icons.chevron_right);
+    }
+
     return ListTile(
       leading: Icon(icon, color: const Color(0xFFFF6B35)),
       title: Text(
@@ -511,61 +484,8 @@ class SettingsView extends ConsumerWidget {
         ),
       ),
       subtitle: Text(subtitle),
-      trailing: trailing ?? const Icon(Icons.chevron_right),
+      trailing: trailingWidget,
       onTap: onTap,
-    );
-  }
-
-  Widget _buildLiveChatUnreadTrailing() {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, authSnapshot) {
-        if (authSnapshot.data == null) {
-          return const Icon(Icons.chevron_right);
-        }
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collectionGroup('messages')
-              .where('senderRole', isEqualTo: 'user')
-              .where('readByOwnerAt', isNull: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return const Icon(Icons.chevron_right);
-            }
-            final totalUnread = snapshot.data?.docs.length ?? 0;
-
-            if (totalUnread <= 0) {
-              return const Icon(Icons.chevron_right);
-            }
-
-            final badgeText = totalUnread > 99 ? '99+' : totalUnread.toString();
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 

@@ -42,3 +42,10 @@ GrouMapの画面作成・編集時に、既定のUI/UXルールを必ず適用�
 - スタンプカードの各スタンプ（5×2グリッド）は以下の仕様で統一する。
   - **取得済みスタンプ**: 店舗のプロフィールアイコン（`iconImageUrl`）を `ClipOval` で円形にクリップし、`SizedBox.expand` + `BoxFit.cover` で隙間なく表示する。アイコン未設定時はカテゴリアイコンにフォールバックする。
   - **未取得スタンプ**: 背景色 `Colors.grey[200]` の円形（`BoxShape.circle`）に、カテゴリアイコン（`Icons.local_cafe` 等）を `Colors.grey` で中央配置する。店舗プロフィール画像は使用しない。`ColorFiltered` や `Opacity` による色の上乗せは行わない。
+- **設定画面のリスト項目と通知バッジ**: 設定画面にリスト項目を追加する際は、必ず通知バッジ対応をセットで行う。以下のルールに従う。
+  - 設定画面の各リスト項目は `_buildSettingsItem()` で生成し、`badgeCount` パラメータ（デフォルト `0`）でバッジ数を制御する。
+  - `badgeCount > 0` のとき、リスト項目の右側に赤い数値バッジ（`padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2)`、`borderRadius: 10`、テキスト `fontSize: 11` 白・太字、99超は `99+` 表示）＋ `chevron_right` アイコンを表示する。`badgeCount == 0` のときは `chevron_right` アイコンのみ。
+  - バッジのカウントソースは `settings_badge_provider.dart` でプロバイダーとして定義する。新しいバッジカウントを追加する場合は、個別の `StreamProvider<int>` を作成し、`settingsTotalBadgeCountProvider` にもカウントを追加する。
+  - `settingsTotalBadgeCountProvider` はユーザーの権限（`isAdminOwner` 等）に応じて、**実際に表示されている項目のバッジ数のみ**を合計する。非表示セクションのバッジは含めない。
+  - 下部タブの「設定」バッジは `settingsTotalBadgeCountProvider` の値が `1` 以上の場合のみ赤丸を表示する（数値なし）。
+  - 店舗用: `groumapapp_store/lib/providers/settings_badge_provider.dart`

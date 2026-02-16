@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
+import '../providers/settings_badge_provider.dart';
 import '../providers/store_provider.dart';
 import '../providers/coupon_provider.dart';
 import '../providers/owner_settings_provider.dart';
@@ -694,50 +694,15 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
                 placeholderIndex,
               );
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('stores').snapshots(),
-      builder: (context, snapshot) {
-        final pendingCount = _pendingStoresCount(snapshot.data?.docs);
-        return StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, authSnapshot) {
-            if (authSnapshot.data == null) {
-              final items = _bottomNavItemsWithPlaceholder(
-                bottomTabs,
-                settingsBadgeCount: pendingCount,
-              );
-              return _buildBottomScaffold(
-                currentTab: currentTab,
-                bottomIndex: bottomIndex,
-                items: items,
-              );
-            }
-
-            return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collectionGroup('messages')
-                  .where('senderRole', isEqualTo: 'user')
-                  .where('readByOwnerAt', isNull: true)
-                  .snapshots(),
-              builder: (context, unreadSnapshot) {
-                final unreadCount = unreadSnapshot.hasError
-                    ? 0
-                    : (unreadSnapshot.data?.docs.length ?? 0);
-                final totalBadgeCount = pendingCount + unreadCount;
-                final items = _bottomNavItemsWithPlaceholder(
-                  bottomTabs,
-                  settingsBadgeCount: totalBadgeCount,
-                );
-                return _buildBottomScaffold(
-                  currentTab: currentTab,
-                  bottomIndex: bottomIndex,
-                  items: items,
-                );
-              },
-            );
-          },
-        );
-      },
+    final settingsBadgeCount = ref.watch(settingsTotalBadgeCountProvider);
+    final items = _bottomNavItemsWithPlaceholder(
+      bottomTabs,
+      settingsBadgeCount: settingsBadgeCount,
+    );
+    return _buildBottomScaffold(
+      currentTab: currentTab,
+      bottomIndex: bottomIndex,
+      items: items,
     );
   }
 
@@ -781,20 +746,6 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
         items: items,
       ),
     );
-  }
-
-  int _pendingStoresCount(List<QueryDocumentSnapshot<Object?>>? docs) {
-    if (docs == null) return 0;
-    int pendingCount = 0;
-    for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final isApproved = data['isApproved'] ?? false;
-      final status = data['approvalStatus'] ?? 'pending';
-      if (!isApproved && status == 'pending') {
-        pendingCount++;
-      }
-    }
-    return pendingCount;
   }
 
   Widget _buildSettingsNavIcon(int badgeCount) {
