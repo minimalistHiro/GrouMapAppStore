@@ -147,6 +147,20 @@
 - 構成: 投稿編集フォーム、画像追加/削除、保存
 - 説明: 既存投稿の編集画面
 
+## ニュース管理
+
+### NewsManageView (`lib/views/news/news_manage_view.dart`)
+- 構成: CommonHeader、ニュース一覧（StreamProvider）、各カードにステータスバッジ・削除ボタン、最下部に新規作成ボタン
+- 説明: ニュースの一覧管理画面
+
+### NewsCreateView (`lib/views/news/news_create_view.dart`)
+- 構成: CommonHeader、画像選択（1:1比率）、タイトル/テキスト入力、掲載開始日/終了日選択、作成ボタン
+- 説明: 新規ニュース作成画面
+
+### NewsEditView (`lib/views/news/news_edit_view.dart`)
+- 構成: CommonHeader、画像編集（1:1比率）、タイトル/テキスト編集、掲載日編集、保存ボタン
+- 説明: 既存ニュースの編集画面
+
 ## 通知・お知らせ
 
 ### NotificationsView (`lib/views/notifications/notifications_view.dart`)
@@ -390,6 +404,9 @@
             ├─ バッジ管理（BadgeManageView）
             │  ├─ 作成（BadgeCreateView）
             │  └─ 編集（BadgeEditView）
+            ├─ ニュース管理（NewsManageView）
+            │  ├─ 新規作成（NewsCreateView）
+            │  └─ 編集（NewsEditView）
             ├─ オーナー設定（OwnerSettingsView）
             ├─ 店舗切替（StoreSelectionView）
             ├─ 店舗稼働設定（StoreActivationSettingsView）

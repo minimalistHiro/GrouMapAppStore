@@ -25,6 +25,7 @@ import '../feedback/feedback_send_view.dart';
 import '../feedback/feedback_manage_view.dart';
 import '../badges/badge_manage_view.dart';
 import '../notifications/create_announcement_view.dart';
+import '../news/news_manage_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -350,6 +351,18 @@ class SettingsView extends ConsumerWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const OwnerSettingsView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.newspaper,
+                      title: 'ニュース管理',
+                      subtitle: 'ニュースの作成・編集・管理',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const NewsManageView(),
                           ),
                         );
                       },
