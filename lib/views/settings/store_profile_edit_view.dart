@@ -1089,6 +1089,11 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
 
               const SizedBox(height: 24),
 
+              // 座席数セクション
+              _buildSeatingSection(),
+
+              const SizedBox(height: 24),
+
               // 設備・サービスセクション
               _buildFacilityInfoSection(),
 
@@ -1816,28 +1821,24 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     );
   }
 
-  Widget _buildFacilityInfoSection() {
+  Widget _buildSeatingSection() {
     return _buildSection(
-      title: '設備・サービス',
+      title: '座席数',
       children: [
-        // 席数・収容人数
-        const Text(
-          '席数・収容人数',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
         _buildSeatingRow('カウンター席', _counterSeatsController),
         _buildSeatingRow('テーブル席', _tableSeatsController),
         _buildSeatingRow('座敷席', _tatamiSeatsController),
         _buildSeatingRow('テラス席', _terraceSeatsController),
         _buildSeatingRow('個室', _privateRoomSeatsController),
         _buildSeatingRow('ソファー席', _sofaSeatsController),
-        const SizedBox(height: 8),
+      ],
+    );
+  }
 
+  Widget _buildFacilityInfoSection() {
+    return _buildSection(
+      title: '設備・サービス',
+      children: [
         // 駐車場
         const Text(
           '駐車場',
