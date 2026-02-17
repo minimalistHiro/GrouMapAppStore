@@ -1095,6 +1095,76 @@ final allUserTrendNotifierProvider = StateNotifierProvider<AllUserTrendNotifier,
   return AllUserTrendNotifier();
 });
 
+// 全ユーザーログイン数推移の状態管理
+class AllLoginTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  AllLoginTrendNotifier() : super(const AsyncValue.loading());
+
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
+    try {
+      debugPrint('=== AllLoginTrendNotifier START ===');
+
+      state = const AsyncValue.loading();
+
+      final baseDate = anchorDate ?? DateTime.now();
+      final startDate = DateTime(baseDate.year, baseDate.month, 1);
+      final endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+
+      final startKey = _buildDateKey(startDate);
+      final endKey = _buildDateKey(DateTime(baseDate.year, baseDate.month + 1, 1));
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('daily_login_stats')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: startKey)
+          .where(FieldPath.documentId, isLessThan: endKey)
+          .get();
+
+      final Map<String, int> loginsByDate = {};
+      DateTime? earliestDate;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final loginCount = data['loginCount'];
+        final count = loginCount is int ? loginCount
+            : loginCount is num ? loginCount.toInt() : 0;
+        loginsByDate[doc.id] = count;
+
+        final date = DateTime.tryParse(doc.id);
+        if (date != null) {
+          if (earliestDate == null || date.isBefore(earliestDate!)) {
+            earliestDate = date;
+          }
+        }
+      }
+
+      final List<Map<String, dynamic>> result = [];
+      for (var date = startDate;
+          !date.isAfter(endDate);
+          date = date.add(const Duration(days: 1))) {
+        final key = _buildDateKey(date);
+        result.add({
+          'date': key,
+          'loginCount': loginsByDate[key] ?? 0,
+        });
+      }
+
+      debugPrint('=== AllLoginTrendNotifier END: ${result.length} data points ===');
+
+      _minAvailableDate = earliestDate;
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching all login trend data: $e');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+final allLoginTrendNotifierProvider = StateNotifierProvider<AllLoginTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return AllLoginTrendNotifier();
+});
+
 // 全ポイント発行数推移の状態管理
 class TotalPointIssueTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   TotalPointIssueTrendNotifier() : super(const AsyncValue.loading());

@@ -4,52 +4,78 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
 import 'create_coupon_view.dart';
 import 'edit_coupon_view.dart';
 
 class CouponsManageView extends ConsumerStatefulWidget {
-  const CouponsManageView({Key? key}) : super(key: key);
+  final String? targetStoreId;
+  final String? targetStoreName;
+  final bool lockTargetStore;
+
+  const CouponsManageView({
+    Key? key,
+    this.targetStoreId,
+    this.targetStoreName,
+    this.lockTargetStore = false,
+  }) : super(key: key);
 
   @override
   ConsumerState<CouponsManageView> createState() => _CouponsManageViewState();
 }
 
 class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
+  static const Color _accentColor = Color(0xFFFF6B35);
+  static const Color _backgroundColor = Color(0xFFFBF6F2);
+
   String _selectedFilter = 'all';
   final List<String> _filterOptions = ['all', 'active', 'expired', 'inactive'];
+
+  String? _sanitizeStoreName(String? name) {
+    if (name == null) return null;
+    final trimmed = name.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Future<String?> _resolveStoreName(String storeId, {String? fallbackName}) async {
+    final normalizedFallback = _sanitizeStoreName(fallbackName);
+    if (normalizedFallback != null) {
+      return normalizedFallback;
+    }
+    try {
+      final storeDoc =
+          await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+      final storeData = storeDoc.data();
+      return _sanitizeStoreName(storeData?['name'] as String?);
+    } catch (_) {
+      return normalizedFallback;
+    }
+  }
+
+  Future<void> _openCreateCouponView({
+    required String storeId,
+    String? storeName,
+  }) async {
+    final resolvedStoreName =
+        await _resolveStoreName(storeId, fallbackName: storeName);
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CreateCouponView(
+          initialStoreId: storeId,
+          initialStoreName: resolvedStoreName,
+          lockStore: widget.lockTargetStore,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text(
-          'クーポン管理',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF2196F3),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.black),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CreateCouponView(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+      backgroundColor: _backgroundColor,
+      appBar: const CommonHeader(title: 'クーポン管理'),
       body: Consumer(
         builder: (context, ref, child) {
           final user = FirebaseAuth.instance.currentUser;
@@ -67,8 +93,15 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
             );
           }
           
+          final targetStoreId = widget.targetStoreId;
+          if (targetStoreId != null && targetStoreId.isNotEmpty) {
+            return _buildCouponsContent(
+              storeId: targetStoreId,
+              storeName: widget.targetStoreName,
+            );
+          }
+
           final userStoreIdAsync = ref.watch(userStoreIdProvider);
-          
           return userStoreIdAsync.when(
             data: (storeId) {
               if (storeId == null) {
@@ -83,18 +116,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                   ),
                 );
               }
-              
-              return Column(
-                children: [
-                  // フィルター
-                  _buildFilterSection(),
-                  
-                  // クーポン一覧
-                  Expanded(
-                    child: _buildCouponsList(storeId),
-                  ),
-                ],
-              );
+              return _buildCouponsContent(storeId: storeId);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Center(
@@ -106,32 +128,46 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
+  Widget _buildCouponsContent({
+    required String storeId,
+    String? storeName,
+  }) {
+    return Column(
+      children: [
+        _buildCreateCouponButton(
+          storeId: storeId,
+          storeName: storeName,
+        ),
+        _buildFilterSection(),
+        Expanded(
+          child: _buildCouponsList(
+            storeId,
+            storeName: storeName,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFilterSection() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
-          const Icon(Icons.filter_list, color: Colors.grey, size: 20),
+          const Icon(Icons.filter_list, color: _accentColor, size: 20),
           const SizedBox(width: 12),
           const Text(
             'ステータス:',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              color: Colors.black87,
             ),
           ),
           const SizedBox(width: 12),
@@ -140,6 +176,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
               child: DropdownButton<String>(
                 value: _selectedFilter,
                 isExpanded: true,
+                iconEnabledColor: _accentColor,
                 style: const TextStyle(color: Colors.black87),
                 items: _filterOptions.map((String option) {
                   String label;
@@ -179,7 +216,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
-  Widget _buildCouponsList(String storeId) {
+  Widget _buildCouponsList(String storeId, {String? storeName}) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('coupons')
@@ -188,7 +225,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: _accentColor),
+          );
         }
 
         if (snapshot.hasError) {
@@ -245,19 +284,18 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                 const SizedBox(height: 8),
                 const Text('新しいクーポンを作成してみましょう！'),
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreateCouponView(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('新規クーポンを作成'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
-                    foregroundColor: Colors.white,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: CustomButton(
+                    text: '新規クーポンを作成',
+                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                    onPressed: () => _openCreateCouponView(
+                      storeId: storeId,
+                      storeName: storeName,
+                    ),
+                    borderRadius: 12,
+                    height: 48,
+                    backgroundColor: _accentColor,
                   ),
                 ),
               ],
@@ -340,24 +378,18 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: InkWell(
         onTap: () {
-          // クーポン詳細画面に遷移（実装予定）
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('クーポン詳細画面は準備中です')),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => EditCouponView(couponData: coupon),
+            ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -408,17 +440,17 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withOpacity(0.1),
+                      color: _accentColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF2196F3).withOpacity(0.3),
+                        color: _accentColor.withOpacity(0.3),
                       ),
                     ),
                     child: Text(
                       getDiscountText(),
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF2196F3),
+                        color: _accentColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -515,16 +547,6 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => EditCouponView(couponData: coupon),
-                            ),
-                          );
-                        },
-                      ),
-                      IconButton(
                         icon: Icon(
                           isActive ? Icons.pause : Icons.play_arrow,
                           size: 20,
@@ -547,6 +569,26 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCreateCouponButton({
+    required String storeId,
+    String? storeName,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: CustomButton(
+        text: '新規クーポンを作成',
+        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+        onPressed: () => _openCreateCouponView(
+          storeId: storeId,
+          storeName: storeName,
+        ),
+        borderRadius: 12,
+        height: 48,
+        backgroundColor: _accentColor,
       ),
     );
   }

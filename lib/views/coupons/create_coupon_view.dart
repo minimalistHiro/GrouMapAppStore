@@ -11,7 +11,16 @@ import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 
 class CreateCouponView extends ConsumerStatefulWidget {
-  const CreateCouponView({Key? key}) : super(key: key);
+  final String? initialStoreId;
+  final String? initialStoreName;
+  final bool lockStore;
+
+  const CreateCouponView({
+    Key? key,
+    this.initialStoreId,
+    this.initialStoreName,
+    this.lockStore = false,
+  }) : super(key: key);
 
   @override
   ConsumerState<CreateCouponView> createState() => _CreateCouponViewState();
@@ -44,6 +53,25 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
     {'value': 'fixed_amount', 'label': '固定金額（円）'},
     {'value': 'fixed_price', 'label': '固定価格（円）'},
   ];
+
+  String? _sanitizeStoreId(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  String? _sanitizeStoreName(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStoreId = _sanitizeStoreId(widget.initialStoreId);
+    _selectedStoreName = _sanitizeStoreName(widget.initialStoreName) ?? '';
+  }
 
   @override
   void dispose() {
@@ -995,6 +1023,96 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
   Widget _buildStoreDropdown() {
     return Consumer(
       builder: (context, ref, child) {
+        if (widget.lockStore) {
+          final lockedStoreId = _sanitizeStoreId(_selectedStoreId ?? widget.initialStoreId);
+          if (lockedStoreId == null) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Text(
+                '対象店舗が見つかりません',
+                style: TextStyle(color: Colors.red[600]),
+              ),
+            );
+          }
+
+          final lockedStoreAsync = ref.watch(storeDataProvider(lockedStoreId));
+          return lockedStoreAsync.when(
+            data: (storeData) {
+              _selectedStoreId = lockedStoreId;
+              final fetchedStoreName = _sanitizeStoreName(storeData?['name'] as String?);
+              final initialStoreName = _sanitizeStoreName(widget.initialStoreName);
+              _selectedStoreName = fetchedStoreName ?? initialStoreName ?? _selectedStoreName;
+              final displayName =
+                  _selectedStoreName.isNotEmpty ? _selectedStoreName : '店舗名未設定';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '店舗選択 *',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.store, color: Colors.grey[600], size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.lock, color: Colors.grey[600], size: 20),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (error, stackTrace) => Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Text(
+                '店舗情報の取得に失敗しました',
+                style: TextStyle(color: Colors.red[600]),
+              ),
+            ),
+          );
+        }
+
         final userStoreIdAsync = ref.watch(userStoreIdProvider);
         
         return userStoreIdAsync.when(
@@ -1042,7 +1160,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
               data: (storeData) {
                 if (storeData != null) {
                   _selectedStoreId = storeId;
-                  _selectedStoreName = storeData['name'] ?? '店舗名なし';
+                  _selectedStoreName =
+                      _sanitizeStoreName(storeData['name'] as String?) ?? '店舗名なし';
                 }
                 
                 return Column(

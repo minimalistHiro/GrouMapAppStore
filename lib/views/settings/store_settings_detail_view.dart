@@ -7,6 +7,7 @@ import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
 import 'interior_images_view.dart';
 import 'payment_methods_settings_view.dart';
+import '../coupons/coupons_manage_view.dart';
 
 class StoreSettingsDetailView extends ConsumerWidget {
   final String storeId;
@@ -140,6 +141,22 @@ class StoreSettingsDetailView extends ConsumerWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => PaymentMethodsSettingsView(storeId: storeId),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.local_offer,
+                      title: 'クーポン管理',
+                      subtitle: 'この店舗のクーポンを管理',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => CouponsManageView(
+                              targetStoreId: storeId,
+                              targetStoreName: storeName,
+                              lockTargetStore: true,
+                            ),
                           ),
                         );
                       },

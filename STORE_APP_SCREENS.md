@@ -91,6 +91,11 @@
 - 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 全ユーザー推移の表示
 
+### AllLoginTrendView (`lib/views/analytics/all_login_trend_view.dart`)
+- 構成: 日別ログイン数推移グラフ、統計カード（オレンジ統一）
+- 説明: 全ユーザーの日次ログイン数推移の表示（オーナー限定）
+- データソース: Firestore `daily_login_stats` コレクション
+
 ## ポイント・会計
 
 ### PointUsageConfirmationView (`lib/views/points/point_usage_confirmation_view.dart`)
@@ -120,12 +125,12 @@
 ## クーポン・投稿
 
 ### CouponsManageView (`lib/views/coupons/coupons_manage_view.dart`)
-- 構成: フィルター、クーポン一覧、作成導線
-- 説明: クーポン管理（一覧・編集）画面
+- 構成: `CommonHeader`、新規クーポン作成ボタン、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除
+- 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
-- 構成: クーポン基本情報/画像/条件入力、作成ボタン
-- 説明: 新規クーポン作成画面
+- 構成: クーポン基本情報/画像/条件入力、作成ボタン、店舗固定モード時のロック済み店舗表示
+- 説明: 新規クーポン作成画面。店舗設定詳細経由では選択店舗を固定して作成
 
 ### EditCouponView (`lib/views/coupons/edit_coupon_view.dart`)
 - 構成: クーポン編集フォーム、画像更新、保存
@@ -210,8 +215,8 @@
 - 説明: 店舗の稼働状態管理画面
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、5つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面
+- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -388,6 +393,7 @@
          │  ├─ おすすめ表示推移（RecommendationTrendView）
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
+         │  ├─ 全ユーザーログイン数推移（AllLoginTrendView）
          │  └─ ランキング（LeaderboardView）
          │
          ├─ QR（QRScannerView）
@@ -424,6 +430,9 @@
             ├─ 店舗切替（StoreSelectionView）
             ├─ 店舗稼働設定（StoreActivationSettingsView）
             │  └─ 店舗設定詳細（StoreSettingsDetailView）
+            │     └─ クーポン管理（CouponsManageView）
+            │        ├─ 新規作成（CreateCouponView）
+            │        └─ 編集（EditCouponView）
             ├─ 店舗審査（PendingStoresView）
             │  └─ 店舗詳細（StoreDetailView）
             ├─ ヘルプ・サポート（HelpSupportView）

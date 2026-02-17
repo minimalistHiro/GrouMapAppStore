@@ -7,6 +7,7 @@ import 'store_user_trend_view.dart';
 import 'new_customer_trend_view.dart';
 import 'coupon_usage_trend_view.dart';
 import 'all_user_trend_view.dart';
+import 'all_login_trend_view.dart';
 import 'recommendation_trend_view.dart';
 import '../../providers/referral_kpi_provider.dart';
 import '../ranking/leaderboard_view.dart';
@@ -667,6 +668,11 @@ class AnalyticsView extends ConsumerWidget {
         },
       if (isAdminOwner)
         {
+          'title': '全ユーザーログイン数推移',
+          'icon': Icons.login_outlined,
+        },
+      if (isAdminOwner)
+        {
           'title': 'ランキング',
           'icon': Icons.emoji_events_outlined,
         },
@@ -794,6 +800,14 @@ class AnalyticsView extends ConsumerWidget {
           context,
           MaterialPageRoute(
             builder: (context) => const AllUserTrendView(),
+          ),
+        );
+        break;
+      case '全ユーザーログイン数推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AllLoginTrendView(),
           ),
         );
         break;
