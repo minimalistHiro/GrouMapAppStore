@@ -83,6 +83,10 @@
 - 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: クーポン利用者の推移表示
 
+### RecommendationTrendView (`lib/views/analytics/recommendation_trend_view.dart`)
+- 構成: おすすめ表示数推移グラフ、おすすめクリック数推移グラフ、統計カード（オレンジ統一）
+- 説明: デイリーレコメンドにおける店舗の表示回数とクリック回数の推移表示
+
 ### AllUserTrendView (`lib/views/analytics/all_user_trend_view.dart`)
 - 構成: 推移グラフ、統計カード（オレンジ統一）
 - 説明: 全ユーザー推移の表示
@@ -381,6 +385,7 @@
          ├─ 分析（AnalyticsView）
          │  ├─ 新規顧客推移（NewCustomerTrendView）
          │  ├─ クーポン利用者推移（CouponUsageTrendView）
+         │  ├─ おすすめ表示推移（RecommendationTrendView）
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
          │  └─ ランキング（LeaderboardView）

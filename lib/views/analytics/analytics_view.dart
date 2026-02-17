@@ -7,6 +7,7 @@ import 'store_user_trend_view.dart';
 import 'new_customer_trend_view.dart';
 import 'coupon_usage_trend_view.dart';
 import 'all_user_trend_view.dart';
+import 'recommendation_trend_view.dart';
 import '../../providers/referral_kpi_provider.dart';
 import '../ranking/leaderboard_view.dart';
 
@@ -655,6 +656,10 @@ class AnalyticsView extends ConsumerWidget {
         'title': 'クーポン利用者推移',
         'icon': Icons.local_offer_outlined,
       },
+      {
+        'title': 'おすすめ表示推移',
+        'icon': Icons.recommend_outlined,
+      },
       if (isAdminOwner)
         {
           'title': '全ユーザー数推移',
@@ -773,6 +778,14 @@ class AnalyticsView extends ConsumerWidget {
           context,
           MaterialPageRoute(
             builder: (context) => const CouponUsageTrendView(),
+          ),
+        );
+        break;
+      case 'おすすめ表示推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const RecommendationTrendView(),
           ),
         );
         break;
