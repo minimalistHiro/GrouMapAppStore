@@ -302,7 +302,7 @@
 - 説明: 通知設定画面
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
-- 構成: 還元率/キャンペーン/メンテナンス等の設定
+- 構成: 還元率/キャンペーン（友達紹介・店舗紹介・くじ引き）/メンテナンス/バージョン管理の設定
 - 説明: オーナー向けの高度設定画面
 
 ### HelpSupportView (`lib/views/settings/help_support_view.dart`)

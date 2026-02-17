@@ -31,6 +31,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   DateTime? _friendCampaignEndDate;
   DateTime? _storeCampaignStartDate;
   DateTime? _storeCampaignEndDate;
+  DateTime? _lotteryCampaignStartDate;
+  DateTime? _lotteryCampaignEndDate;
   DateTime? _maintenanceStartDate;
   DateTime? _maintenanceEndDate;
   String? _maintenanceStartTime;
@@ -241,6 +243,42 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                 ),
                 const SizedBox(height: 16),
                 _buildSectionCard(
+                  title: 'くじ引きキャンペーン',
+                  subtitle: '開始日と終了日を設定してください',
+                  icon: Icons.casino,
+                  children: [
+                    _buildDatePickerRow(
+                      label: '開始日',
+                      value: _lotteryCampaignStartDate,
+                      onTap: () => _pickDate(
+                        context: context,
+                        initialDate: _lotteryCampaignStartDate,
+                        onSelected: (date) {
+                          setState(() {
+                            _lotteryCampaignStartDate = date;
+                            _hasLocalEdits = true;
+                          });
+                        },
+                      ),
+                    ),
+                    _buildDatePickerRow(
+                      label: '終了日',
+                      value: _lotteryCampaignEndDate,
+                      onTap: () => _pickDate(
+                        context: context,
+                        initialDate: _lotteryCampaignEndDate,
+                        onSelected: (date) {
+                          setState(() {
+                            _lotteryCampaignEndDate = date;
+                            _hasLocalEdits = true;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
                   title: 'メンテナンス時間',
                   subtitle: '開始日/終了日と開始時間/終了時間を設定してください',
                   icon: Icons.build,
@@ -410,6 +448,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           _friendCampaignEndDate = null;
           _storeCampaignStartDate = null;
           _storeCampaignEndDate = null;
+          _lotteryCampaignStartDate = null;
+          _lotteryCampaignEndDate = null;
           _maintenanceStartDate = null;
           _maintenanceEndDate = null;
           _maintenanceStartTime = null;
@@ -443,6 +483,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         _friendCampaignEndDate = settings.friendCampaignEndDate;
         _storeCampaignStartDate = settings.storeCampaignStartDate;
         _storeCampaignEndDate = settings.storeCampaignEndDate;
+        _lotteryCampaignStartDate = settings.lotteryCampaignStartDate;
+        _lotteryCampaignEndDate = settings.lotteryCampaignEndDate;
         _friendCampaignPointsController.text =
             settings.friendCampaignPoints?.toString() ?? '';
         _storeCampaignPointsController.text =
@@ -534,6 +576,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     }
     if (_hasInvalidDateRange(_storeCampaignStartDate, _storeCampaignEndDate)) {
       _showSnackBar(context, '店舗紹介キャンペーンの終了日は開始日以降にしてください');
+      return;
+    }
+    if (_hasInvalidDateRange(_lotteryCampaignStartDate, _lotteryCampaignEndDate)) {
+      _showSnackBar(context, 'くじ引きキャンペーンの終了日は開始日以降にしてください');
       return;
     }
     if (_hasInvalidMaintenanceRange()) {
@@ -644,6 +690,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         storeCampaignStartDate: _storeCampaignStartDate,
         storeCampaignEndDate: _storeCampaignEndDate,
         storeCampaignPoints: storePoints,
+        lotteryCampaignStartDate: _lotteryCampaignStartDate,
+        lotteryCampaignEndDate: _lotteryCampaignEndDate,
         basePointReturnRate: basePointReturnRate,
         levelPointReturnRateRanges:
             levelRateRanges.isEmpty ? null : levelRateRanges,

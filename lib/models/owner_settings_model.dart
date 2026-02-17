@@ -7,6 +7,8 @@ class OwnerSettings {
   final DateTime? storeCampaignStartDate;
   final DateTime? storeCampaignEndDate;
   final int? storeCampaignPoints;
+  final DateTime? lotteryCampaignStartDate;
+  final DateTime? lotteryCampaignEndDate;
   final double? basePointReturnRate;
   final List<LevelPointReturnRateRange>? levelPointReturnRateRanges;
   final DateTime? maintenanceStartDate;
@@ -29,6 +31,8 @@ class OwnerSettings {
     this.storeCampaignStartDate,
     this.storeCampaignEndDate,
     this.storeCampaignPoints,
+    this.lotteryCampaignStartDate,
+    this.lotteryCampaignEndDate,
     this.basePointReturnRate,
     this.levelPointReturnRateRanges,
     this.maintenanceStartDate,
@@ -53,6 +57,8 @@ class OwnerSettings {
       storeCampaignStartDate: _parseDate(data['storeCampaignStartDate']),
       storeCampaignEndDate: _parseDate(data['storeCampaignEndDate']),
       storeCampaignPoints: _parseInt(data['storeCampaignPoints']),
+      lotteryCampaignStartDate: _parseDate(data['lotteryCampaignStartDate']),
+      lotteryCampaignEndDate: _parseDate(data['lotteryCampaignEndDate']),
       basePointReturnRate: _parseDouble(data['basePointReturnRate']),
       levelPointReturnRateRanges: _parseLevelRateRanges(data['levelPointReturnRateRanges']),
       maintenanceStartDate: _parseDate(data['maintenanceStartDate']),
@@ -78,6 +84,8 @@ class OwnerSettings {
       'storeCampaignStartDate': _toTimestamp(storeCampaignStartDate),
       'storeCampaignEndDate': _toTimestamp(storeCampaignEndDate),
       'storeCampaignPoints': storeCampaignPoints,
+      'lotteryCampaignStartDate': _toTimestamp(lotteryCampaignStartDate),
+      'lotteryCampaignEndDate': _toTimestamp(lotteryCampaignEndDate),
       'basePointReturnRate': basePointReturnRate,
       'levelPointReturnRateRanges': _toLevelRateRanges(levelPointReturnRateRanges),
       'maintenanceStartDate': _toTimestamp(maintenanceStartDate),
