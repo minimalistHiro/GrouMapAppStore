@@ -76,6 +76,12 @@ dependencies:
   # Save images to gallery
   image_gallery_saver: ^2.0.3
 
+  # ZIP & file sharing
+  archive: ^3.6.1
+  http: ^1.2.0
+  path_provider: ^2.1.0
+  share_plus: ^10.0.0
+
 dependency_overrides:
   image_gallery_saver:
     path: third_party/image_gallery_saver
