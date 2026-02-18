@@ -336,6 +336,8 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
         return 'スタンプ数';
       case RankingType.totalPayment:
         return '総支払額';
+      case RankingType.coins:
+        return 'コイン';
     }
   }
 
@@ -368,6 +370,8 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
         return '${ranking.stampCount} スタンプ';
       case RankingType.totalPayment:
         return '¥${ranking.totalPayment.toStringAsFixed(0)}';
+      case RankingType.coins:
+        return '${ranking.coins} 枚';
     }
   }
 }

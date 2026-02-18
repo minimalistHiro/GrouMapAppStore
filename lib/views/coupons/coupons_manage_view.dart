@@ -28,6 +28,7 @@ class CouponsManageView extends ConsumerStatefulWidget {
 class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
   static const Color _accentColor = Color(0xFFFF6B35);
   static const Color _backgroundColor = Color(0xFFFBF6F2);
+  static const int _maxCouponsPerStore = 3;
 
   String _selectedFilter = 'all';
   final List<String> _filterOptions = ['all', 'active', 'expired', 'inactive'];
@@ -132,26 +133,39 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     required String storeId,
     String? storeName,
   }) {
-    return Column(
-      children: [
-        _buildCreateCouponButton(
-          storeId: storeId,
-          storeName: storeName,
-        ),
-        _buildFilterSection(),
-        Expanded(
-          child: _buildCouponsList(
-            storeId,
-            storeName: storeName,
-          ),
-        ),
-      ],
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final totalCouponCount = snapshot.data?.docs.length ?? 0;
+        return Column(
+          children: [
+            _buildFilterSection(),
+            Expanded(
+              child: _buildCouponsListFromSnapshot(
+                snapshot: snapshot,
+                storeId: storeId,
+                storeName: storeName,
+                totalCouponCount: totalCouponCount,
+              ),
+            ),
+            _buildCreateCouponButton(
+              storeId: storeId,
+              storeName: storeName,
+              totalCouponCount: totalCouponCount,
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildFilterSection() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -216,102 +230,103 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     );
   }
 
-  Widget _buildCouponsList(String storeId, {String? storeName}) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('coupons')
-          .doc(storeId)
-          .collection('coupons')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: _accentColor),
-          );
-        }
+  Widget _buildCouponsListFromSnapshot({
+    required AsyncSnapshot<QuerySnapshot> snapshot,
+    required String storeId,
+    String? storeName,
+    required int totalCouponCount,
+  }) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(
+        child: CircularProgressIndicator(color: _accentColor),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                const Text('データの取得に失敗しました'),
-                const SizedBox(height: 8),
-                Text('${snapshot.error}'),
-              ],
-            ),
-          );
-        }
+    if (snapshot.hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text('データの取得に失敗しました'),
+            const SizedBox(height: 8),
+            Text('${snapshot.error}'),
+          ],
+        ),
+      );
+    }
 
-        final coupons = snapshot.data?.docs ?? [];
-        
-        // 作成日時で降順ソート
-        coupons.sort((a, b) {
-          final aTime = (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
-          final bTime = (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
-          return bTime.compareTo(aTime);
-        });
-        
-        // フィルター適用
-        List<QueryDocumentSnapshot> filteredCoupons = coupons.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final now = DateTime.now();
-          final validUntil = data['validUntil']?.toDate() ?? now;
-          final isActive = data['isActive'] ?? false;
-          
-          switch (_selectedFilter) {
-            case 'active':
-              return isActive && validUntil.isAfter(now);
-            case 'expired':
-              return validUntil.isBefore(now);
-            case 'inactive':
-              return !isActive;
-            default:
-              return true;
-          }
-        }).toList();
+    final coupons = snapshot.data?.docs ?? [];
 
-        if (filteredCoupons.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.card_giftcard, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('クーポンがありません'),
-                const SizedBox(height: 8),
-                const Text('新しいクーポンを作成してみましょう！'),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: CustomButton(
-                    text: '新規クーポンを作成',
-                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                    onPressed: () => _openCreateCouponView(
-                      storeId: storeId,
-                      storeName: storeName,
-                    ),
-                    borderRadius: 12,
-                    height: 48,
-                    backgroundColor: _accentColor,
+    // 作成日時で降順ソート
+    coupons.sort((a, b) {
+      final aTime = (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
+      final bTime = (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
+      return bTime.compareTo(aTime);
+    });
+
+    // フィルター適用
+    List<QueryDocumentSnapshot> filteredCoupons = coupons.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final now = DateTime.now();
+      final validUntil = data['validUntil']?.toDate() ?? now;
+      final isActive = data['isActive'] ?? false;
+
+      switch (_selectedFilter) {
+        case 'active':
+          return isActive && validUntil.isAfter(now);
+        case 'expired':
+          return validUntil.isBefore(now);
+        case 'inactive':
+          return !isActive;
+        default:
+          return true;
+      }
+    }).toList();
+
+    if (filteredCoupons.isEmpty) {
+      final isLimitReached = totalCouponCount >= _maxCouponsPerStore;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.card_giftcard, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text('クーポンがありません'),
+            const SizedBox(height: 8),
+            Text(isLimitReached
+                ? 'フィルター条件に一致するクーポンがありません'
+                : '新しいクーポンを作成してみましょう！'),
+            if (!isLimitReached) ...[
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: CustomButton(
+                  text: '新規クーポンを作成',
+                  icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                  onPressed: () => _openCreateCouponView(
+                    storeId: storeId,
+                    storeName: storeName,
                   ),
+                  borderRadius: 12,
+                  height: 48,
+                  backgroundColor: _accentColor,
                 ),
-              ],
-            ),
-          );
-        }
+              ),
+            ],
+          ],
+        ),
+      );
+    }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: filteredCoupons.length,
-          itemBuilder: (context, index) {
-            final coupon = filteredCoupons[index];
-            final data = coupon.data() as Map<String, dynamic>;
-            return _buildCouponCard(data, storeId);
-          },
-        );
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filteredCoupons.length,
+      itemBuilder: (context, index) {
+        final coupon = filteredCoupons[index];
+        final data = coupon.data() as Map<String, dynamic>;
+        return _buildCouponCard(data, storeId);
       },
     );
   }
@@ -576,19 +591,47 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
   Widget _buildCreateCouponButton({
     required String storeId,
     String? storeName,
+    required int totalCouponCount,
   }) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: CustomButton(
-        text: '新規クーポンを作成',
-        icon: const Icon(Icons.add, color: Colors.white, size: 18),
-        onPressed: () => _openCreateCouponView(
-          storeId: storeId,
-          storeName: storeName,
-        ),
-        borderRadius: 12,
-        height: 48,
-        backgroundColor: _accentColor,
+    final isLimitReached = totalCouponCount >= _maxCouponsPerStore;
+    return Container(
+      decoration: BoxDecoration(
+        color: _backgroundColor,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isLimitReached)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'クーポンは1店舗あたり最大${_maxCouponsPerStore}枚まで作成できます',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          CustomButton(
+            text: '新規クーポンを作成',
+            icon: Icon(
+              Icons.add,
+              color: isLimitReached ? Colors.grey.shade600 : Colors.white,
+              size: 18,
+            ),
+            onPressed: isLimitReached
+                ? null
+                : () => _openCreateCouponView(
+                      storeId: storeId,
+                      storeName: storeName,
+                    ),
+            borderRadius: 12,
+            height: 48,
+            backgroundColor: isLimitReached ? Colors.grey.shade400 : _accentColor,
+          ),
+        ],
       ),
     );
   }

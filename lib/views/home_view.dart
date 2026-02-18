@@ -1303,56 +1303,73 @@ class HomeView extends ConsumerWidget {
           
           // 新規クーポンを作成
           Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const CreateCouponView(),
-                  ),
-                );
-              },
-              child: Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2196F3), Color(0xFF42A5F5)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2196F3).withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.card_giftcard,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '新規クーポンを作成',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: _buildCouponCreateButton(context, ref, storeId),
           ),
         ],
+      ),
+    );
+  }
+
+  static const int _maxCouponsPerStore = 3;
+
+  Widget _buildCouponCreateButton(BuildContext context, WidgetRef ref, String storeId) {
+    final couponsAsync = ref.watch(storeCouponsProvider(storeId));
+    final totalCount = couponsAsync.valueOrNull?.length ?? 0;
+    final isLimitReached = totalCount >= _maxCouponsPerStore;
+
+    return GestureDetector(
+      onTap: isLimitReached
+          ? null
+          : () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CreateCouponView(),
+                ),
+              );
+            },
+      child: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: isLimitReached
+              ? null
+              : const LinearGradient(
+                  colors: [Color(0xFF2196F3), Color(0xFF42A5F5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          color: isLimitReached ? Colors.grey.shade400 : null,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isLimitReached
+              ? []
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF2196F3).withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.card_giftcard,
+              color: isLimitReached ? Colors.grey.shade600 : Colors.white,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isLimitReached ? 'クーポン上限' : '新規クーポンを作成',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isLimitReached ? Colors.grey.shade600 : Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

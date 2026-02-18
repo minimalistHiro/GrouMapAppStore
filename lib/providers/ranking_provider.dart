@@ -198,6 +198,7 @@ class RankingService {
             badgeCount: badgeCount, // 計算したバッジ数
             stampCount: totalStamps, // 計算した合計値
             totalPayment: (data['paid'] ?? 0).toDouble(), // paidフィールドから取得
+            coins: (data['coins'] as num?)?.toInt() ?? 0, // coinsフィールドから取得
             rank: 0, // 後で設定
             lastUpdated: (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
           ));
@@ -221,9 +222,11 @@ class RankingService {
             return b.stampCount.compareTo(a.stampCount);
           case RankingType.totalPayment:
             return b.totalPayment.compareTo(a.totalPayment);
+          case RankingType.coins:
+            return b.coins.compareTo(a.coins);
         }
       });
-      
+
       // 期間フィルターを適用
       final filteredRankings = _applyPeriodFilterToList(rankings, query.period);
       debugPrint('RankingService: After period filter: ${filteredRankings.length} users');
@@ -288,6 +291,7 @@ class RankingService {
               badgeCount: 0, // Streamでは簡易的に0を設定（サブコレクションから計算が必要）
               stampCount: 0, // Streamでは簡易的に0を設定（サブコレクションから計算が必要）
               totalPayment: (data['paid'] ?? 0).toDouble(), // paidフィールドから取得
+              coins: (data['coins'] as num?)?.toInt() ?? 0, // coinsフィールドから取得
               rank: 0, // 後で設定
               lastUpdated: (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
             ));
@@ -311,9 +315,11 @@ class RankingService {
               return b.stampCount.compareTo(a.stampCount);
             case RankingType.totalPayment:
               return b.totalPayment.compareTo(a.totalPayment);
+            case RankingType.coins:
+              return b.coins.compareTo(a.coins);
           }
         });
-        
+
         // 期間フィルターを適用
         final filteredRankings = _applyPeriodFilterToList(rankings, query.period);
         debugPrint('After period filter: ${filteredRankings.length} users');
@@ -549,6 +555,8 @@ class RankingService {
         return 'stamps'; // 実際にはサブコレクションから計算
       case RankingType.totalPayment:
         return 'paid';
+      case RankingType.coins:
+        return 'coins';
     }
   }
 }

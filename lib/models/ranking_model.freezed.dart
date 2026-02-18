@@ -28,6 +28,7 @@ mixin _$RankingModel {
   int get badgeCount => throw _privateConstructorUsedError;
   int get stampCount => throw _privateConstructorUsedError;
   int get totalPayment => throw _privateConstructorUsedError;
+  int get coins => throw _privateConstructorUsedError;
   DateTime get lastUpdated => throw _privateConstructorUsedError;
   int get rank => throw _privateConstructorUsedError;
   int get previousRank => throw _privateConstructorUsedError;
@@ -58,6 +59,7 @@ abstract class $RankingModelCopyWith<$Res> {
       int badgeCount,
       int stampCount,
       int totalPayment,
+      int coins,
       DateTime lastUpdated,
       int rank,
       int previousRank,
@@ -87,6 +89,7 @@ class _$RankingModelCopyWithImpl<$Res, $Val extends RankingModel>
     Object? badgeCount = null,
     Object? stampCount = null,
     Object? totalPayment = null,
+    Object? coins = null,
     Object? lastUpdated = null,
     Object? rank = null,
     Object? previousRank = null,
@@ -125,6 +128,10 @@ class _$RankingModelCopyWithImpl<$Res, $Val extends RankingModel>
           ? _value.totalPayment
           : totalPayment // ignore: cast_nullable_to_non_nullable
               as int,
+      coins: null == coins
+          ? _value.coins
+          : coins // ignore: cast_nullable_to_non_nullable
+              as int,
       lastUpdated: null == lastUpdated
           ? _value.lastUpdated
           : lastUpdated // ignore: cast_nullable_to_non_nullable
@@ -162,6 +169,7 @@ abstract class _$$RankingModelImplCopyWith<$Res>
       int badgeCount,
       int stampCount,
       int totalPayment,
+      int coins,
       DateTime lastUpdated,
       int rank,
       int previousRank,
@@ -189,6 +197,7 @@ class __$$RankingModelImplCopyWithImpl<$Res>
     Object? badgeCount = null,
     Object? stampCount = null,
     Object? totalPayment = null,
+    Object? coins = null,
     Object? lastUpdated = null,
     Object? rank = null,
     Object? previousRank = null,
@@ -227,6 +236,10 @@ class __$$RankingModelImplCopyWithImpl<$Res>
           ? _value.totalPayment
           : totalPayment // ignore: cast_nullable_to_non_nullable
               as int,
+      coins: null == coins
+          ? _value.coins
+          : coins // ignore: cast_nullable_to_non_nullable
+              as int,
       lastUpdated: null == lastUpdated
           ? _value.lastUpdated
           : lastUpdated // ignore: cast_nullable_to_non_nullable
@@ -259,6 +272,7 @@ class _$RankingModelImpl implements _RankingModel {
       required this.badgeCount,
       required this.stampCount,
       required this.totalPayment,
+      this.coins = 0,
       required this.lastUpdated,
       required this.rank,
       this.previousRank = 0,
@@ -284,6 +298,9 @@ class _$RankingModelImpl implements _RankingModel {
   @override
   final int totalPayment;
   @override
+  @JsonKey()
+  final int coins;
+  @override
   final DateTime lastUpdated;
   @override
   final int rank;
@@ -296,7 +313,7 @@ class _$RankingModelImpl implements _RankingModel {
 
   @override
   String toString() {
-    return 'RankingModel(userId: $userId, displayName: $displayName, photoURL: $photoURL, totalPoints: $totalPoints, currentLevel: $currentLevel, badgeCount: $badgeCount, stampCount: $stampCount, totalPayment: $totalPayment, lastUpdated: $lastUpdated, rank: $rank, previousRank: $previousRank, rankChange: $rankChange)';
+    return 'RankingModel(userId: $userId, displayName: $displayName, photoURL: $photoURL, totalPoints: $totalPoints, currentLevel: $currentLevel, badgeCount: $badgeCount, stampCount: $stampCount, totalPayment: $totalPayment, coins: $coins, lastUpdated: $lastUpdated, rank: $rank, previousRank: $previousRank, rankChange: $rankChange)';
   }
 
   @override
@@ -319,6 +336,7 @@ class _$RankingModelImpl implements _RankingModel {
                 other.stampCount == stampCount) &&
             (identical(other.totalPayment, totalPayment) ||
                 other.totalPayment == totalPayment) &&
+            (identical(other.coins, coins) || other.coins == coins) &&
             (identical(other.lastUpdated, lastUpdated) ||
                 other.lastUpdated == lastUpdated) &&
             (identical(other.rank, rank) || other.rank == rank) &&
@@ -340,6 +358,7 @@ class _$RankingModelImpl implements _RankingModel {
       badgeCount,
       stampCount,
       totalPayment,
+      coins,
       lastUpdated,
       rank,
       previousRank,
@@ -371,6 +390,7 @@ abstract class _RankingModel implements RankingModel {
       required final int badgeCount,
       required final int stampCount,
       required final int totalPayment,
+      final int coins,
       required final DateTime lastUpdated,
       required final int rank,
       final int previousRank,
@@ -395,6 +415,8 @@ abstract class _RankingModel implements RankingModel {
   int get stampCount;
   @override
   int get totalPayment;
+  @override
+  int get coins;
   @override
   DateTime get lastUpdated;
   @override

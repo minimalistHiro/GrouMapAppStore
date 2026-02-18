@@ -45,7 +45,7 @@
 ## ホーム・メインタブ
 
 ### HomeView (`lib/views/home_view.dart`)
-- 構成: 店舗サマリー、QRスキャン導線、投稿/クーポン作成、各管理画面への導線
+- 構成: 店舗サマリー、QRスキャン導線、投稿/クーポン作成（クーポン3枚上限時は非活性）、各管理画面への導線
 - 説明: 店舗のダッシュボード兼ショートカット集約画面
 
 ### AnalyticsView (`lib/views/analytics/analytics_view.dart`)
@@ -125,7 +125,7 @@
 ## クーポン・投稿
 
 ### CouponsManageView (`lib/views/coupons/coupons_manage_view.dart`)
-- 構成: `CommonHeader`、新規クーポン作成ボタン、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除
+- 構成: `CommonHeader`、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除、下部固定の新規クーポン作成ボタン（1店舗あたり最大3枚、上限時は非活性＋制限メッセージ表示）
 - 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
