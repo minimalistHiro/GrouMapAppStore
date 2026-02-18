@@ -53,62 +53,10 @@ final referralKpiProvider = FutureProvider.family<Map<String, dynamic>, String>(
       ? (visitCount / impressionsCount * 100)
       : 0.0;
 
-  final visitEntries = visitsSnapshot.docs.map((doc) => doc.data()).toList();
-  final Map<String, DateTime> referralUsers = {};
-  for (final data in visitEntries) {
-    final userId = data['userId'] as String?;
-    if (userId == null) continue;
-    final visitAt = _parseTimestamp(data['visitAt']) ?? _parseTimestamp(data['firstPointAwardAt']);
-    if (visitAt == null) continue;
-    final existing = referralUsers[userId];
-    if (existing == null || visitAt.isBefore(existing)) {
-      referralUsers[userId] = visitAt;
-    }
-  }
-
-  int referralRevenue = 0;
-  int referralLtv30 = 0;
-
-  for (final entry in referralUsers.entries) {
-    final userId = entry.key;
-    final visitAt = entry.value;
-    final endAt = visitAt.add(const Duration(days: 30));
-    try {
-      final transactionsSnapshot = await firestore
-          .collection('stores')
-          .doc(storeId)
-          .collection('transactions')
-          .where('userId', isEqualTo: userId)
-          .where('createdAt', isGreaterThanOrEqualTo: visitAt)
-          .where('createdAt', isLessThanOrEqualTo: endAt)
-          .orderBy('createdAt')
-          .get();
-
-      int userTotal = 0;
-      int? firstAmount;
-      for (final doc in transactionsSnapshot.docs) {
-        final data = doc.data();
-        final amount = (data['amountYen'] as num?)?.toInt()
-            ?? (data['amount'] as num?)?.toInt()
-            ?? 0;
-        userTotal += amount;
-        firstAmount ??= amount;
-      }
-
-      referralRevenue += firstAmount ?? 0;
-      referralLtv30 += userTotal;
-    } catch (e) {
-      _logFirestoreError('stores/$storeId/transactions', e, storeId);
-      rethrow;
-    }
-  }
-
   return {
     'firstVisits': visitCount,
     'impressions': impressionsCount,
     'visitRate': visitRate,
-    'referralRevenue': referralRevenue,
-    'referralLtv30': referralLtv30,
     'balance': visitCount - outboundCount,
   };
 });
@@ -199,16 +147,6 @@ Future<String> _fetchStoreName(String storeId) async {
   } catch (_) {
     return storeId;
   }
-}
-
-DateTime? _parseTimestamp(dynamic value) {
-  if (value is Timestamp) {
-    return value.toDate();
-  }
-  if (value is DateTime) {
-    return value;
-  }
-  return null;
 }
 
 enum _ReferralRole { inbound, outbound }

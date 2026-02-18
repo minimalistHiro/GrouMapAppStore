@@ -5,7 +5,7 @@
 ## 起動・ナビゲーション
 
 ### MainNavigationView (`lib/views/main_navigation_view.dart`)
-- 構成: ボトムタブ（ホーム/分析/QR/クーポン/設定）、FAB（QR起動）
+- 構成: ボトムタブ（ホーム/分析/設定）
 - 説明: 店舗アプリ全体のタブ切替と初期データ読み込みを担うメインナビゲーション
 
 ### AuthWrapper (`lib/views/auth/auth_wrapper.dart`)
@@ -49,7 +49,7 @@
 - 説明: 店舗のダッシュボード兼ショートカット集約画面
 
 ### AnalyticsView (`lib/views/analytics/analytics_view.dart`)
-- 構成: 店舗ヘッダー、統計カード、KPIセクション、各推移画面への導線
+- 構成: 店舗ヘッダー、統計カード、KPIセクション、クーポン統計（発行クーポン一覧＋各合計使用者数、各クーポンタップで個別利用推移画面へ遷移）、各推移画面への導線
 - 説明: 店舗の分析ダッシュボード
 
 ### QRScannerView (`lib/views/qr/qr_scanner_view.dart`)
@@ -81,7 +81,12 @@
 
 ### CouponUsageTrendView (`lib/views/analytics/coupon_usage_trend_view.dart`)
 - 構成: 推移グラフ、統計カード（オレンジ統一）
-- 説明: クーポン利用者の推移表示
+- 説明: クーポン利用者の推移表示（全クーポン合算）
+
+### IndividualCouponUsageTrendView (`lib/views/analytics/individual_coupon_usage_trend_view.dart`)
+- 構成: 推移グラフ、統計カード（オレンジ統一）
+- 説明: 個別クーポンの利用推移表示。分析画面のクーポン統計セクションから各クーポンをタップして遷移
+- データソース: Firestore `coupons/{storeId}/coupons/{couponId}/usedBy` サブコレクション
 
 ### RecommendationTrendView (`lib/views/analytics/recommendation_trend_view.dart`)
 - 構成: おすすめ表示数推移グラフ、おすすめクリック数推移グラフ、統計カード（オレンジ統一）
@@ -390,18 +395,12 @@
          ├─ 分析（AnalyticsView）
          │  ├─ 新規顧客推移（NewCustomerTrendView）
          │  ├─ クーポン利用者推移（CouponUsageTrendView）
+         │  ├─ 個別クーポン利用推移（IndividualCouponUsageTrendView）
          │  ├─ おすすめ表示推移（RecommendationTrendView）
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
          │  ├─ 全ユーザーログイン数推移（AllLoginTrendView）
          │  └─ ランキング（LeaderboardView）
-         │
-         ├─ QR（QRScannerView）
-         │  └─ 会計・押印フロー（上記と同様）
-         │
-         ├─ クーポン（CouponsView）
-         │  ├─ 投稿タブ（CreatePostView / EditPostView）
-         │  └─ クーポンタブ（CreateCouponView / EditCouponView）
          │
          └─ 設定（SettingsView）
             ├─ 店舗プロフィール（StoreProfileEditView）

@@ -11,6 +11,7 @@ import 'all_login_trend_view.dart';
 import 'recommendation_trend_view.dart';
 import '../../providers/referral_kpi_provider.dart';
 import '../ranking/leaderboard_view.dart';
+import 'individual_coupon_usage_trend_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -479,6 +480,7 @@ class AnalyticsView extends ConsumerWidget {
       itemBuilder: (context, index) {
         final stat = stats[index];
         final subValue = stat['subValue'] as String?;
+        final description = stat['description'] as String?;
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -509,6 +511,16 @@ class AnalyticsView extends ConsumerWidget {
                   ),
                 ],
               ),
+              if (description != null && description.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 stat['value'] as String,
@@ -998,15 +1010,194 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildCouponStatsSection(WidgetRef ref) {
-    return _buildStatsSection(
-      title: 'クーポン統計',
-      icon: Icons.local_offer,
-      stats: [
-        {'label': '発行済みクーポン', 'value': '1,234', 'change': '+25%'},
-        {'label': '使用済みクーポン', 'value': '987', 'change': '+18%'},
-        {'label': '使用率', 'value': '80%', 'change': '+5%'},
-        {'label': '平均割引額', 'value': '¥180', 'change': '+2%'},
-      ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildCouponStatsPlaceholder();
+            }
+            final couponsAsync = ref.watch(storeCouponsProvider(storeId));
+            return couponsAsync.when(
+              data: (coupons) {
+                return _buildCouponStatsCard(context, coupons);
+              },
+              loading: () => _buildCouponStatsPlaceholder(),
+              error: (error, stackTrace) => _buildCouponStatsPlaceholder(),
+            );
+          },
+          loading: () => _buildCouponStatsPlaceholder(),
+          error: (error, stackTrace) => _buildCouponStatsPlaceholder(),
+        );
+      },
+    );
+  }
+
+  Widget _buildCouponStatsPlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_offer, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'クーポン統計',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Center(
+            child: Text(
+              '読込中...',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponStatsCard(BuildContext context, List<Map<String, dynamic>> coupons) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.local_offer, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'クーポン統計',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (coupons.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  '発行中のクーポンはありません',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ),
+            )
+          else
+            ...coupons.map((coupon) {
+              final couponId = coupon['id'] as String?;
+              final title = coupon['title'] ?? 'タイトルなし';
+              final usedCount = coupon['usedCount'] ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  onTap: couponId != null
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => IndividualCouponUsageTrendView(
+                                couponId: couponId,
+                                couponTitle: title,
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFFFCC80),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.confirmation_number,
+                          color: Color(0xFFFF6B35),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '合計使用者数: $usedCount人',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFFF6B35),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
@@ -1069,8 +1260,6 @@ class AnalyticsView extends ConsumerWidget {
     final firstVisits = data['firstVisits'] as int? ?? 0;
     final impressions = data['impressions'] as int? ?? 0;
     final visitRate = data['visitRate'] as double? ?? 0.0;
-    final referralRevenue = data['referralRevenue'] as int? ?? 0;
-    final referralLtv30 = data['referralLtv30'] as int? ?? 0;
     final balance = data['balance'] as int? ?? 0;
 
     final visitRateText = impressions > 0 ? '${visitRate.toStringAsFixed(1)}%' : '-';
@@ -1080,45 +1269,27 @@ class AnalyticsView extends ConsumerWidget {
       {
         'label': '送客起点初回来店数',
         'value': '$firstVisits',
+        'description': 'おすすめ経由で初めて来店した人数',
         'icon': Icons.person_add_alt,
-        'color': Colors.blue,
+        'color': const Color(0xFFFF6B35),
       },
       {
         'label': '送客起点初回来店率',
         'value': visitRateText,
         'subValue': '表示 $impressions 件',
+        'description': 'おすすめ表示→初回来店の転換率',
         'icon': Icons.trending_up,
-        'color': Colors.green,
-      },
-      {
-        'label': '送客経由売上',
-        'value': _formatCurrency(referralRevenue),
-        'icon': Icons.payments_outlined,
-        'color': Colors.orange,
-      },
-      {
-        'label': '送客LTV30',
-        'value': _formatCurrency(referralLtv30),
-        'subValue': '30日合計',
-        'icon': Icons.timeline,
-        'color': Colors.purple,
+        'color': const Color(0xFFFF6B35),
       },
       {
         'label': '送客バランス',
         'value': balanceText,
         'subValue': '受け-送客',
+        'description': '受入来店数と送出来店数の差',
         'icon': Icons.compare_arrows,
-        'color': Colors.teal,
+        'color': const Color(0xFFFF6B35),
       },
     ];
-  }
-
-  String _formatCurrency(int value) {
-    final formatted = value.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
-    return '¥$formatted';
   }
 
   List<Map<String, dynamic>> _buildReferralKpiPlaceholderStats() {
@@ -1126,6 +1297,7 @@ class AnalyticsView extends ConsumerWidget {
       {
         'label': '送客起点初回来店数',
         'value': '-',
+        'description': 'おすすめ経由で初めて来店した人数',
         'icon': Icons.person_add_alt,
         'color': Colors.grey,
       },
@@ -1133,26 +1305,15 @@ class AnalyticsView extends ConsumerWidget {
         'label': '送客起点初回来店率',
         'value': '-',
         'subValue': '表示→来店',
+        'description': 'おすすめ表示→初回来店の転換率',
         'icon': Icons.trending_up,
-        'color': Colors.grey,
-      },
-      {
-        'label': '送客経由売上',
-        'value': '-',
-        'icon': Icons.payments_outlined,
-        'color': Colors.grey,
-      },
-      {
-        'label': '送客LTV30',
-        'value': '-',
-        'subValue': '30日売上',
-        'icon': Icons.timeline,
         'color': Colors.grey,
       },
       {
         'label': '送客バランス',
         'value': '-',
         'subValue': '受け/送客差',
+        'description': '受入来店数と送出来店数の差',
         'icon': Icons.compare_arrows,
         'color': Colors.grey,
       },
@@ -1182,11 +1343,11 @@ class AnalyticsView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.alt_route, color: Color(0xFFFF6B35), size: 24),
-              SizedBox(width: 8),
-              Text(
+              const Icon(Icons.alt_route, color: Color(0xFFFF6B35), size: 24),
+              const SizedBox(width: 8),
+              const Text(
                 '送客KPI',
                 style: TextStyle(
                   fontSize: 18,
@@ -1194,18 +1355,29 @@ class AnalyticsView extends ConsumerWidget {
                   color: Colors.black87,
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B35).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFFF6B35).withOpacity(0.3),
+                  ),
+                ),
+                child: const Text(
+                  '直近30日間',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFF6B35),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            '送客ログの集計が有効になると自動で表示されます。',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
           const SizedBox(height: 16),
-          _buildStatsGrid(stats),
+          _buildStatsGrid(stats, childAspectRatio: 1.2),
           const SizedBox(height: 16),
           _buildRankingSection(
             title: '送客元ランキング',

@@ -359,6 +359,147 @@ final couponUsageTrendNotifierProvider = StateNotifierProvider<CouponUsageTrendN
   return CouponUsageTrendNotifier();
 });
 
+// 個別クーポン利用推移の状態管理
+class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  IndividualCouponUsageTrendNotifier() : super(const AsyncValue.loading());
+
+  DateTime? _minAvailableDate;
+  DateTime? get minAvailableDate => _minAvailableDate;
+
+  Future<void> fetchTrendData(String storeId, String couponId, String period, {DateTime? anchorDate}) async {
+    try {
+      state = const AsyncValue.loading();
+
+      DateTime startDate;
+      DateTime endDate;
+      final baseDate = anchorDate ?? DateTime.now();
+
+      switch (period) {
+        case 'day':
+          startDate = DateTime(baseDate.year, baseDate.month, 1);
+          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          break;
+        case 'week':
+          endDate = baseDate;
+          startDate = endDate.subtract(const Duration(days: 7));
+          break;
+        case 'month':
+          startDate = DateTime(baseDate.year, 1, 1);
+          endDate = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
+          break;
+        case 'year':
+          endDate = baseDate;
+          startDate = DateTime(endDate.year - 1, endDate.month, endDate.day);
+          break;
+        default:
+          endDate = baseDate;
+          startDate = endDate.subtract(const Duration(days: 7));
+      }
+
+      // 対象クーポンのusedByサブコレクションからデータを取得
+      final usedBySnapshot = await FirebaseFirestore.instance
+          .collection('coupons')
+          .doc(storeId)
+          .collection('coupons')
+          .doc(couponId)
+          .collection('usedBy')
+          .get();
+
+      final Map<String, int> groupedData = {};
+      DateTime? earliestDate;
+
+      for (final usedDoc in usedBySnapshot.docs) {
+        final data = usedDoc.data();
+        final usedAt = data['usedAt'];
+        if (usedAt == null) continue;
+
+        DateTime docDate;
+        if (usedAt is Timestamp) {
+          docDate = usedAt.toDate();
+        } else if (usedAt is DateTime) {
+          docDate = usedAt;
+        } else {
+          continue;
+        }
+
+        if (earliestDate == null || docDate.isBefore(earliestDate)) {
+          earliestDate = docDate;
+        }
+
+        final isWithinRange = period == 'day' || period == 'month'
+            ? !docDate.isBefore(startDate) && !docDate.isAfter(endDate)
+            : docDate.isAfter(startDate) && docDate.isBefore(endDate);
+        if (!isWithinRange) continue;
+
+        String groupKey;
+        switch (period) {
+          case 'day':
+          case 'week':
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            break;
+          case 'month':
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
+            break;
+          case 'year':
+            groupKey = '${docDate.year}';
+            break;
+          default:
+            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+        }
+
+        groupedData[groupKey] = (groupedData[groupKey] ?? 0) + 1;
+      }
+
+      final List<Map<String, dynamic>> result;
+      if (period == 'day') {
+        final days = <Map<String, dynamic>>[];
+        for (var date = startDate;
+            !date.isAfter(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          days.add({
+            'date': key,
+            'couponUsageCount': groupedData[key] ?? 0,
+          });
+        }
+        result = days;
+      } else if (period == 'month') {
+        final months = <Map<String, dynamic>>[];
+        final now = DateTime.now();
+        final maxMonth = baseDate.year == now.year ? now.month : 12;
+        for (var month = 1; month <= maxMonth; month++) {
+          final key = '${baseDate.year}-${month.toString().padLeft(2, '0')}';
+          months.add({
+            'date': key,
+            'couponUsageCount': groupedData[key] ?? 0,
+          });
+        }
+        result = months;
+      } else {
+        result = groupedData.entries.map((entry) {
+          return {
+            'date': entry.key,
+            'couponUsageCount': entry.value,
+          };
+        }).toList();
+      }
+
+      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+      _minAvailableDate = earliestDate;
+      state = AsyncValue.data(result);
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching individual coupon usage trend data: $e');
+      state = AsyncValue.error(e, stackTrace);
+    }
+  }
+}
+
+// 個別クーポン利用推移プロバイダー
+final individualCouponUsageTrendNotifierProvider = StateNotifierProvider<IndividualCouponUsageTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  return IndividualCouponUsageTrendNotifier();
+});
+
 // クーポンサービスクラス
 class CouponService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
