@@ -306,8 +306,8 @@
 - 説明: 店舗アイコンのトリミング画面
 
 ### NotificationSettingsView (`lib/views/settings/notification_settings_view.dart`)
-- 構成: 通知方法/内容/時間帯の設定
-- 説明: 通知設定画面
+- 構成: CommonHeader、プッシュ通知セクション（新規来店者/クーポン使用/フィードバック）、メール通知セクション（システム/プロモーション）のCustomSwitchListTileトグル、トグル切替時にFirestore即時保存
+- 説明: 通知設定画面（stores/{storeId}のnotificationSettings・emailNotificationSettingsに保存）
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
 - 構成: 還元率/キャンペーン（友達紹介・店舗紹介・スロット）/メンテナンス/バージョン管理の設定
@@ -352,6 +352,14 @@
 ### PlanContractView (`lib/views/plans/plan_contract_view.dart`)
 - 構成: 現在プラン、プラン一覧、契約情報
 - 説明: プラン・契約情報の表示画面
+
+### AccountDeletionRequestView (`lib/views/account_deletion/account_deletion_request_view.dart`)
+- 構成: 警告ヘッダー、店舗情報表示、退会理由入力、送信ボタン
+- 説明: 店舗オーナーがアカウント削除を申請する画面（ヘルプ・サポートのFAQから遷移）
+
+### AccountDeletionRequestsListView (`lib/views/account_deletion/account_deletion_requests_list_view.dart`)
+- 構成: 統計ヘッダー（未処理/承認済み/拒否件数）、申請一覧（店舗アイコン・店舗名・退会理由・承認ボタン・拒否ボタン）
+- 説明: 管理者がアカウント削除申請を確認・承認・拒否する画面（オーナー管理セクションから遷移）
 
 ---
 
@@ -408,7 +416,6 @@
             │  └─ メニュー項目編集（MenuItemEditView）
             ├─ 店内画像設定（InteriorImagesView）
             ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
-            ├─ QRコード設定（StoreSettingsView）
             ├─ Instagram連携（InstagramSyncView）
             ├─ 通知設定（NotificationSettingsView）
             ├─ プラン・契約情報（PlanContractView）
@@ -430,11 +437,13 @@
             ├─ ヘルプ・サポート（HelpSupportView）
             │  ├─ メールサポート（EmailSupportView）
             │  ├─ 電話サポート（PhoneSupportView）
-            │  └─ ライブチャット（LiveChatUserListView / LiveChatView）
+            │  ├─ ライブチャット（LiveChatUserListView / LiveChatView）
+            │  └─ アカウント削除申請（AccountDeletionRequestView）
             ├─ アプリについて（AppInfoView）
             │  ├─ プライバシーポリシー（PrivacyPolicyView）
             │  ├─ 利用規約（TermsOfServiceView）
             │  └─ セキュリティポリシー（SecurityPolicyView）
+            ├─ アカウント削除申請管理（AccountDeletionRequestsListView）
             └─ お知らせ管理（AnnouncementManageView）
                ├─ 新規作成（CreateAnnouncementView）
                └─ 編集（AnnouncementEditView）

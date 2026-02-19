@@ -6,6 +6,7 @@ import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'email_support_view.dart';
 import 'phone_support_view.dart';
+import '../account_deletion/account_deletion_request_view.dart';
 
 class HelpSupportView extends StatelessWidget {
   const HelpSupportView({Key? key}) : super(key: key);
@@ -29,7 +30,7 @@ class HelpSupportView extends StatelessWidget {
             const SizedBox(height: 24),
             
             // よくある質問セクション
-            _buildFAQSection(),
+            _buildFAQSection(context),
             
             const SizedBox(height: 24),
             
@@ -96,7 +97,7 @@ class HelpSupportView extends StatelessWidget {
     );
   }
 
-  Widget _buildFAQSection() {
+  Widget _buildFAQSection(BuildContext context) {
     final faqs = [
       {
         'question': 'QRコードのスキャンができません',
@@ -127,10 +128,37 @@ class HelpSupportView extends StatelessWidget {
     return _buildSection(
       title: 'よくある質問',
       icon: Icons.quiz,
-      children: faqs.map((faq) => _buildFAQItem(
-        question: faq['question']!,
-        answer: faq['answer']!,
-      )).toList(),
+      children: [
+        ...faqs.map((faq) => _buildFAQItem(
+          question: faq['question']!,
+          answer: faq['answer']!,
+        )).toList(),
+        _buildFAQItemWithWidget(
+          question: 'アカウントを削除したい',
+          answer: '以下のページよりアカウント削除申請をしてください。',
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AccountDeletionRequestView(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text('アカウント削除申請ページへ'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -155,6 +183,40 @@ class HelpSupportView extends StatelessWidget {
               height: 1.4,
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFAQItemWithWidget({
+    required String question,
+    required String answer,
+    required Widget child,
+  }) {
+    return ExpansionTile(
+      title: Text(
+        question,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            answer,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.grey,
+              height: 1.4,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: child,
         ),
       ],
     );

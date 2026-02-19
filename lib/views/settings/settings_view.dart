@@ -7,7 +7,6 @@ import '../../widgets/custom_button.dart';
 import 'store_profile_edit_view.dart';
 import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
-import 'store_settings_view.dart';
 import 'store_selection_view.dart';
 import 'store_activation_settings_view.dart';
 import 'help_support_view.dart';
@@ -25,6 +24,8 @@ import '../feedback/feedback_send_view.dart';
 import '../feedback/feedback_manage_view.dart';
 import '../notifications/announcement_manage_view.dart';
 import '../news/news_manage_view.dart';
+import '../account_deletion/account_deletion_requests_list_view.dart';
+import '../../providers/account_deletion_provider.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -167,18 +168,6 @@ class SettingsView extends ConsumerWidget {
             _buildSection(
               title: 'アプリ設定',
               children: [
-                _buildSettingsItem(
-                  icon: Icons.qr_code,
-                  title: 'QRコード設定',
-                  subtitle: '店舗IDとQR検証設定',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const StoreSettingsView(),
-                      ),
-                    );
-                  },
-                ),
                 _buildSettingsItem(
                   icon: Icons.camera_alt,
                   title: 'Instagram同期',
@@ -366,6 +355,22 @@ class SettingsView extends ConsumerWidget {
                         );
                       },
                     ),
+                    _buildSettingsItem(
+                      icon: Icons.person_remove,
+                      title: 'アカウント削除申請',
+                      subtitle: '店舗のアカウント削除申請を管理',
+                      badgeCount: ref.watch(pendingDeletionRequestsCountProvider).maybeWhen(
+                        data: (v) => v,
+                        orElse: () => 0,
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AccountDeletionRequestsListView(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 );
               },
@@ -383,16 +388,7 @@ class SettingsView extends ConsumerWidget {
               textColor: Colors.white,
             ),
             
-            const SizedBox(height: 16),
-            
-            // 退会ボタン
-            CustomButton(
-              text: 'アカウントを削除（退会）',
-              onPressed: () => _showWithdrawalDialog(context, ref),
-              backgroundColor: Colors.red.shade700,
-              textColor: Colors.white,
-            ),
-            
+
             const SizedBox(height: 20),
           ],
         ),
@@ -829,114 +825,4 @@ class SettingsView extends ConsumerWidget {
     }
   }
 
-  void _showWithdrawalDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.red, size: 24),
-              SizedBox(width: 8),
-              Text('アカウント削除の確認'),
-            ],
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'アカウントを削除すると以下のデータが完全に削除されます：',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 12),
-              Text('• アカウント情報'),
-              Text('• 作成した店舗情報'),
-              Text('• 店舗の統計データ'),
-              Text('• その他すべての関連データ'),
-              SizedBox(height: 12),
-              Text(
-                'この操作は取り消すことができません。',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              SizedBox(height: 12),
-              Text(
-                '本当にアカウントを削除しますか？',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _deleteAccount(context, ref);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('削除する'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    // ローディングダイアログを表示
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('アカウントを削除しています...'),
-            ],
-          ),
-        );
-      },
-    );
-
-    try {
-      await ref.read(authServiceProvider).deleteAccount();
-      
-      // ローディングダイアログを閉じる
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        
-        // 成功メッセージを表示
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('アカウントが正常に削除されました'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      // ローディングダイアログを閉じる
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        
-        // エラーメッセージを表示
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('アカウント削除に失敗しました: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 }

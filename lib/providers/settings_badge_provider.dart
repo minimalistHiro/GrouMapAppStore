@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_provider.dart';
+import 'account_deletion_provider.dart';
 
 // 未承認店舗数プロバイダー
 final pendingStoresCountProvider = StreamProvider<int>((ref) {
@@ -52,6 +53,10 @@ final settingsTotalBadgeCountProvider = Provider<int>((ref) {
       orElse: () => 0,
     );
     total += ref.watch(unreadLiveChatCountProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => 0,
+    );
+    total += ref.watch(pendingDeletionRequestsCountProvider).maybeWhen(
       data: (v) => v,
       orElse: () => 0,
     );
