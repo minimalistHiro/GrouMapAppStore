@@ -23,7 +23,6 @@ import '../auth/login_view.dart';
 import '../stores/pending_stores_view.dart';
 import '../feedback/feedback_send_view.dart';
 import '../feedback/feedback_manage_view.dart';
-import '../badges/badge_manage_view.dart';
 import '../notifications/announcement_manage_view.dart';
 import '../news/news_manage_view.dart';
 
@@ -283,18 +282,6 @@ class SettingsView extends ConsumerWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const FeedbackManageView(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildSettingsItem(
-                      icon: Icons.workspace_premium,
-                      title: 'バッジ管理',
-                      subtitle: 'バッジの作成・編集',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const BadgeManageView(),
                           ),
                         );
                       },

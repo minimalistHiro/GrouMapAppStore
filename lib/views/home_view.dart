@@ -14,6 +14,9 @@ import 'posts/create_post_view.dart';
 import 'coupons/create_coupon_view.dart';
 import 'coupons/coupon_detail_view.dart';
 import 'posts/posts_manage_view.dart';
+import 'posts/store_posts_list_view.dart';
+import 'posts/store_post_detail_view.dart';
+import '../models/post_model.dart';
 import 'coupons/coupons_manage_view.dart';
 import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
@@ -1459,6 +1462,7 @@ class HomeView extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
+                    color: Colors.blue,
                   ),
                 ),
               ),
@@ -1517,9 +1521,9 @@ class HomeView extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Row(
             children: [
-              const Text(
+              Text(
                 '投稿',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1529,7 +1533,7 @@ class HomeView extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const PostsManageView(),
+                      builder: (context) => const StorePostsListView(),
                     ),
                   );
                 },
@@ -1538,6 +1542,7 @@ class HomeView extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
+                    color: Colors.blue,
                   ),
                 ),
               ),
@@ -1547,107 +1552,115 @@ class HomeView extends ConsumerWidget {
         const SizedBox(height: 10),
         SizedBox(
           height: 300,
-          child: ref.watch(storePostsProvider(storeId)).when(
-            data: (posts) {
-              if (posts.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.article, size: 48, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text(
-                        '投稿がありません',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: posts.length,
-                itemBuilder: (context, index) {
-                  final post = posts[index];
-                  return _buildPostPreviewCard(context, post);
-                },
-              );
-            },
-            loading: () => const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    color: Color(0xFFFF6B35),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '投稿を読み込み中...',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            error: (error, _) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '投稿の取得に失敗しました',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'データが存在しない可能性があります',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          child: _buildUnifiedPostsList(context, ref, storeId),
         ),
       ],
     );
   }
 
-  Widget _buildPostPreviewCard(BuildContext context, Map<String, dynamic> post) {
+  Widget _buildUnifiedPostsList(BuildContext context, WidgetRef ref, String storeId) {
+    final postsValue = ref.watch(unifiedStorePostsHomeProvider(storeId));
+
+    return postsValue.when(
+      data: (posts) {
+        if (posts.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.article, size: 48, color: Colors.grey),
+                SizedBox(height: 8),
+                Text(
+                  '投稿がありません',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: posts.length,
+          itemBuilder: (context, index) {
+            final post = posts[index];
+            return _buildUnifiedPostPreviewCard(context, post);
+          },
+        );
+      },
+      loading: () => const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: Color(0xFFFF6B35),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '投稿を読み込み中...',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+      error: (error, _) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 8),
+            const Text(
+              '投稿の取得に失敗しました',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'データが存在しない可能性があります',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedPostPreviewCard(BuildContext context, PostModel post) {
     String formatDate() {
       try {
-        final timestamp = post['createdAt'];
-        if (timestamp == null) return '日付不明';
-
-        final date = timestamp is DateTime ? timestamp : timestamp.toDate();
         final now = DateTime.now();
-        final difference = now.difference(date).inDays;
+        final difference = now.difference(post.createdAt).inDays;
 
         if (difference == 0) return '今日';
         if (difference == 1) return '昨日';
         if (difference < 7) return '${difference}日前';
 
-        return '${date.month}月${date.day}日';
+        return '${post.createdAt.month}月${post.createdAt.day}日';
       } catch (e) {
         return '日付不明';
       }
     }
 
+    final isInstagram = post.source == 'instagram';
+    final badgeColor = isInstagram ? const Color(0xFFE1306C) : const Color(0xFFFF6B35);
+    final badgeText = isInstagram ? 'Instagram' : (post.category ?? 'お知らせ');
+
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('投稿詳細画面は準備中です')),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => StorePostDetailView(post: post),
+          ),
         );
       },
       child: Container(
@@ -1675,12 +1688,11 @@ class HomeView extends ConsumerWidget {
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: post['imageUrls'] != null &&
-                      (post['imageUrls'] as List).isNotEmpty
+              child: post.imageUrls.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(7),
                       child: Image.network(
-                        (post['imageUrls'] as List).first,
+                        post.imageUrls.first,
                         width: 150,
                         height: 150,
                         fit: BoxFit.cover,
@@ -1703,17 +1715,17 @@ class HomeView extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               margin: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withOpacity(0.1),
+                color: badgeColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFFFF6B35).withOpacity(0.3),
+                  color: badgeColor.withOpacity(0.3),
                 ),
               ),
               child: Text(
-                post['category'] ?? 'お知らせ',
-                style: const TextStyle(
+                badgeText,
+                style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFFFF6B35),
+                  color: badgeColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1722,7 +1734,7 @@ class HomeView extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
-                post['title'] ?? 'タイトルなし',
+                post.title.isNotEmpty ? post.title : 'タイトルなし',
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -1737,7 +1749,7 @@ class HomeView extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
-                  post['content'] ?? '',
+                  post.content,
                   style: const TextStyle(
                     fontSize: 9,
                     color: Colors.grey,
@@ -1752,7 +1764,7 @@ class HomeView extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
-                post['storeName'] ?? '店舗名なし',
+                post.storeName ?? '店舗名なし',
                 style: const TextStyle(fontSize: 10),
                 textAlign: TextAlign.center,
                 maxLines: 1,

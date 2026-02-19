@@ -17,6 +17,7 @@ GrouMapプロジェクトの各種マークダウンドキュメントを、直�
 2. 今回の変更に画面の作成や画面の変更等がある場合、`/Users/kanekohiroki/Desktop/groumapapp/USER_APP_SCREENS.md` と `/Users/kanekohiroki/Desktop/groumapapp_store/STORE_APP_SCREENS.md` を修正する。
 3. 今回の変更にサービス内容（機能追加・変更・削除、仕様変更など）に関わる箇所がある場合、`/Users/kanekohiroki/Desktop/groumapapp/SERVICE_FEATURES.md` を追記・修正する。
 4. 今回の変更にビジネスモデル（収益モデル・料金プラン・KPI定義・方針変更・キャンペーン設計など）に関わる箇所がある場合、`/Users/kanekohiroki/Desktop/groumapapp/BUSINESS_MODEL.md` を追記・修正する。
+5. 今回の変更にバッジ関連（バッジの追加・削除・名前変更・獲得条件変更・レア度変更・画像パス変更・獲得処理の実装状況変更など）がある場合、`/Users/kanekohiroki/Desktop/groumapapp/BADGE_LIST.md` を追記・修正する。バッジ定義の正とするソースは `lib/data/badge_definitions.dart` である。
 
 ## 判定ルール
 

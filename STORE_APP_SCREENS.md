@@ -45,7 +45,7 @@
 ## ホーム・メインタブ
 
 ### HomeView (`lib/views/home_view.dart`)
-- 構成: 店舗サマリー、QRスキャン導線、投稿/クーポン作成（クーポン3枚上限時は非活性）、各管理画面への導線
+- 構成: 店舗サマリー、QRスキャン導線、投稿/クーポン作成（クーポン3枚上限時は非活性）、アクティブクーポン横スクロール、投稿セクション（セクションタイトルは「投稿」で統一、Instagram投稿と通常投稿を日付降順で混合表示・最大10件）、各管理画面への導線
 - 説明: 店舗のダッシュボード兼ショートカット集約画面
 
 ### AnalyticsView (`lib/views/analytics/analytics_view.dart`)
@@ -161,6 +161,14 @@
 - 構成: 投稿編集フォーム、画像追加/削除、保存
 - 説明: 既存投稿の編集画面
 
+### StorePostsListView (`lib/views/posts/store_posts_list_view.dart`)
+- 構成: 3列グリッドでInstagram投稿と通常投稿を混合表示（最大51件・日付降順）
+- 説明: 投稿一覧画面（ホーム画面の「全て見る」から遷移）
+
+### StorePostDetailView (`lib/views/posts/store_post_detail_view.dart`)
+- 構成: 画像スライダー、店舗アイコン画像+店舗名+投稿日付、いいね数/閲覧数表示、タイトル/本文、コメント一覧（閲覧専用）
+- 説明: 投稿詳細画面（店舗オーナー向け閲覧専用、店舗アイコンはFirestoreから取得）
+
 ## ニュース管理
 
 ### NewsManageView (`lib/views/news/news_manage_view.dart`)
@@ -230,20 +238,6 @@
 ### PointRequestConfirmationView (`lib/views/user/point_request_confirmation_view.dart`)
 - 構成: 押印確認、承認/拒否、結果表示
 - 説明: スタンプ押印の確認画面
-
-## バッジ
-
-### BadgeManageView (`lib/views/badges/badge_manage_view.dart`)
-- 構成: カテゴリフィルタ、バッジ一覧、作成導線
-- 説明: バッジ管理画面
-
-### BadgeCreateView (`lib/views/badges/badge_create_view.dart`)
-- 構成: タブ（基本情報/条件）、画像、条件設定
-- 説明: バッジ作成画面
-
-### BadgeEditView (`lib/views/badges/badge_edit_view.dart`)
-- 構成: タブ（基本情報/条件）、編集フォーム
-- 説明: バッジ編集画面
 
 ## ランキング・来店
 
@@ -380,6 +374,8 @@
          │  │           └─ 会計案内（PointUsageCheckoutPromptView）
          │  │              └─ 会計入力（StorePaymentView）
          │  │                 └─ 押印確認（PointRequestConfirmationView）
+         │  ├─ 投稿一覧（StorePostsListView）
+         │  │  └─ 投稿詳細（StorePostDetailView）
          │  ├─ 投稿管理（PostsManageView）
          │  │  ├─ 新規投稿（CreatePostView）
          │  │  └─ 投稿編集（EditPostView）
@@ -419,9 +415,6 @@
             ├─ フィードバック送信（FeedbackSendView）
             ├─ フィードバック管理（FeedbackManageView）
             │  └─ 詳細（FeedbackDetailView）
-            ├─ バッジ管理（BadgeManageView）
-            │  ├─ 作成（BadgeCreateView）
-            │  └─ 編集（BadgeEditView）
             ├─ ニュース管理（NewsManageView）
             │  ├─ 新規作成（NewsCreateView）
             │  └─ 編集（NewsEditView）
