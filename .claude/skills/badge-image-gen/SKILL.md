@@ -14,6 +14,7 @@ description: 「バッジを生成して」「バッジ画像を作って」「�
 - 画像生成自体は Nano Banana Pro（Gemini 3 Pro Image）API を使用する。
 - 生成スクリプト: `/Users/kanekohiroki/Desktop/groumapapp/scripts/generate_image.py`
 - バッジ定義一覧: `/Users/kanekohiroki/Desktop/groumapapp/BADGE_LIST.md`
+- 参考画像（デザイン基準）: `/Users/kanekohiroki/Desktop/groumapapp/assets/images/badges/stamps_total_1.png`
 
 ## 手順
 
@@ -37,7 +38,7 @@ description: 「バッジを生成して」「バッジ画像を作って」「�
 4. 以下の**固定テンプレート**を使ってプロンプトを組み立てる:
 
    ```
-   A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: [アイコンの説明]. The icon is embossed on the metal surface in the same metallic tone. Color scheme: [レア度カラー] metallic finish. Japanese text curved along the bottom of the badge reads: '[バッジ名（日本語）]'. Transparent background, no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
+   Generate a badge image matching the style of the attached reference image. A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: [アイコンの説明]. The icon is embossed on the metal surface in the same metallic tone. Color scheme: [レア度カラー] metallic finish. Japanese text curved along the bottom of the badge reads: '[バッジ名（日本語）]'. White background (#FFFFFF), no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
    ```
 
    **変更する箇所は3つだけ**:
@@ -45,14 +46,15 @@ description: 「バッジを生成して」「バッジ画像を作って」「�
    - `[レア度カラー]` → 上記テーブルのカラー指定
    - `[バッジ名（日本語）]` → BADGE_LIST.md に記載されたバッジの「名前」
 
-5. 以下のコマンドで画像を生成する:
+5. 以下のコマンドで画像を生成する（**必ず参考画像を第5引数に指定する**）:
 
    ```bash
-   source ~/.zshrc 2>/dev/null && python3 /Users/kanekohiroki/Desktop/groumapapp/scripts/generate_image.py "プロンプト" "出力パス" "1:1" "1K"
+   source ~/.zshrc 2>/dev/null && python3 /Users/kanekohiroki/Desktop/groumapapp/scripts/generate_image.py "プロンプト" "出力パス" "1:1" "1K" "/Users/kanekohiroki/Desktop/groumapapp/assets/images/badges/stamps_total_1.png"
    ```
 
    - アスペクト比: 常に `1:1`
    - 画像サイズ: 常に `1K`
+   - 参考画像: 常に `assets/images/badges/stamps_total_1.png` を指定（デザイン統一のため必須）
 
 6. 保存先:
    - パス: `assets/images/badges/{badgeId}.png`
@@ -67,19 +69,19 @@ description: 「バッジを生成して」「バッジ画像を作って」「�
 ### common（グレー系）の例
 
 ```
-A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a shield with a checkmark and a small star at the bottom. The icon is embossed on the metal surface in the same metallic tone. Color scheme: silver and gray (#9CA3AF) metallic finish. Japanese text curved along the bottom of the badge reads: 'はじめてのスタンプ'. Transparent background, no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
+Generate a badge image matching the style of the attached reference image. A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a shield with a checkmark and a small star at the bottom. The icon is embossed on the metal surface in the same metallic tone. Color scheme: silver and gray (#9CA3AF) metallic finish. Japanese text curved along the bottom of the badge reads: 'はじめてのスタンプ'. White background (#FFFFFF), no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
 ```
 
 ### rare（ブルー系）の例
 
 ```
-A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a collection of multiple stamps arranged together. The icon is embossed on the metal surface in the same metallic tone. Color scheme: blue (#3B82F6) metallic finish. Japanese text curved along the bottom of the badge reads: 'スタンプハンター'. Transparent background, no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
+Generate a badge image matching the style of the attached reference image. A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a collection of multiple stamps arranged together. The icon is embossed on the metal surface in the same metallic tone. Color scheme: blue (#3B82F6) metallic finish. Japanese text curved along the bottom of the badge reads: 'スタンプハンター'. White background (#FFFFFF), no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
 ```
 
 ### legendary（ゴールド系）の例
 
 ```
-A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a grand crown with radiating light rays. The icon is embossed on the metal surface in the same metallic tone. Color scheme: gold (#F59E0B) metallic finish. Japanese text curved along the bottom of the badge reads: 'スタンプレジェンド'. Transparent background, no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
+Generate a badge image matching the style of the attached reference image. A circular metallic coin-style badge icon for a mobile app achievement system. The badge has a brushed metal texture with a raised outer ring border and an inner recessed circular area. 3D metallic look with subtle shadows and highlights. Center icon: a grand crown with radiating light rays. The icon is embossed on the metal surface in the same metallic tone. Color scheme: gold (#F59E0B) metallic finish. Japanese text curved along the bottom of the badge reads: 'スタンプレジェンド'. White background (#FFFFFF), no drop shadow, no background elements. Clean and consistent style, suitable for a mobile app UI at 512x512px.
 ```
 
 ## 一括生成時の注意
@@ -92,4 +94,5 @@ A circular metallic coin-style badge icon for a mobile app achievement system. T
 
 - `GOOGLE_API_KEY` 環境変数が設定されている必要がある。
 - テンプレートの固定部分は絶対に変更しない（統一感を保つため）。
+- 参考画像（`stamps_total_1.png`）は常にコマンドの第5引数に指定すること。
 - 生成に失敗した場合は、アイコン説明を簡素化して再試行する。

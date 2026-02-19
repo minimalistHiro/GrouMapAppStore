@@ -19,30 +19,19 @@ class CreatePostView extends ConsumerStatefulWidget {
 
 class _CreatePostViewState extends ConsumerState<CreatePostView> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
   final _contentController = TextEditingController();
-  String _selectedCategory = 'お知らせ';
   String? _selectedStoreId;
   String _selectedStoreName = '';
   bool _isLoading = false;
-  
+
   // 写真関連
   final ImagePicker _picker = ImagePicker();
   final FirebaseStorage _storage = FirebaseStorage.instance;
   List<Uint8List> _selectedImages = [];
   final int _maxImages = 5;
-  
-  final List<String> _categories = [
-    'お知らせ',
-    'イベント',
-    'キャンペーン',
-    'メニュー',
-    'その他',
-  ];
 
   @override
   void dispose() {
-    _titleController.dispose();
     _contentController.dispose();
     super.dispose();
   }
@@ -194,21 +183,23 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
         }
       }
       
-      // 店舗のアイコン画像URLを取得
+      // 店舗のアイコン画像URLとジャンルを取得
       String? storeIconImageUrl;
+      String? storeCategory;
       try {
         final storeDoc = await FirebaseFirestore.instance
             .collection('stores')
             .doc(_selectedStoreId)
             .get();
-        
+
         if (storeDoc.exists) {
           final storeData = storeDoc.data()!;
           storeIconImageUrl = storeData['iconImageUrl'];
+          storeCategory = storeData['category'];
         }
       } catch (e) {
         if (kDebugMode) {
-          print('店舗アイコン画像URL取得エラー: $e');
+          print('店舗情報取得エラー: $e');
         }
       }
 
@@ -220,12 +211,13 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
           .doc(postId)
           .set({
         'postId': postId,
-        'title': _titleController.text.trim(),
+        'title': '',
         'content': _contentController.text.trim(),
         'storeId': _selectedStoreId,
         'storeName': _selectedStoreName,
         'storeIconImageUrl': storeIconImageUrl,
-        'category': _selectedCategory,
+        'category': storeCategory ?? '',
+        'storeCategory': storeCategory,
         'createdBy': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -245,12 +237,13 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
           .set({
         'key': '${_selectedStoreId}::$postId',
         'postId': postId,
-        'title': _titleController.text.trim(),
+        'title': '',
         'content': _contentController.text.trim(),
         'storeId': _selectedStoreId,
         'storeName': _selectedStoreName,
         'storeIconImageUrl': storeIconImageUrl,
-        'category': _selectedCategory,
+        'category': storeCategory ?? '',
+        'storeCategory': storeCategory,
         'createdBy': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -290,9 +283,9 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '「${_titleController.text.trim()}」が正常に投稿されました！',
-                    style: const TextStyle(fontSize: 16),
+                  const Text(
+                    '投稿が正常に作成されました！',
+                    style: TextStyle(fontSize: 16),
                   ),
                 ],
               ),
@@ -395,34 +388,10 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
               ),
               
               const SizedBox(height: 24),
-              
-              // カテゴリ
-              _buildCategoryDropdown(),
-              
-              const SizedBox(height: 20),
-              
+
               // 店舗選択
               _buildStoreDropdown(),
-              
-              const SizedBox(height: 20),
-              
-              // タイトル
-              _buildInputField(
-                controller: _titleController,
-                label: 'タイトル *',
-                hint: '例：新メニュー登場！',
-                icon: Icons.title,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'タイトルを入力してください';
-                  }
-                  if (value.trim().length < 3) {
-                    return 'タイトルは3文字以上で入力してください';
-                  }
-                  return null;
-                },
-              ),
-              
+
               const SizedBox(height: 20),
               
               // 写真選択
@@ -891,53 +860,4 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
     );
   }
 
-  Widget _buildCategoryDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'カテゴリ *',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedCategory,
-              isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down),
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-              items: _categories.map((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedCategory = newValue;
-                  });
-                }
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }

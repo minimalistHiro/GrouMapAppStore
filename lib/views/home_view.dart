@@ -1731,30 +1731,17 @@ class HomeView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                post.title.isNotEmpty ? post.title : 'タイトルなし',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 5),
+            // 内容（2行表示）
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
                   post.content,
                   style: const TextStyle(
-                    fontSize: 9,
-                    color: Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
-                  maxLines: 3,
+                  maxLines: 2,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),

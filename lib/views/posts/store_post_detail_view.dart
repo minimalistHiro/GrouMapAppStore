@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/post_model.dart';
 import '../../widgets/common_header.dart';
 
@@ -27,6 +28,11 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
   String? _storeIconUrl;
 
   DocumentReference<Map<String, dynamic>> _postDocRef() {
+    if (_isInstagramPost) {
+      return FirebaseFirestore.instance
+          .collection('public_instagram_posts')
+          .doc(widget.post.id);
+    }
     final storeId = widget.post.storeId;
     if (storeId == null || storeId.isEmpty) {
       throw Exception('storeIdが取得できません');
@@ -45,11 +51,9 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
     _isInstagramPost = widget.post.source == 'instagram';
     _storeIconUrl = widget.post.storeIconImageUrl;
     _loadStoreIcon();
-    if (!_isInstagramPost) {
-      _loadLikeCount();
-      _loadViewCount();
-      _loadComments();
-    }
+    _loadLikeCount();
+    _loadViewCount();
+    _loadComments();
   }
 
   Future<void> _loadStoreIcon() async {
@@ -311,8 +315,7 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
       child: Column(
         children: [
           // 統計情報（いいね数・閲覧数）
-          if (!_isInstagramPost)
-            Padding(
+          Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
@@ -365,10 +368,33 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
                   textAlign: TextAlign.left,
                   style: const TextStyle(fontSize: 14),
                 ),
+
+                // Instagramを開くボタン
+                if (_isInstagramPost && widget.post.permalink != null && widget.post.permalink!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.parse(widget.post.permalink!);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: const Text(
+                        'Instagramを開く',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+
                 const SizedBox(height: 16),
 
-                // コメントセクション（通常投稿のみ）
-                if (!_isInstagramPost) _buildCommentsSection(),
+                // コメントセクション
+                _buildCommentsSection(),
               ],
             ),
           ),
