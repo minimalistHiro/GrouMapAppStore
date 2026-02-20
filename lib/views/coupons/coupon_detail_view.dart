@@ -346,6 +346,7 @@ class _StoreCouponDetailViewState extends State<StoreCouponDetailView> {
   Widget _buildCouponDetails() {
     final usageLimit = (widget.coupon['usageLimit'] as num?)?.toInt() ?? 0;
     final usedCount = (widget.coupon['usedCount'] as num?)?.toInt() ?? 0;
+    final noUsageLimit = widget.coupon['noUsageLimit'] == true;
     final createdAt = _parseDate(widget.coupon['createdAt']);
     final createdAtText = createdAt != null
         ? '${createdAt.year}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.day.toString().padLeft(2, '0')}'
@@ -374,13 +375,15 @@ class _StoreCouponDetailViewState extends State<StoreCouponDetailView> {
               value: _formatValidUntil(),
               valueColor: Colors.red[700]!,
             ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
-              icon: Icons.inventory,
-              label: '残り枚数',
-              value: '${usageLimit - usedCount}枚',
-              valueColor: Colors.green[700]!,
-            ),
+            if (!noUsageLimit) ...[
+              const SizedBox(height: 12),
+              _buildDetailRow(
+                icon: Icons.inventory,
+                label: '残り枚数',
+                value: '${usageLimit - usedCount}枚',
+                valueColor: Colors.green[700]!,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildDetailRow(
               icon: Icons.calendar_today,

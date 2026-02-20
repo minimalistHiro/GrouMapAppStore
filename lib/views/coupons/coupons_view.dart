@@ -1008,13 +1008,14 @@ class CouponsView extends ConsumerWidget {
                     
                     const SizedBox(height: 6),
                     
-                    Text(
-                      '使用: ${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}',
-                      style: const TextStyle(fontSize: 9),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    if (coupon['noUsageLimit'] != true)
+                      Text(
+                        '使用: ${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}',
+                        style: const TextStyle(fontSize: 9),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
@@ -1167,13 +1168,14 @@ class CouponsView extends ConsumerWidget {
                     
                     const SizedBox(height: 6),
                     
-                    Text(
-                      '使用: ${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}',
-                      style: const TextStyle(fontSize: 9),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    if (coupon['noUsageLimit'] != true)
+                      Text(
+                        '使用: ${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}',
+                        style: const TextStyle(fontSize: 9),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
@@ -1233,9 +1235,10 @@ class CouponsView extends ConsumerWidget {
                 Expanded(
                   child: _buildStatItem('閲覧回数', (coupon['viewCount'] ?? 0).toString(), Icons.visibility),
                 ),
-                Expanded(
-                  child: _buildStatItem('残り', '${(coupon['usageLimit'] ?? 0) - (coupon['usedCount'] ?? 0)}', Icons.inventory),
-                ),
+                if (coupon['noUsageLimit'] != true)
+                  Expanded(
+                    child: _buildStatItem('残り', '${(coupon['usageLimit'] ?? 0) - (coupon['usedCount'] ?? 0)}', Icons.inventory),
+                  ),
               ],
             ),
           ],

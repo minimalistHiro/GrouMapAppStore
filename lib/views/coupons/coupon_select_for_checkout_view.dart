@@ -332,7 +332,8 @@ class _CouponSelectForCheckoutViewState
               if (!isNoExpiry && (validUntil == null || !validUntil.isAfter(now))) {
                 return false;
               }
-              if (usedCount >= usageLimit) return false;
+              final noUsageLimitFlag = coupon['noUsageLimit'] == true;
+              if (!noUsageLimitFlag && usedCount >= usageLimit) return false;
               if (usedIds.contains(couponId)) return false;
               return true;
             }).toList();
@@ -356,6 +357,7 @@ class _CouponSelectForCheckoutViewState
                 final usageLimit = _parseInt(coupon['usageLimit']);
                 final usedCount = _parseInt(coupon['usedCount']);
                 final remaining = usageLimit - usedCount;
+                final isNoUsageLimit = coupon['noUsageLimit'] == true;
                 final isSelected = _selectedCouponIds.contains(couponId);
                 final requiredStampCount =
                     _parseInt(coupon['requiredStampCount']);
@@ -444,15 +446,16 @@ class _CouponSelectForCheckoutViewState
                                     const SizedBox(height: 6),
                                     Row(
                                       children: [
-                                        Text(
-                                          '残り$remaining枚',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: needsStamps
-                                                ? Colors.grey[500]
-                                                : Colors.green,
+                                        if (!isNoUsageLimit)
+                                          Text(
+                                            '残り$remaining枚',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: needsStamps
+                                                  ? Colors.grey[500]
+                                                  : Colors.green,
+                                            ),
                                           ),
-                                        ),
                                         const SizedBox(width: 12),
                                         if (validUntil != null)
                                           Text(

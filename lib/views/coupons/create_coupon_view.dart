@@ -41,6 +41,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
   DateTime? _selectedValidUntil;
   int? _selectedRequiredStampCount;
   bool _isNoExpiry = false;
+  bool _isNoUsageLimit = false;
   bool _isLoading = false;
   
   // 写真関連
@@ -245,7 +246,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
         'validUntil': validUntil,
-        'usageLimit': int.parse(_usageLimitController.text),
+        'usageLimit': _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
+        'noUsageLimit': _isNoUsageLimit,
         'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
         'viewCount': 0,
@@ -271,7 +273,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
         'validUntil': validUntil,
-        'usageLimit': int.parse(_usageLimitController.text),
+        'usageLimit': _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
+        'noUsageLimit': _isNoUsageLimit,
         'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
         'viewCount': 0,
@@ -493,26 +496,58 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
               const SizedBox(height: 20),
               
               // 発券枚数
-              _buildInputField(
-                controller: _usageLimitController,
-                label: '発券枚数 *',
-                hint: '例：100',
-                icon: Icons.confirmation_number,
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '発券枚数を入力してください';
-                  }
-                  final intValue = int.tryParse(value);
-                  if (intValue == null) {
-                    return '有効な整数を入力してください';
-                  }
-                  if (intValue <= 0) {
-                    return '1以上の値を入力してください';
-                  }
-                  return null;
-                },
+              Row(
+                children: [
+                  const Text(
+                    '発券枚数',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _isNoUsageLimit,
+                        onChanged: (value) {
+                          setState(() {
+                            _isNoUsageLimit = value ?? false;
+                            if (_isNoUsageLimit) {
+                              _usageLimitController.clear();
+                            }
+                          });
+                        },
+                      ),
+                      const Text('無制限'),
+                    ],
+                  ),
+                ],
               ),
+              const SizedBox(height: 8),
+              if (!_isNoUsageLimit)
+                _buildInputField(
+                  controller: _usageLimitController,
+                  label: '発券枚数 *',
+                  hint: '例：100',
+                  icon: Icons.confirmation_number,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (_isNoUsageLimit) return null;
+                    if (value == null || value.trim().isEmpty) {
+                      return '発券枚数を入力してください';
+                    }
+                    final intValue = int.tryParse(value);
+                    if (intValue == null) {
+                      return '有効な整数を入力してください';
+                    }
+                    if (intValue <= 0) {
+                      return '1以上の値を入力してください';
+                    }
+                    return null;
+                  },
+                ),
               
               const SizedBox(height: 20),
 

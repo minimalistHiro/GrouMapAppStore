@@ -134,15 +134,15 @@
 - 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
-- 構成: クーポン基本情報/画像/条件入力、作成ボタン、店舗固定モード時のロック済み店舗表示
+- 構成: クーポン基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成ボタン、店舗固定モード時のロック済み店舗表示
 - 説明: 新規クーポン作成画面。店舗設定詳細経由では選択店舗を固定して作成
 
 ### EditCouponView (`lib/views/coupons/edit_coupon_view.dart`)
-- 構成: クーポン編集フォーム、画像更新、保存
+- 構成: クーポン編集フォーム、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、画像更新、保存
 - 説明: 既存クーポンの編集画面
 
 ### StoreCouponDetailView (`lib/views/coupons/coupon_detail_view.dart`)
-- 構成: クーポン詳細、期限/特典/注意事項、編集導線
+- 構成: クーポン詳細、期限/特典/注意事項、残り枚数（無制限クーポンの場合は非表示）、編集導線
 - 説明: クーポン詳細表示画面
 
 ### CouponSelectForCheckoutView (`lib/views/coupons/coupon_select_for_checkout_view.dart`)

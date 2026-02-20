@@ -546,15 +546,17 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                   
                   const SizedBox(width: 16),
                   
-                  Icon(Icons.people, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}回使用',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                  if (coupon['noUsageLimit'] != true) ...[
+                    Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}回使用',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
-                  ),
+                  ],
                   
                   const Spacer(),
                   
