@@ -21,6 +21,13 @@ import 'coupons/coupons_manage_view.dart';
 import 'points/points_history_view.dart';
 import 'notifications/notifications_view.dart';
 import 'qr/qr_scanner_view.dart';
+import '../providers/store_profile_completion_provider.dart';
+import 'settings/store_profile_edit_view.dart';
+import 'settings/store_location_edit_view.dart';
+import 'settings/menu_edit_view.dart';
+import 'settings/interior_images_view.dart';
+import 'settings/payment_methods_settings_view.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -144,7 +151,8 @@ class HomeView extends ConsumerWidget {
             if (!isApproved) {
               return _buildApprovalPendingView(context, ref, storeId);
             }
-            return _buildHomeScaffold(context, ref, storeId);
+            final isActive = (storeData?['isActive'] as bool?) ?? false;
+            return _buildHomeScaffold(context, ref, storeId, isActive: isActive);
           },
           loading: () => Scaffold(
             backgroundColor: Colors.grey[50],
@@ -229,7 +237,7 @@ class HomeView extends ConsumerWidget {
     );
   }
 
-  Widget _buildHomeScaffold(BuildContext context, WidgetRef ref, String storeId) {
+  Widget _buildHomeScaffold(BuildContext context, WidgetRef ref, String storeId, {bool isActive = true}) {
     final maintenanceGate = _buildMaintenanceGate(context, ref);
     if (maintenanceGate != null) {
       return maintenanceGate;
@@ -247,22 +255,27 @@ class HomeView extends ConsumerWidget {
               _buildMaintenanceNoticeBar(context, ref),
               
               const SizedBox(height: 24),
-              
-              // QRスキャンボタン
-              _buildQRScanButton(context, ref, storeId),
-              
-              const SizedBox(height: 16),
-              
-              // 新規作成ボタン
-              _buildCreateButtons(context, ref, storeId),
-              
+
+              if (isActive) ...[
+                // QRスキャンボタン
+                _buildQRScanButton(context, ref, storeId),
+
+                const SizedBox(height: 16),
+
+                // 新規作成ボタン
+                _buildCreateButtons(context, ref, storeId),
+              ] else ...[
+                // プロフィール完成度ゲージ
+                _buildProfileCompletionSection(context, ref, storeId),
+              ],
+
               const SizedBox(height: 24),
-              
+
               // 統計カード部分
               _buildStatsCard(context, ref, storeId),
-              
+
               const SizedBox(height: 24),
-              
+
               // その他のコンテンツ
               _buildAdditionalContent(context, ref, storeId),
             ],
@@ -1373,6 +1386,252 @@ class HomeView extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // 5項目の定義
+  static const List<Map<String, dynamic>> _setupSteps = [
+    {'label': '店舗プロフィール', 'icon': Icons.store},
+    {'label': '店舗位置情報', 'icon': Icons.location_on},
+    {'label': 'メニュー', 'icon': Icons.restaurant_menu},
+    {'label': '店内画像', 'icon': Icons.photo_library},
+    {'label': '決済方法', 'icon': Icons.payment},
+  ];
+
+  Widget _navigateToSetupStep(BuildContext context, int stepIndex, String storeId) {
+    switch (stepIndex) {
+      case 0:
+        return StoreProfileEditView(storeId: storeId);
+      case 1:
+        return StoreLocationEditView(storeId: storeId);
+      case 2:
+        return MenuEditView(storeId: storeId);
+      case 3:
+        return InteriorImagesView(storeId: storeId);
+      case 4:
+        return PaymentMethodsSettingsView(storeId: storeId);
+      default:
+        return StoreProfileEditView(storeId: storeId);
+    }
+  }
+
+  Widget _buildProfileCompletionSection(BuildContext context, WidgetRef ref, String storeId) {
+    final completion = ref.watch(storeProfileCompletionProvider(storeId));
+
+    // 全項目完了時にisActiveを自動更新
+    if (completion.isAllComplete) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FirebaseFirestore.instance
+            .collection('stores')
+            .doc(storeId)
+            .update({'isActive': true});
+      });
+    }
+
+    final nextStep = completion.nextIncompleteStep;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFFF6B35).withOpacity(0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // タイトル
+          const Row(
+            children: [
+              Icon(
+                Icons.store,
+                color: Color(0xFFFF6B35),
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                '店舗情報を設定しましょう！',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFF6B35),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // セグメントゲージ
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: List.generate(5, (index) {
+                    final isComplete = completion.getStepComplete(index);
+                    return Expanded(
+                      child: Container(
+                        height: 12,
+                        margin: EdgeInsets.only(
+                          right: index < 4 ? 4 : 0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isComplete
+                              ? const Color(0xFFFF6B35)
+                              : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${completion.completedCount}/5',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFF6B35),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // チェックリスト
+          ...List.generate(5, (index) {
+            final isComplete = completion.getStepComplete(index);
+            final step = _setupSteps[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    isComplete
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: isComplete
+                        ? const Color(0xFF4CAF50)
+                        : Colors.grey.shade400,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    step['icon'] as IconData,
+                    color: isComplete
+                        ? Colors.grey.shade600
+                        : Colors.grey.shade400,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    step['label'] as String,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isComplete
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade800,
+                      fontWeight:
+                          isComplete ? FontWeight.normal : FontWeight.w500,
+                      decoration: isComplete
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          const SizedBox(height: 16),
+
+          // 次の設定ボタン
+          if (nextStep != null)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          _navigateToSetupStep(context, nextStep, storeId),
+                    ),
+                  );
+                },
+                icon: Icon(_setupSteps[nextStep]['icon'] as IconData),
+                label: Text(
+                  '${_setupSteps[nextStep]['label']}を設定する',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6B35),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 2,
+                ),
+              ),
+            ),
+
+          if (completion.isAllComplete)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFFF6B35),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '店舗を公開しています...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFFF6B35),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 12),
+
+          // 説明テキスト
+          Text(
+            'すべて完了すると店舗が公開されます',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1531,3 +1531,91 @@ final todayNewCustomersProvider = StreamProvider.family<int, String>((ref, store
     return Stream.value(0);
   }
 });
+
+// 全来店記録 円グラフ用プロバイダー
+final allVisitPieChartDataProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, storeId) async {
+  try {
+    final transactionsSnapshot = await FirebaseFirestore.instance
+        .collection('stores')
+        .doc(storeId)
+        .collection('transactions')
+        .get();
+
+    final genderCounts = <String, int>{
+      '男性': 0,
+      '女性': 0,
+      'その他': 0,
+      '未設定': 0,
+    };
+
+    final ageGroupCounts = <String, int>{
+      '~19': 0,
+      '20s': 0,
+      '30s': 0,
+      '40s': 0,
+      '50s': 0,
+      '60+': 0,
+      '未設定': 0,
+    };
+
+    final userVisitCounts = <String, int>{};
+
+    for (final doc in transactionsSnapshot.docs) {
+      final data = doc.data();
+      final userId = data['userId'] as String?;
+      if (userId == null) continue;
+
+      // 性別集計
+      final gender = data['userGender'] as String?;
+      if (gender == '男性') {
+        genderCounts['男性'] = genderCounts['男性']! + 1;
+      } else if (gender == '女性') {
+        genderCounts['女性'] = genderCounts['女性']! + 1;
+      } else if (gender == 'その他' || gender == '回答しない') {
+        genderCounts['その他'] = genderCounts['その他']! + 1;
+      } else {
+        genderCounts['未設定'] = genderCounts['未設定']! + 1;
+      }
+
+      // 年齢別集計
+      final ageGroup = data['userAgeGroup'] as String?;
+      if (ageGroup != null && ageGroupCounts.containsKey(ageGroup)) {
+        ageGroupCounts[ageGroup] = ageGroupCounts[ageGroup]! + 1;
+      } else {
+        ageGroupCounts['未設定'] = ageGroupCounts['未設定']! + 1;
+      }
+
+      // ユーザーごとの来店回数集計
+      userVisitCounts[userId] = (userVisitCounts[userId] ?? 0) + 1;
+    }
+
+    // 新規/リピート: ユニークユーザー単位で分類
+    int newUsers = 0;
+    int repeatUsers = 0;
+    for (final count in userVisitCounts.values) {
+      if (count == 1) {
+        newUsers++;
+      } else {
+        repeatUsers++;
+      }
+    }
+
+    return {
+      'gender': genderCounts,
+      'ageGroup': ageGroupCounts,
+      'newRepeat': {
+        '新規': newUsers,
+        'リピート': repeatUsers,
+      },
+      'totalTransactions': transactionsSnapshot.docs.length,
+    };
+  } catch (e) {
+    debugPrint('Error fetching pie chart data: $e');
+    return {
+      'gender': <String, int>{},
+      'ageGroup': <String, int>{},
+      'newRepeat': <String, int>{},
+      'totalTransactions': 0,
+    };
+  }
+});

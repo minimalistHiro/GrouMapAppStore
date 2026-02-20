@@ -60,9 +60,28 @@ description: 「バッジを生成して」「バッジ画像を作って」「�
    - パス: `assets/images/badges/{badgeId}.png`
    - 例: `assets/images/badges/stamps_total_1.png`
 
-7. 生成された画像を Read ツールで表示し、ユーザーに確認してもらう。
+7. **背景透過処理**（rembg / ローカル実行）:
+   生成された画像は白背景のため、rembgで背景を透過する。
 
-8. ユーザーが修正を希望する場合は、アイコン説明のみ調整して再生成する（テンプレートの他の部分は変更しない）。
+   ```python
+   python3 -c "
+   from rembg import remove
+   input_path = 'assets/images/badges/{badgeId}.png'
+   with open(input_path, 'rb') as f:
+       data = f.read()
+   with open(input_path, 'wb') as f:
+       f.write(remove(data))
+   print('Done')
+   "
+   ```
+
+   - `pip install "rembg[cpu]"` が事前にインストールされている必要がある。
+   - ローカル実行のため、APIキー不要・回数制限なし。
+   - 出力先は元ファイルと同じパス（上書き）。
+
+8. 生成された画像を Read ツールで表示し、ユーザーに確認してもらう。
+
+9. ユーザーが修正を希望する場合は、アイコン説明のみ調整して再生成する（テンプレートの他の部分は変更しない）。再生成後は再度手順7の背景透過を実行する。
 
 ## プロンプト具体例
 
@@ -96,3 +115,15 @@ Generate a badge image matching the style of the attached reference image. A cir
 - テンプレートの固定部分は絶対に変更しない（統一感を保つため）。
 - 参考画像（`stamps_total_1.png`）は常にコマンドの第5引数に指定すること。
 - 生成に失敗した場合は、アイコン説明を簡素化して再試行する。
+- 背景透過にはrembg（ローカル実行・無料・無制限）を使用する。`pip install "rembg[cpu]"` が必要。
+
+## 背景一括透過スクリプト
+
+既存バッジの背景を一括で透過処理するスクリプトが用意されている:
+
+```bash
+python3 /Users/kanekohiroki/Desktop/groumapapp/scripts/rembg_batch.py
+```
+
+- 処理済みファイルは元ファイルを上書きする。
+- ローカル実行のため回数制限なし。
