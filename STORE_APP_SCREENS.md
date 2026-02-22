@@ -187,15 +187,15 @@
 ## 通知・お知らせ
 
 ### NotificationsView (`lib/views/notifications/notifications_view.dart`)
-- 構成: タブ（お知らせ/通知）、一覧、空/エラー表示
-- 説明: 通知とお知らせの一覧画面
+- 構成: お知らせと通知を統合した単一リスト（ListTile形式）、未読/既読表示、空/エラー状態
+- 説明: お知らせと個別通知を日時順で統合表示する一覧画面
 
 ### AnnouncementDetailView (`lib/views/notifications/announcement_detail_view.dart`)
 - 構成: カテゴリ/優先度、本文、統計情報
 - 説明: お知らせ詳細画面
 
 ### NotificationDetailView (`lib/views/notifications/notification_detail_view.dart`)
-- 構成: 種別バッジ、本文、タグ/画像
+- 構成: 種別バッジ、日時、タイトル、本文、画像
 - 説明: 通知詳細画面
 
 ### AnnouncementManageView (`lib/views/notifications/announcement_manage_view.dart`)

@@ -36,6 +36,16 @@ final unreadLiveChatCountProvider = StreamProvider<int>((ref) {
       .handleError((_) => 0);
 });
 
+// 未確認フィードバック数プロバイダー
+final pendingFeedbackCountProvider = StreamProvider<int>((ref) {
+  return FirebaseFirestore.instance
+      .collection('feedback')
+      .where('status', isEqualTo: 'pending')
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length)
+      .handleError((_) => 0);
+});
+
 // 設定画面の表示中項目のバッジ合計プロバイダー
 // 新しい設定項目にバッジを追加した場合は、ここにもカウントを追加すること
 final settingsTotalBadgeCountProvider = Provider<int>((ref) {
@@ -57,6 +67,10 @@ final settingsTotalBadgeCountProvider = Provider<int>((ref) {
       orElse: () => 0,
     );
     total += ref.watch(pendingDeletionRequestsCountProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => 0,
+    );
+    total += ref.watch(pendingFeedbackCountProvider).maybeWhen(
       data: (v) => v,
       orElse: () => 0,
     );

@@ -9,6 +9,7 @@ import '../providers/coupon_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/owner_settings_provider.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/stats_card.dart';
 import 'auth/login_view.dart';
 import 'posts/create_post_view.dart';
 import 'coupons/create_coupon_view.dart';
@@ -987,210 +988,85 @@ class HomeView extends ConsumerWidget {
   }
 
   Widget _buildStatsCard(BuildContext context, WidgetRef ref, String storeId) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '今日の統計',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+    return Consumer(
+      builder: (context, ref, child) {
+        final todayStatsAsync = ref.watch(todayStoreStatsProvider(storeId));
+        final todayNewCustomersAsync = ref.watch(todayNewCustomersProvider(storeId));
+        final todayCouponUsageAsync = ref.watch(todayCouponUsageCountProvider(storeId));
+
+        return todayStatsAsync.when(
+          data: (stats) {
+            final visitorCount = stats['visitorCount'] ?? 0;
+
+            return todayNewCustomersAsync.when(
+              data: (newCustomerCount) {
+                return todayCouponUsageAsync.when(
+                  data: (couponUsageCount) {
+                    return _buildDailyStatsCard(
+                      visitorCount.toString(),
+                      newCustomerCount.toString(),
+                      couponUsageCount.toString(),
+                    );
+                  },
+                  loading: () => _buildDailyStatsCard(
+                    visitorCount.toString(),
+                    newCustomerCount.toString(),
+                    '...',
+                  ),
+                  error: (_, __) => _buildDailyStatsCard(
+                    visitorCount.toString(),
+                    newCustomerCount.toString(),
+                    '0',
+                  ),
+                );
+              },
+              loading: () => _buildDailyStatsCard(
+                visitorCount.toString(),
+                '...',
+                '...',
+              ),
+              error: (_, __) => _buildDailyStatsCard(
+                visitorCount.toString(),
+                '0',
+                '0',
+              ),
+            );
+          },
+          loading: () => const CircularProgressIndicator(),
+          error: (_, __) => const Text(
+            '統計情報の取得に失敗しました',
+            style: TextStyle(color: Colors.red),
           ),
-          const SizedBox(height: 16),
-          
-          // 店舗統計情報
-          Consumer(
-            builder: (context, ref, child) {
-              final todayStatsAsync = ref.watch(todayStoreStatsProvider(storeId));
-              final todayNewCustomersAsync = ref.watch(todayNewCustomersProvider(storeId));
-              final todayCouponUsageAsync = ref.watch(todayCouponUsageCountProvider(storeId));
-              
-              return todayStatsAsync.when(
-                data: (stats) {
-                  final visitorCount = stats['visitorCount'] ?? 0;
-                  
-                  return todayNewCustomersAsync.when(
-                    data: (newCustomerCount) {
-                      return todayCouponUsageAsync.when(
-                        data: (couponUsageCount) {
-                          return _buildDailyStatsRow([
-                            {
-                              'label': '今日の来店者',
-                              'value': visitorCount.toString(),
-                              'icon': Icons.people,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '今日の新規顧客',
-                              'value': newCustomerCount.toString(),
-                              'icon': Icons.person_add,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '今日のクーポン使用',
-                              'value': couponUsageCount.toString(),
-                              'icon': Icons.local_offer,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                          ]);
-                        },
-                        loading: () => _buildDailyStatsRow([
-                          {
-                            'label': '今日の来店者',
-                            'value': visitorCount.toString(),
-                            'icon': Icons.people,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                          {
-                            'label': '今日の新規顧客',
-                            'value': newCustomerCount.toString(),
-                            'icon': Icons.person_add,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                          {
-                            'label': '今日のクーポン使用',
-                            'value': '...',
-                            'icon': Icons.local_offer,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                        ]),
-                        error: (_, __) => _buildDailyStatsRow([
-                          {
-                            'label': '今日の来店者',
-                            'value': visitorCount.toString(),
-                            'icon': Icons.people,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                          {
-                            'label': '今日の新規顧客',
-                            'value': newCustomerCount.toString(),
-                            'icon': Icons.person_add,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                          {
-                            'label': '今日のクーポン使用',
-                            'value': '0',
-                            'icon': Icons.local_offer,
-                            'color': const Color(0xFFFF6B35),
-                          },
-                        ]),
-                      );
-                    },
-                    loading: () => _buildDailyStatsRow([
-                      {
-                        'label': '今日の来店者',
-                        'value': visitorCount.toString(),
-                        'icon': Icons.people,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '今日の新規顧客',
-                        'value': '...',
-                        'icon': Icons.person_add,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '今日のクーポン使用',
-                        'value': '...',
-                        'icon': Icons.local_offer,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                    ]),
-                    error: (_, __) => _buildDailyStatsRow([
-                      {
-                        'label': '今日の来店者',
-                        'value': visitorCount.toString(),
-                        'icon': Icons.people,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '今日の新規顧客',
-                        'value': '0',
-                        'icon': Icons.person_add,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '今日のクーポン使用',
-                        'value': '0',
-                        'icon': Icons.local_offer,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                    ]),
-                  );
-                },
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text(
-                  '統計情報の取得に失敗しました',
-                  style: TextStyle(color: Colors.red),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildDailyStatsRow(List<Map<String, dynamic>> stats) {
-    final dividerColor = Colors.grey[200];
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: List.generate(stats.length * 2 - 1, (index) {
-          if (index.isOdd) {
-            return SizedBox(
-              height: 72,
-              child: VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: dividerColor,
-              ),
-            );
-          }
-          final stat = stats[index ~/ 2];
-          final label = stat['label'] as String;
-          final value = stat['value'] as String;
-          final icon = stat['icon'] as IconData;
-          final color = stat['color'] as Color;
-          return Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
+  Widget _buildDailyStatsCard(String visitors, String newCustomers, String couponUsage) {
+    return StatsCard(
+      title: '今日の統計',
+      showShadow: false,
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      items: [
+        StatItem(
+          label: '今日の来店者',
+          value: visitors,
+          icon: Icons.people,
+          color: const Color(0xFFFF6B35),
+        ),
+        StatItem(
+          label: '今日の新規顧客',
+          value: newCustomers,
+          icon: Icons.person_add,
+          color: const Color(0xFFFF6B35),
+        ),
+        StatItem(
+          label: '今日のクーポン使用',
+          value: couponUsage,
+          icon: Icons.local_offer,
+          color: const Color(0xFFFF6B35),
+        ),
+      ],
     );
   }
 

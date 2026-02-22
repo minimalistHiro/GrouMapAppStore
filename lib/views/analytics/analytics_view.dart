@@ -13,6 +13,7 @@ import 'recommendation_trend_view.dart';
 import '../../providers/referral_kpi_provider.dart';
 import '../ranking/leaderboard_view.dart';
 import 'individual_coupon_usage_trend_view.dart';
+import '../../widgets/stats_card.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -257,214 +258,74 @@ class AnalyticsView extends ConsumerWidget {
   }
 
   Widget _buildMonthlyPointStatsCard(WidgetRef ref) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.calendar_month, color: Color(0xFFFF6B35), size: 24),
-              SizedBox(width: 8),
-              Text(
-                '月間来店者数',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Consumer(
-            builder: (context, ref, child) {
-              final storeIdAsync = ref.watch(userStoreIdProvider);
-              
-              return storeIdAsync.when(
-                data: (storeId) {
-                  if (storeId == null) {
-                    return _buildStatsGridPlaceholder(count: 2);
-                  }
-                  
-                  final monthlyStatsAsync = ref.watch(monthlyStatsProvider(storeId));
-                  
-                  return monthlyStatsAsync.when(
-                    data: (monthlyStats) {
-                      final visitorCount = monthlyStats['visitorCount'] ?? 0;
-                      final newCustomers = monthlyStats['newCustomers'] ?? 0;
-                      final monthlyCouponUsageAsync =
-                          ref.watch(monthlyCouponUsageCountProvider(storeId));
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
 
-                      return monthlyCouponUsageAsync.when(
-                        data: (monthlyCouponUsage) {
-                          return _buildMonthlyStatsRow([
-                            {
-                              'label': '月間来店者数',
-                              'value': '$visitorCount',
-                              'icon': Icons.people,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間新規顧客数',
-                              'value': '$newCustomers',
-                              'icon': Icons.person_add,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間クーポン使用者数',
-                              'value': '$monthlyCouponUsage',
-                              'icon': Icons.local_offer,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                          ]);
-                        },
-                        loading: () {
-                          return _buildMonthlyStatsRow([
-                            {
-                              'label': '月間来店者数',
-                              'value': '$visitorCount',
-                              'icon': Icons.people,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間新規顧客数',
-                              'value': '$newCustomers',
-                              'icon': Icons.person_add,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間クーポン使用者数',
-                              'value': '...',
-                              'icon': Icons.local_offer,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                          ]);
-                        },
-                        error: (_, __) {
-                          return _buildMonthlyStatsRow([
-                            {
-                              'label': '月間来店者数',
-                              'value': '$visitorCount',
-                              'icon': Icons.people,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間新規顧客数',
-                              'value': '$newCustomers',
-                              'icon': Icons.person_add,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                            {
-                              'label': '月間クーポン使用者数',
-                              'value': '0',
-                              'icon': Icons.local_offer,
-                              'color': const Color(0xFFFF6B35),
-                            },
-                          ]);
-                        },
-                      );
-                    },
-                    loading: () => _buildMonthlyStatsRow([
-                      {
-                        'label': '月間来店者数',
-                        'value': '...',
-                        'icon': Icons.people,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '月間新規顧客数',
-                        'value': '...',
-                        'icon': Icons.person_add,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '月間クーポン使用者数',
-                        'value': '...',
-                        'icon': Icons.local_offer,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                    ]),
-                    error: (error, stackTrace) => _buildMonthlyStatsRow([
-                      {
-                        'label': '月間来店者数',
-                        'value': '0',
-                        'icon': Icons.people,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '月間新規顧客数',
-                        'value': '0',
-                        'icon': Icons.person_add,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                      {
-                        'label': '月間クーポン使用者数',
-                        'value': '0',
-                        'icon': Icons.local_offer,
-                        'color': const Color(0xFFFF6B35),
-                      },
-                    ]),
-                  );
-                },
-                loading: () => _buildMonthlyStatsRow([
-                  {
-                    'label': '月間来店者数',
-                    'value': '...',
-                    'icon': Icons.people,
-                    'color': const Color(0xFFFF6B35),
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildStatsGridPlaceholder(count: 2);
+            }
+
+            final monthlyStatsAsync = ref.watch(monthlyStatsProvider(storeId));
+
+            return monthlyStatsAsync.when(
+              data: (monthlyStats) {
+                final visitorCount = monthlyStats['visitorCount'] ?? 0;
+                final newCustomers = monthlyStats['newCustomers'] ?? 0;
+                final monthlyCouponUsageAsync =
+                    ref.watch(monthlyCouponUsageCountProvider(storeId));
+
+                return monthlyCouponUsageAsync.when(
+                  data: (monthlyCouponUsage) {
+                    return _buildMonthlyStatsCardWidget(
+                      '$visitorCount', '$newCustomers', '$monthlyCouponUsage',
+                    );
                   },
-                  {
-                    'label': '月間新規顧客数',
-                    'value': '...',
-                    'icon': Icons.person_add,
-                    'color': const Color(0xFFFF6B35),
-                  },
-                  {
-                    'label': '月間クーポン使用者数',
-                    'value': '...',
-                    'icon': Icons.local_offer,
-                    'color': const Color(0xFFFF6B35),
-                  },
-                ]),
-                error: (error, stackTrace) => _buildMonthlyStatsRow([
-                  {
-                    'label': '月間来店者数',
-                    'value': '0',
-                    'icon': Icons.people,
-                    'color': const Color(0xFFFF6B35),
-                  },
-                  {
-                    'label': '月間新規顧客数',
-                    'value': '0',
-                    'icon': Icons.person_add,
-                    'color': const Color(0xFFFF6B35),
-                  },
-                  {
-                    'label': '月間クーポン使用者数',
-                    'value': '0',
-                    'icon': Icons.local_offer,
-                    'color': const Color(0xFFFF6B35),
-                  },
-                ]),
-              );
-            },
-          ),
-        ],
-      ),
+                  loading: () => _buildMonthlyStatsCardWidget(
+                    '$visitorCount', '$newCustomers', '...',
+                  ),
+                  error: (_, __) => _buildMonthlyStatsCardWidget(
+                    '$visitorCount', '$newCustomers', '0',
+                  ),
+                );
+              },
+              loading: () => _buildMonthlyStatsCardWidget('...', '...', '...'),
+              error: (_, __) => _buildMonthlyStatsCardWidget('0', '0', '0'),
+            );
+          },
+          loading: () => _buildMonthlyStatsCardWidget('...', '...', '...'),
+          error: (_, __) => _buildMonthlyStatsCardWidget('0', '0', '0'),
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthlyStatsCardWidget(String visitors, String newCustomers, String couponUsage) {
+    return StatsCard(
+      title: '月間来店者数',
+      titleIcon: Icons.calendar_month,
+      items: [
+        StatItem(
+          label: '月間来店者数',
+          value: visitors,
+          icon: Icons.people,
+          color: const Color(0xFFFF6B35),
+        ),
+        StatItem(
+          label: '月間新規顧客数',
+          value: newCustomers,
+          icon: Icons.person_add,
+          color: const Color(0xFFFF6B35),
+        ),
+        StatItem(
+          label: '月間クーポン使用者数',
+          value: couponUsage,
+          icon: Icons.local_offer,
+          color: const Color(0xFFFF6B35),
+        ),
+      ],
     );
   }
 
@@ -603,58 +464,6 @@ class AnalyticsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildMonthlyStatsRow(List<Map<String, dynamic>> stats) {
-    final dividerColor = Colors.grey[200];
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: List.generate(stats.length * 2 - 1, (index) {
-          if (index.isOdd) {
-            return SizedBox(
-              height: 72,
-              child: VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: dividerColor,
-              ),
-            );
-          }
-          final stat = stats[index ~/ 2];
-          final label = stat['label'] as String;
-          final value = stat['value'] as String;
-          final icon = stat['icon'] as IconData;
-          final color = stat['color'] as Color;
-          return Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
-    );
-  }
 
   Widget _buildDataSection(WidgetRef ref) {
     final isAdminOwner = ref.watch(userIsAdminOwnerProvider).maybeWhen(
@@ -1004,6 +813,7 @@ class AnalyticsView extends ConsumerWidget {
                 height: 140,
                 child: PieChart(
                   PieChartData(
+                    startDegreeOffset: 270,
                     sectionsSpace: 2,
                     centerSpaceRadius: 30,
                     sections: filteredData.entries.map((entry) {

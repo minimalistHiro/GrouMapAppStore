@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common_header.dart';
+import '../../widgets/stats_card.dart';
 
 class TrendStatsConfig {
   const TrendStatsConfig({
@@ -965,43 +966,15 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   }
 
   Widget _buildStatsSectionWithData(List<Map<String, dynamic>> trendData) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.analytics, color: Color(0xFFFF6B35), size: 24),
-              SizedBox(width: 8),
-              Text(
-                '統計情報',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          trendData.isEmpty ? _buildEmptyStats() : _buildStatsCards(trendData),
-        ],
-      ),
-    );
+    if (trendData.isEmpty) {
+      return StatsCard(
+        title: '統計情報',
+        titleIcon: Icons.analytics,
+        items: const [],
+        child: _buildEmptyStats(),
+      );
+    }
+    return _buildStatsCardsAsStatsCard(trendData);
   }
 
   Widget _buildPeriodHeader(String storeId) {
@@ -1128,56 +1101,24 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
   Widget _buildInlineStats(List<Map<String, dynamic>> trendData, String valueKey, ChartStatsConfig config) {
     if (trendData.isEmpty) return const SizedBox.shrink();
 
-    final stats = config.items.map((item) {
+    final items = config.items.map((item) {
       final value = _computeStatValue(item.type, trendData, valueKey);
-      return {
-        'label': item.label,
-        'value': _formatValue(value),
-        'icon': item.icon,
-        'color': item.color,
-      };
+      return StatItem(
+        label: item.label,
+        value: _formatValue(value),
+        icon: item.icon,
+        color: item.color,
+      );
     }).toList();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.analytics, color: Color(0xFFFF6B35), size: 24),
-              SizedBox(width: 8),
-              Text(
-                '統計情報',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildStatsRow(stats),
-        ],
-      ),
+    return StatsCard(
+      title: '統計情報',
+      titleIcon: Icons.analytics,
+      items: items,
     );
   }
 
-  Widget _buildStatsCards(List<Map<String, dynamic>> trendData) {
+  Widget _buildStatsCardsAsStatsCard(List<Map<String, dynamic>> trendData) {
     final total = trendData.fold<int>(0, (sum, data) => sum + _getValue(data, widget.valueKey));
     final maxValue = trendData.isNotEmpty
         ? trendData.map((data) => _getValue(data, widget.valueKey)).reduce((a, b) => a > b ? a : b)
@@ -1187,92 +1128,35 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
         : 0;
     final avgValue = trendData.isNotEmpty ? (total / trendData.length).round() : 0;
 
-    // 統計データを配列形式で定義
-    final stats = [
-      {
-        'label': widget.statsConfig.totalLabel,
-        'value': _formatValue(total),
-        'icon': widget.statsConfig.totalIcon,
-        'color': widget.statsConfig.totalColor,
-      },
-      {
-        'label': widget.statsConfig.maxLabel,
-        'value': _formatValue(maxValue),
-        'icon': widget.statsConfig.maxIcon,
-        'color': widget.statsConfig.maxColor,
-      },
-      {
-        'label': widget.statsConfig.minLabel,
-        'value': _formatValue(minValue),
-        'icon': widget.statsConfig.minIcon,
-        'color': widget.statsConfig.minColor,
-      },
-      {
-        'label': widget.statsConfig.avgLabel,
-        'value': _formatValue(avgValue),
-        'icon': widget.statsConfig.avgIcon,
-        'color': widget.statsConfig.avgColor,
-      },
-    ];
-
-    return _buildStatsRow(stats);
-  }
-
-  Widget _buildStatsRow(List<Map<String, dynamic>> stats) {
-    final dividerColor = Colors.grey[200];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: List.generate(stats.length * 2 - 1, (index) {
-          // 奇数インデックスは区切り線
-          if (index.isOdd) {
-            return SizedBox(
-              height: 80,
-              child: VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: dividerColor,
-              ),
-            );
-          }
-
-          // 偶数インデックスは統計項目
-          final stat = stats[index ~/ 2];
-          final label = stat['label'] as String;
-          final value = stat['value'] as String;
-          final icon = stat['icon'] as IconData;
-          final color = stat['color'] as Color;
-
-          return Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
+    return StatsCard(
+      title: '統計情報',
+      titleIcon: Icons.analytics,
+      items: [
+        StatItem(
+          label: widget.statsConfig.totalLabel,
+          value: _formatValue(total),
+          icon: widget.statsConfig.totalIcon,
+          color: widget.statsConfig.totalColor,
+        ),
+        StatItem(
+          label: widget.statsConfig.maxLabel,
+          value: _formatValue(maxValue),
+          icon: widget.statsConfig.maxIcon,
+          color: widget.statsConfig.maxColor,
+        ),
+        StatItem(
+          label: widget.statsConfig.minLabel,
+          value: _formatValue(minValue),
+          icon: widget.statsConfig.minIcon,
+          color: widget.statsConfig.minColor,
+        ),
+        StatItem(
+          label: widget.statsConfig.avgLabel,
+          value: _formatValue(avgValue),
+          icon: widget.statsConfig.avgIcon,
+          color: widget.statsConfig.avgColor,
+        ),
+      ],
     );
   }
 

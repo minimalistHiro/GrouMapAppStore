@@ -80,21 +80,6 @@ class NotificationDetailView extends ConsumerWidget {
                 child: Image.network(notification.imageUrl!),
               ),
             ],
-            if (notification.tags.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: notification.tags
-                    .map(
-                      (tag) => Chip(
-                        label: Text(tag),
-                        backgroundColor: Colors.grey[100],
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
           ],
         ),
       ),

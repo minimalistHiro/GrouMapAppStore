@@ -267,6 +267,10 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.manage_accounts,
                       title: 'フィードバック管理',
                       subtitle: 'お客様のフィードバックを確認',
+                      badgeCount: ref.watch(pendingFeedbackCountProvider).maybeWhen(
+                        data: (v) => v,
+                        orElse: () => 0,
+                      ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
