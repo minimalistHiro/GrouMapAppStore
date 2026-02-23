@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'privacy_policy_view.dart';
-import 'terms_of_service_view.dart';
 import 'email_support_view.dart';
 import 'phone_support_view.dart';
 import '../account_deletion/account_deletion_request_view.dart';
@@ -37,10 +34,6 @@ class HelpSupportView extends StatelessWidget {
             // お問い合わせセクション
             _buildContactSection(context),
             
-            const SizedBox(height: 24),
-            
-            // アプリ情報セクション
-            _buildAppInfoSection(context),
           ],
         ),
       ),
@@ -236,7 +229,7 @@ class HelpSupportView extends StatelessWidget {
         _buildContactItem(
           icon: Icons.phone,
           title: '電話サポート',
-          subtitle: '080-6050-7194（平日 9:00-18:00）',
+          subtitle: '080-6050-7194（月〜金 11:00〜18:00）',
           onTap: () => _navigateToPhoneSupport(context),
         ),
         _buildContactItem(
@@ -342,69 +335,6 @@ class HelpSupportView extends StatelessWidget {
     );
   }
 
-  Widget _buildAppInfoSection(BuildContext context) {
-    return _buildSection(
-      title: 'アプリ情報',
-      icon: Icons.info,
-      children: [
-        _buildInfoItem(
-          label: 'アプリバージョン',
-          value: '1.1.1',
-          copyable: false,
-        ),
-        _buildInfoItem(
-          label: '最終更新日',
-          value: '2026年2月19日',
-          copyable: false,
-        ),
-        _buildInfoItem(
-          label: 'プライバシーポリシー',
-          value: 'プライバシーポリシーを確認',
-          copyable: false,
-          onTap: () => _navigateToPrivacyPolicy(context),
-        ),
-        _buildInfoItem(
-          label: '利用規約',
-          value: '利用規約を確認',
-          copyable: false,
-          onTap: () => _navigateToTermsOfService(context),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoItem({
-    required String label,
-    required String value,
-    required bool copyable,
-    VoidCallback? onTap,
-  }) {
-    return ListTile(
-      title: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      subtitle: Text(
-        value,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
-      ),
-      trailing: copyable
-          ? IconButton(
-              icon: const Icon(Icons.copy, size: 20),
-              onPressed: () => _copyToClipboard(value),
-            )
-          : onTap != null
-              ? const Icon(Icons.chevron_right)
-              : null,
-      onTap: onTap,
-    );
-  }
 
   Widget _buildSection({
     required String title,
@@ -472,26 +402,6 @@ class HelpSupportView extends StatelessWidget {
     // 実際のアプリではチャット機能を実装
   }
 
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    // コピー完了のスナックバーを表示
-  }
-
-  void _navigateToPrivacyPolicy(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const PrivacyPolicyView(),
-      ),
-    );
-  }
-
-  void _navigateToTermsOfService(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const TermsOfServiceView(),
-      ),
-    );
-  }
 
 
 }

@@ -211,7 +211,7 @@ class _NotificationSettingsViewState extends ConsumerState<NotificationSettingsV
                 const SizedBox(height: 16),
               ],
             ),
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
     );
   }
 

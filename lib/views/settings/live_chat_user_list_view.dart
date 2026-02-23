@@ -15,7 +15,7 @@ class LiveChatUserListView extends ConsumerWidget {
       appBar: const CommonHeader(
         title: 'ライブチャット',
       ),
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('service_chat_rooms')
@@ -363,7 +363,7 @@ class _LiveChatViewState extends ConsumerState<LiveChatView> {
       appBar: CommonHeader(
         title: widget.userName,
       ),
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: DismissKeyboard(
         child: Column(
           children: [

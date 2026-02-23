@@ -1401,7 +1401,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
             width: double.infinity,
             height: useDefaultIcon ? 120 : null,
             decoration: BoxDecoration(
-              color: useDefaultIcon ? Colors.transparent : Colors.grey[50],
+              color: useDefaultIcon ? Colors.transparent : const Color(0xFFFBF6F2),
               borderRadius: BorderRadius.circular(12),
               border: useDefaultIcon ? null : Border.all(color: Colors.grey[300]!),
             ),

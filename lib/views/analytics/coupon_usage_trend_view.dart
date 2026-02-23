@@ -4,11 +4,13 @@ import '../../providers/coupon_provider.dart';
 import 'trend_base_view.dart';
 
 class CouponUsageTrendView extends StatelessWidget {
-  const CouponUsageTrendView({Key? key}) : super(key: key);
+  final String? storeId;
+  const CouponUsageTrendView({Key? key, this.storeId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TrendBaseView(
+      overrideStoreId: storeId,
       title: 'クーポン利用者推移',
       chartTitle: 'クーポン利用者推移グラフ',
       emptyDetail: 'クーポン利用の履歴がありません',

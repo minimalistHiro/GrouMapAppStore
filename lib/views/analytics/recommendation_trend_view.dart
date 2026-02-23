@@ -3,11 +3,13 @@ import '../../providers/recommendation_provider.dart';
 import 'trend_base_view.dart';
 
 class RecommendationTrendView extends StatelessWidget {
-  const RecommendationTrendView({Key? key}) : super(key: key);
+  final String? storeId;
+  const RecommendationTrendView({Key? key, this.storeId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TrendBaseView(
+      overrideStoreId: storeId,
       title: 'おすすめ表示推移',
       chartTitle: 'おすすめ表示数推移グラフ',
       emptyDetail: 'おすすめ表示の履歴がありません',

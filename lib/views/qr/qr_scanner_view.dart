@@ -66,7 +66,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
             }
           },
         ),
-        
+
         // スキャンエリアのオーバーレイ
         Container(
           decoration: BoxDecoration(
@@ -112,7 +112,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
             ),
           ),
         ),
-        
+
         // 説明テキスト
         Positioned(
           bottom: 100,
@@ -147,7 +147,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     try {
       // 認証ユーザーから店舗IDを取得
       final authState = ref.read(authStateProvider);
-      
+
       // 認証状態を待機
       await authState.when(
         data: (user) async {
@@ -187,23 +187,21 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   Future<void> _loadStoreSettingsForUser(String uid) async {
     try {
       // ユーザーの店舗IDを取得
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final createdStores = userData['createdStores'] as List<dynamic>?;
         if (createdStores != null && createdStores.isNotEmpty) {
           final storeId = createdStores.first as String;
-          
+
           // 店舗情報を取得
           final storeDoc = await FirebaseFirestore.instance
               .collection('stores')
               .doc(storeId)
               .get();
-          
+
           if (storeDoc.exists) {
             final storeData = storeDoc.data()!;
             final settings = StoreSettings(
@@ -211,11 +209,12 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
               storeName: storeData['name'] ?? '店舗',
               description: storeData['description'],
             );
-            
+
             // 店舗設定を設定
-            final storeSettingsNotifier = ref.read(storeSettingsProvider.notifier);
+            final storeSettingsNotifier =
+                ref.read(storeSettingsProvider.notifier);
             storeSettingsNotifier.setStoreSettings(settings);
-            
+
             print('店舗設定を自動初期化しました: $storeId');
           } else {
             print('店舗ドキュメントが見つかりません: $storeId');
@@ -250,7 +249,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
 
   void _showManualInputDialog(BuildContext context) {
     _manualInputController.clear();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -272,7 +271,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
                   tooltip: 'クリップボードから貼り付け',
                   onPressed: () async {
                     try {
-                      final clipboardData = await Clipboard.getData('text/plain');
+                      final clipboardData =
+                          await Clipboard.getData('text/plain');
                       if (clipboardData != null && clipboardData.text != null) {
                         _manualInputController.text = clipboardData.text!;
                         if (context.mounted) {
@@ -351,7 +351,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
 
   void _processQRCode(BuildContext context, String qrCode) {
     print('QRコード処理開始: $qrCode');
-    
+
     if (qrCode.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -379,7 +379,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
 
     // ローディング表示
     if (!context.mounted) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -409,14 +409,15 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   }
 
   /// QRコードの同期的処理（完全に同期的に実行）
-  void _processQRCodeSync(BuildContext context, String qrCode, Timer? timeoutTimer) {
+  void _processQRCodeSync(
+      BuildContext context, String qrCode, Timer? timeoutTimer) {
     try {
       print('同期的QRコード処理開始: $qrCode');
-      
+
       // QRコードの形式をチェック
       final isValidToken = _isValidQRToken(qrCode.trim());
       print('QRトークン形式チェック結果: $isValidToken');
-      
+
       if (!isValidToken) {
         _closeLoadingDialog(context, timeoutTimer);
         if (context.mounted) {
@@ -456,7 +457,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       } else {
         print('QR検証失敗、エラーダイアログ表示');
         _closeLoadingDialog(context, timeoutTimer);
-        
+
         if (context.mounted) {
           _showVerificationErrorDialog(context, result);
         }
@@ -464,7 +465,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     } catch (e) {
       print('同期的QRコード処理エラー: $e');
       _closeLoadingDialog(context, timeoutTimer);
-      
+
       if (context.mounted) {
         _showErrorDialog(
           context,
@@ -476,7 +477,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   }
 
   /// QRコードの非同期処理
-  Future<void> _processQRCodeAsync(BuildContext context, String qrCode, Timer? timeoutTimer) async {
+  Future<void> _processQRCodeAsync(
+      BuildContext context, String qrCode, Timer? timeoutTimer) async {
     try {
       // ウィジェットが破棄されていないかチェック
       if (!context.mounted) {
@@ -487,7 +489,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       // QRコードの形式をチェック（Base64エンコードされたJSONかどうか）
       final isValidToken = _isValidQRToken(qrCode.trim());
       print('QRトークン形式チェック結果: $isValidToken');
-      
+
       if (!isValidToken) {
         // 無効な形式の場合は即座にエラーを表示
         if (context.mounted) {
@@ -516,7 +518,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       try {
         print('モック検証を開始');
         result = await _mockVerifyQrToken(qrCode.trim());
-        print('モック検証完了: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
+        print(
+            'モック検証完了: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
       } catch (e) {
         print('モック検証エラー: $e');
         result = QRVerificationResult(
@@ -526,8 +529,9 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           error: e.toString(),
         );
       }
-      
-      print('最終QR検証結果: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
+
+      print(
+          '最終QR検証結果: isSuccess=${result.isSuccess}, message=${result.message}, uid=${result.uid}');
 
       // 結果に基づいて処理を分岐
       if (result.isSuccess) {
@@ -555,7 +559,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         // エラー時：エラーダイアログを表示
         print('QR検証失敗、エラーダイアログ表示');
         _closeLoadingDialog(context, timeoutTimer);
-        
+
         if (context.mounted) {
           _showVerificationErrorDialog(context, result);
         } else {
@@ -565,10 +569,10 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     } catch (e) {
       print('QRコード処理エラー: $e');
       print('エラースタック: ${StackTrace.current}');
-      
+
       // ローディングを確実に閉じる
       _closeLoadingDialog(context, timeoutTimer);
-      
+
       if (context.mounted) {
         _showErrorDialog(
           context,
@@ -609,6 +613,9 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         return;
       }
 
+      final scannedUserProfile = await _fetchScannedUserProfile(userId);
+      final scannedUserName =
+          _resolveDisplayNameFromProfile(scannedUserProfile);
       final availablePoints = await _resolveAvailablePoints(userId);
       final isOwner = await _resolveStoreUserIsOwner();
 
@@ -621,6 +628,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
             builder: (_) => PointUsageConfirmationView(
               userId: userId,
               storeId: storeId,
+              scannedUserProfile: scannedUserProfile,
             ),
           ),
         );
@@ -629,10 +637,11 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           MaterialPageRoute(
             builder: (_) => CouponSelectForCheckoutView(
               userId: userId,
-              userName: 'お客様',
+              userName: scannedUserName,
               usedPoints: 0,
               storeId: storeId,
               nextRoute: CouponSelectNextRoute.stamp,
+              scannedUserProfile: scannedUserProfile,
             ),
           ),
         );
@@ -710,6 +719,90 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     return (data['isOwner'] as bool?) ?? false;
   }
 
+  Future<Map<String, dynamic>?> _fetchScannedUserProfile(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      if (!userDoc.exists) {
+        return null;
+      }
+
+      final userData = userDoc.data() ?? {};
+      final birthDate = _parseBirthDate(userData['birthDate']);
+      final ageGroup = birthDate != null ? _calculateAgeGroup(birthDate) : null;
+
+      final profile = <String, dynamic>{
+        'displayName': _asNonEmptyString(userData['displayName']),
+        'name': _asNonEmptyString(userData['name']),
+        'email': _asNonEmptyString(userData['email']),
+        'username': _asNonEmptyString(userData['username']),
+        'bio': _asNonEmptyString(userData['bio']),
+        'occupation': _asNonEmptyString(userData['occupation']),
+        'gender': _asNonEmptyString(userData['gender']),
+        'prefecture': _asNonEmptyString(userData['prefecture']),
+        'city': _asNonEmptyString(userData['city']),
+        'profileImageUrl': _asNonEmptyString(userData['profileImageUrl']),
+        if (birthDate != null) 'birthDate': birthDate,
+        if (ageGroup != null) 'ageGroup': ageGroup,
+      };
+      profile.removeWhere(
+        (_, value) => value == null || (value is String && value.isEmpty),
+      );
+      print('QRスキャン時ユーザープロフィール取得: keys=${profile.keys.toList()}');
+      return profile;
+    } catch (e) {
+      print('QRスキャン時ユーザープロフィール取得エラー（続行）: $e');
+      return null;
+    }
+  }
+
+  String _resolveDisplayNameFromProfile(Map<String, dynamic>? profile) {
+    if (profile == null) {
+      return 'お客様';
+    }
+    final displayName = _asNonEmptyString(profile['displayName']);
+    if (displayName != null) return displayName;
+    final email = _asNonEmptyString(profile['email']);
+    if (email != null) return email;
+    final name = _asNonEmptyString(profile['name']);
+    if (name != null) return name;
+    return 'お客様';
+  }
+
+  String? _asNonEmptyString(dynamic value) {
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+    return null;
+  }
+
+  DateTime? _parseBirthDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  String? _calculateAgeGroup(DateTime birthDate) {
+    if (birthDate.isAfter(DateTime.now())) return null;
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    if (age < 0) return null;
+    if (age < 20) return '~19';
+    if (age < 30) return '20s';
+    if (age < 40) return '30s';
+    if (age < 50) return '40s';
+    if (age < 60) return '50s';
+    return '60+';
+  }
+
   int _parseInt(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -729,12 +822,14 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   }
 
   /// 支払い画面に遷移（非同期版、現在は使用していない）
-  Future<void> _navigateToPaymentScreen(BuildContext context, String uid) async {
+  Future<void> _navigateToPaymentScreen(
+      BuildContext context, String uid) async {
     _routeAfterVerified(context, uid, null);
   }
 
   /// 検証エラーダイアログを表示
-  void _showVerificationErrorDialog(BuildContext context, QRVerificationResult result) {
+  void _showVerificationErrorDialog(
+      BuildContext context, QRVerificationResult result) {
     String title = 'QRコードエラー';
     IconData icon = Icons.error;
     Color iconColor = Colors.red;
@@ -887,19 +982,19 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       // Base64デコードを試行
       final decoded = base64Decode(token);
       final jsonString = utf8.decode(decoded);
-      
+
       // JSONパースを試行
       final jsonData = jsonDecode(jsonString);
-      
+
       // 必要なフィールドが存在するかチェック
       if (jsonData is Map<String, dynamic>) {
-        return jsonData.containsKey('sub') && 
-               jsonData.containsKey('iat') && 
-               jsonData.containsKey('exp') && 
-               jsonData.containsKey('jti') && 
-               jsonData.containsKey('ver');
+        return jsonData.containsKey('sub') &&
+            jsonData.containsKey('iat') &&
+            jsonData.containsKey('exp') &&
+            jsonData.containsKey('jti') &&
+            jsonData.containsKey('ver');
       }
-      
+
       return false;
     } catch (e) {
       print('QRトークン形式チェックエラー: $e');
@@ -914,33 +1009,36 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     final testData = {
       'sub': 'testuser${now.millisecondsSinceEpoch}',
       'iat': now.millisecondsSinceEpoch ~/ 1000,
-      'exp': (now.add(const Duration(minutes: 5)).millisecondsSinceEpoch ~/ 1000), // 5分に延長
+      'exp': (now.add(const Duration(minutes: 5)).millisecondsSinceEpoch ~/
+          1000), // 5分に延長
       'jti': 'test_${now.millisecondsSinceEpoch}',
       'ver': 1,
     };
-    
-    print('テスト用QRトークン生成: exp=${testData['exp']}, now=${now.millisecondsSinceEpoch ~/ 1000}');
-    
-    final jsonString = '{"sub":"${testData['sub']}","iat":${testData['iat']},"exp":${testData['exp']},"jti":"${testData['jti']}","ver":${testData['ver']}}';
+
+    print(
+        'テスト用QRトークン生成: exp=${testData['exp']}, now=${now.millisecondsSinceEpoch ~/ 1000}');
+
+    final jsonString =
+        '{"sub":"${testData['sub']}","iat":${testData['iat']},"exp":${testData['exp']},"jti":"${testData['jti']}","ver":${testData['ver']}}';
     return base64Encode(utf8.encode(jsonString));
   }
 
   /// 開発環境用の同期的モック検証
   QRVerificationResult _mockVerifyQrTokenSync(String token) {
     print('同期的モック検証開始: $token');
-    
+
     try {
       // Base64デコードを試行
       final decodedBytes = base64Decode(token);
       final jsonString = utf8.decode(decodedBytes);
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      
+
       final sub = jsonData['sub'] as String?;
       final exp = jsonData['exp'] as int?;
       final jti = jsonData['jti'] as String?;
-      
+
       print('同期的モック検証データ: sub=$sub, exp=$exp, jti=$jti');
-      
+
       if (sub == null || exp == null || jti == null) {
         print('同期的モック検証失敗: 必須フィールドが不足');
         return QRVerificationResult(
@@ -949,7 +1047,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           status: QRVerificationStatus.invalid,
         );
       }
-      
+
       // 有効期限チェック
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       print('有効期限チェック: now=$now, exp=$exp, 残り時間=${exp - now}秒');
@@ -961,7 +1059,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           status: QRVerificationStatus.expired,
         );
       }
-      
+
       // 成功
       print('同期的モック検証成功: uid=$sub');
       return QRVerificationResult(
@@ -984,22 +1082,22 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
   /// 開発環境用のモック検証（非同期版、現在は使用していない）
   Future<QRVerificationResult> _mockVerifyQrToken(String token) async {
     print('モック検証開始: $token');
-    
+
     // 少し遅延を追加してリアルな処理をシミュレート
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     try {
       // Base64デコードを試行
       final decodedBytes = base64Decode(token);
       final jsonString = utf8.decode(decodedBytes);
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      
+
       final sub = jsonData['sub'] as String?;
       final exp = jsonData['exp'] as int?;
       final jti = jsonData['jti'] as String?;
-      
+
       print('モック検証データ: sub=$sub, exp=$exp, jti=$jti');
-      
+
       if (sub == null || exp == null || jti == null) {
         print('モック検証失敗: 必須フィールドが不足');
         return QRVerificationResult(
@@ -1008,7 +1106,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           status: QRVerificationStatus.invalid,
         );
       }
-      
+
       // 有効期限チェック
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       print('有効期限チェック: now=$now, exp=$exp, 残り時間=${exp - now}秒');
@@ -1020,7 +1118,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           status: QRVerificationStatus.expired,
         );
       }
-      
+
       // 成功
       print('モック検証成功: uid=$sub');
       return QRVerificationResult(
@@ -1039,7 +1137,6 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       );
     }
   }
-
 
   void _showErrorDialog(BuildContext context, String title, String message) {
     showDialog(

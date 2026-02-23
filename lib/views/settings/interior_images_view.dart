@@ -375,7 +375,7 @@ class _InteriorImagesViewState extends ConsumerState<InteriorImagesView> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: const CommonHeader(title: '店内画像設定'),
       body: _buildListSection(),
       bottomNavigationBar: SafeArea(

@@ -8,18 +8,22 @@ import 'point_usage_input_view.dart';
 class PointUsageConfirmationView extends ConsumerStatefulWidget {
   final String userId;
   final String storeId;
+  final Map<String, dynamic>? scannedUserProfile;
 
   const PointUsageConfirmationView({
     Key? key,
     required this.userId,
     required this.storeId,
+    this.scannedUserProfile,
   }) : super(key: key);
 
   @override
-  ConsumerState<PointUsageConfirmationView> createState() => _PointUsageConfirmationViewState();
+  ConsumerState<PointUsageConfirmationView> createState() =>
+      _PointUsageConfirmationViewState();
 }
 
-class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmationView> {
+class _PointUsageConfirmationViewState
+    extends ConsumerState<PointUsageConfirmationView> {
   String _actualUserName = 'お客様';
   String? _profileImageUrl;
   bool _isLoadingUserInfo = true;
@@ -30,6 +34,10 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   @override
   void initState() {
     super.initState();
+    if (widget.scannedUserProfile != null) {
+      _actualUserName = _resolveDisplayName(widget.scannedUserProfile!);
+      _profileImageUrl = _resolveProfileImageUrl(widget.scannedUserProfile!);
+    }
     _loadUserInfo();
   }
 
@@ -43,11 +51,15 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
       if (!mounted) return;
 
       if (userDoc.exists) {
-        final userData = userDoc.data() ?? {};
+        final userData = <String, dynamic>{
+          ...?widget.scannedUserProfile,
+          ...?(userDoc.data()),
+        };
         final displayName = _resolveDisplayName(userData);
         final profileImageUrl = _resolveProfileImageUrl(userData);
         final points = _parsePointsOrNull(userData['points']) ?? 0;
-        final specialPoints = _parsePointsOrNull(userData['specialPoints']) ?? 0;
+        final specialPoints =
+            _parsePointsOrNull(userData['specialPoints']) ?? 0;
         final availablePoints = points + specialPoints;
         setState(() {
           _actualUserName = displayName;
@@ -57,24 +69,31 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
         });
         await _maybeSkipIfNoPoints(userData, displayName);
       } else {
+        final fallbackUserData =
+            widget.scannedUserProfile ?? const <String, dynamic>{};
         setState(() {
-          _actualUserName = 'お客様';
+          _actualUserName = _resolveDisplayName(fallbackUserData);
+          _profileImageUrl = _resolveProfileImageUrl(fallbackUserData);
           _isLoadingUserInfo = false;
         });
-        await _maybeSkipIfNoPoints(const {}, _actualUserName);
+        await _maybeSkipIfNoPoints(fallbackUserData, _actualUserName);
       }
     } catch (e) {
+      final fallbackUserData =
+          widget.scannedUserProfile ?? const <String, dynamic>{};
       if (!mounted) return;
       setState(() {
-        _actualUserName = 'お客様';
+        _actualUserName = _resolveDisplayName(fallbackUserData);
+        _profileImageUrl = _resolveProfileImageUrl(fallbackUserData);
         _isLoadingUserInfo = false;
       });
-      await _maybeSkipIfNoPoints(const {}, _actualUserName);
+      await _maybeSkipIfNoPoints(fallbackUserData, _actualUserName);
     }
   }
 
   String _resolveDisplayName(Map<String, dynamic> userData) {
-    if (userData['displayName'] is String && (userData['displayName'] as String).isNotEmpty) {
+    if (userData['displayName'] is String &&
+        (userData['displayName'] as String).isNotEmpty) {
       return userData['displayName'] as String;
     }
     if (userData['email'] is String) {
@@ -100,6 +119,7 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
         builder: (_) => PointUsageInputView(
           userId: widget.userId,
           storeId: widget.storeId,
+          scannedUserProfile: widget.scannedUserProfile,
         ),
       ),
     );
@@ -114,6 +134,7 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
           usedPoints: 0,
           storeId: widget.storeId,
           nextRoute: CouponSelectNextRoute.stamp,
+          scannedUserProfile: widget.scannedUserProfile,
         ),
       ),
     );
@@ -124,7 +145,7 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
     String resolvedName,
   ) async {
     if (_skipTriggered) return;
-    int? availablePoints;
+    int availablePoints = 0;
     try {
       final userPoints = _parsePointsOrNull(userData['points']) ?? 0;
       final specialPoints = _parsePointsOrNull(userData['specialPoints']) ?? 0;
@@ -137,16 +158,6 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
         final data = balanceDoc.data() ?? {};
         final balancePoints = _parsePointsOrNull(data['availablePoints']) ?? 0;
         availablePoints = balancePoints;
-      }
-
-      if (availablePoints == null) {
-        if (mounted) {
-          setState(() {
-            _isCheckingPoints = false;
-            _availablePoints = null;
-          });
-        }
-        return;
       }
 
       if (availablePoints <= 0 && mounted) {
@@ -219,7 +230,10 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: Offset(0, 3)),
                 ],
               ),
               child: Column(
@@ -312,13 +326,17 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
               children: [
                 Text(
                   _isLoadingUserInfo ? '読み込み中...' : _actualUserName,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 const SizedBox(height: 8),
                 Text(
-                  _availablePoints == null ? '保有ポイント: --' : '保有ポイント: ${_availablePoints}pt',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _availablePoints == null
+                      ? '保有ポイント: --'
+                      : '保有ポイント: ${_availablePoints}pt',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -331,7 +349,9 @@ class _PointUsageConfirmationViewState extends ConsumerState<PointUsageConfirmat
   Widget _buildFallbackAvatar() {
     return Center(
       child: Text(
-        _actualUserName.isNotEmpty ? _actualUserName.substring(0, 1).toUpperCase() : '客',
+        _actualUserName.isNotEmpty
+            ? _actualUserName.substring(0, 1).toUpperCase()
+            : '客',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 22,

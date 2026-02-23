@@ -9,15 +9,18 @@ import '../coupons/coupon_select_for_checkout_view.dart';
 class PointUsageInputView extends ConsumerStatefulWidget {
   final String userId;
   final String? storeId;
+  final Map<String, dynamic>? scannedUserProfile;
 
   const PointUsageInputView({
     Key? key,
     required this.userId,
     this.storeId,
+    this.scannedUserProfile,
   }) : super(key: key);
 
   @override
-  ConsumerState<PointUsageInputView> createState() => _PointUsageInputViewState();
+  ConsumerState<PointUsageInputView> createState() =>
+      _PointUsageInputViewState();
 }
 
 class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
@@ -34,6 +37,11 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
   @override
   void initState() {
     super.initState();
+    if (widget.scannedUserProfile != null) {
+      _actualUserName = _resolveDisplayName(widget.scannedUserProfile!);
+      _profileImageUrl = _resolveProfileImageUrl(widget.scannedUserProfile!);
+      _isLoadingUserInfo = false;
+    }
     _loadUserInfo();
     _loadUserPoints();
     _loadStoreInfo();
@@ -49,22 +57,31 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
       if (!mounted) return;
 
       if (userDoc.exists) {
-        final userData = userDoc.data() ?? {};
+        final userData = <String, dynamic>{
+          ...?widget.scannedUserProfile,
+          ...?(userDoc.data()),
+        };
         setState(() {
           _actualUserName = _resolveDisplayName(userData);
           _profileImageUrl = _resolveProfileImageUrl(userData);
           _isLoadingUserInfo = false;
         });
       } else {
+        final fallbackUserData =
+            widget.scannedUserProfile ?? const <String, dynamic>{};
         setState(() {
-          _actualUserName = 'お客様';
+          _actualUserName = _resolveDisplayName(fallbackUserData);
+          _profileImageUrl = _resolveProfileImageUrl(fallbackUserData);
           _isLoadingUserInfo = false;
         });
       }
     } catch (_) {
+      final fallbackUserData =
+          widget.scannedUserProfile ?? const <String, dynamic>{};
       if (!mounted) return;
       setState(() {
-        _actualUserName = 'お客様';
+        _actualUserName = _resolveDisplayName(fallbackUserData);
+        _profileImageUrl = _resolveProfileImageUrl(fallbackUserData);
         _isLoadingUserInfo = false;
       });
     }
@@ -158,7 +175,8 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
   }
 
   String _resolveDisplayName(Map<String, dynamic> userData) {
-    if (userData['displayName'] is String && (userData['displayName'] as String).isNotEmpty) {
+    if (userData['displayName'] is String &&
+        (userData['displayName'] as String).isNotEmpty) {
       return userData['displayName'] as String;
     }
     if (userData['email'] is String) {
@@ -247,6 +265,7 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
             usedPoints: pointsToUse,
             storeId: storeId,
             nextRoute: CouponSelectNextRoute.stamp,
+            scannedUserProfile: widget.scannedUserProfile,
           ),
         ),
       );
@@ -296,7 +315,8 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
     final firestore = FirebaseFirestore.instance;
     final now = DateTime.now();
     final transactionId = firestore.collection('point_transactions').doc().id;
-    final balanceRef = firestore.collection('user_point_balances').doc(widget.userId);
+    final balanceRef =
+        firestore.collection('user_point_balances').doc(widget.userId);
     final userRef = firestore.collection('users').doc(widget.userId);
     final transactionRef = firestore
         .collection('point_transactions')
@@ -449,7 +469,8 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
             else
               Text(
                 _storeName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.normal),
               ),
           ],
         ),
@@ -504,7 +525,8 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
                           width: 60,
                           height: 60,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildFallbackAvatar(),
                         )
                       : _buildFallbackAvatar(),
             ),
@@ -516,7 +538,8 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
               children: [
                 Text(
                   _isLoadingUserInfo ? '読み込み中...' : _actualUserName,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -534,7 +557,9 @@ class _PointUsageInputViewState extends ConsumerState<PointUsageInputView> {
   Widget _buildFallbackAvatar() {
     return Center(
       child: Text(
-        _actualUserName.isNotEmpty ? _actualUserName.substring(0, 1).toUpperCase() : '客',
+        _actualUserName.isNotEmpty
+            ? _actualUserName.substring(0, 1).toUpperCase()
+            : '客',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 24,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/store_ui.dart';
+
 /// 統計項目のデータモデル
 class StatItem {
   final String label;
@@ -29,7 +31,7 @@ class StatsCard extends StatelessWidget {
   /// 表示する統計項目のリスト
   final List<StatItem> items;
 
-  /// カードに影を付けるかどうか（デフォルト: true）
+  /// カードに影を付けるかどうか（デフォルト: false）
   final bool showShadow;
 
   /// 外側のマージン（nullの場合はマージンなし）
@@ -43,7 +45,7 @@ class StatsCard extends StatelessWidget {
     required this.title,
     this.titleIcon,
     this.items = const [],
-    this.showShadow = true,
+    this.showShadow = false,
     this.margin,
     this.child,
   });
@@ -55,8 +57,8 @@ class StatsCard extends StatelessWidget {
       margin: margin,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: StoreUi.card,
+        borderRadius: BorderRadius.circular(StoreUi.cardRadius),
         boxShadow: showShadow
             ? [
                 BoxShadow(
@@ -83,7 +85,7 @@ class StatsCard extends StatelessWidget {
     if (titleIcon != null) {
       return Row(
         children: [
-          Icon(titleIcon, color: const Color(0xFFFF6B35), size: 20),
+          Icon(titleIcon, color: StoreUi.primary, size: 20),
           const SizedBox(width: 8),
           Text(
             title,

@@ -295,7 +295,7 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
     final filteredItems = _getFilteredItems();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: const CommonHeader(title: 'メニュー編集'),
       body: Column(
         children: [

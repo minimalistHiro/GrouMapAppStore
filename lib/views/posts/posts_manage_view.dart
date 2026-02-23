@@ -21,7 +21,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: AppBar(
         title: const Text(
           '投稿管理',

@@ -165,7 +165,7 @@ class _PaymentMethodsSettingsViewState
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: const CommonHeader(title: '店舗決済方法設定'),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),

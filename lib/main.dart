@@ -6,10 +6,12 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'views/auth/auth_wrapper.dart';
 import 'views/main_navigation_view.dart';
+import 'widgets/dismiss_keyboard.dart';
+import 'theme/store_app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Firebase初期化
   if (kIsWeb) {
     await Firebase.initializeApp(
@@ -26,19 +28,20 @@ void main() async {
   } else {
     await Firebase.initializeApp();
   }
-  
+
   // Firebase Emulator設定（開発環境のみ）
   // 一時的にEmulatorを無効化して本番環境を使用
   if (false && const bool.fromEnvironment('dart.vm.product') == false) {
     try {
       FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
       FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-      print('Firebase Emulator設定完了: localhost:5001 (Functions), localhost:8080 (Firestore)');
+      print(
+          'Firebase Emulator設定完了: localhost:5001 (Functions), localhost:8080 (Firestore)');
     } catch (e) {
       print('Firebase Emulator設定エラー: $e');
     }
   }
-  
+
   runApp(
     const ProviderScope(
       child: GrouMapStoreApp(),
@@ -53,39 +56,13 @@ class GrouMapStoreApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ぐるまっぷ店舗用',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B35),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFFF6B35),
-          foregroundColor: Colors.white,
-          elevation: 2,
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
-          selectedItemColor: Color(0xFFFF6B35),
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-        ),
-        cardTheme: CardTheme(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF6B35),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-      ),
+      theme: StoreAppTheme.light,
+      builder: (context, child) {
+        if (child == null) {
+          return const SizedBox.shrink();
+        }
+        return DismissKeyboard(child: child);
+      },
       home: const AuthWrapper(),
       routes: {
         '/main': (context) => const MainNavigationView(),

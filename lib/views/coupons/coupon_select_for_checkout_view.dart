@@ -19,6 +19,7 @@ class CouponSelectForCheckoutView extends ConsumerStatefulWidget {
   final int usedPoints;
   final String? storeId;
   final CouponSelectNextRoute nextRoute;
+  final Map<String, dynamic>? scannedUserProfile;
 
   const CouponSelectForCheckoutView({
     Key? key,
@@ -27,6 +28,7 @@ class CouponSelectForCheckoutView extends ConsumerStatefulWidget {
     required this.usedPoints,
     this.storeId,
     this.nextRoute = CouponSelectNextRoute.checkout,
+    this.scannedUserProfile,
   }) : super(key: key);
 
   @override
@@ -137,13 +139,15 @@ class _CouponSelectForCheckoutViewState
         _showStoreIdMissingDialog();
         return;
       }
-      debugPrint('CouponSelect: to stamp view, selected=${_selectedCouponIds.length}');
+      debugPrint(
+          'CouponSelect: to stamp view, selected=${_selectedCouponIds.length}');
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => StoreUserDetailView(
             userId: widget.userId,
             storeId: storeId,
             selectedCouponIds: _selectedCouponIds.toList(),
+            scannedUserProfile: widget.scannedUserProfile,
           ),
         ),
       );
@@ -329,7 +333,8 @@ class _CouponSelectForCheckoutViewState
               final usageLimit = _parseInt(coupon['usageLimit']);
               if (!isActive) return false;
               final isNoExpiry = _isNoExpiryCoupon(coupon, validUntil);
-              if (!isNoExpiry && (validUntil == null || !validUntil.isAfter(now))) {
+              if (!isNoExpiry &&
+                  (validUntil == null || !validUntil.isAfter(now))) {
                 return false;
               }
               final noUsageLimitFlag = coupon['noUsageLimit'] == true;
@@ -351,8 +356,7 @@ class _CouponSelectForCheckoutViewState
                 final coupon = availableCoupons[index];
                 final couponId = coupon['id'] as String;
                 final title = (coupon['title'] as String?) ?? 'タイトルなし';
-                final description =
-                    (coupon['description'] as String?) ?? '';
+                final description = (coupon['description'] as String?) ?? '';
                 final validUntil = _parseValidUntil(coupon['validUntil']);
                 final usageLimit = _parseInt(coupon['usageLimit']);
                 final usedCount = _parseInt(coupon['usedCount']);
@@ -459,7 +463,8 @@ class _CouponSelectForCheckoutViewState
                                         const SizedBox(width: 12),
                                         if (validUntil != null)
                                           Text(
-                                            _isNoExpiryCoupon(coupon, validUntil)
+                                            _isNoExpiryCoupon(
+                                                    coupon, validUntil)
                                                 ? '期限: 無期限'
                                                 : '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}',
                                             style: TextStyle(

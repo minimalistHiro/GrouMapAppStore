@@ -92,6 +92,7 @@ class TrendBaseView extends ConsumerStatefulWidget {
     this.filterWidget,
     this.primaryChartStats,
     this.secondaryChartStats,
+    this.overrideStoreId,
   }) : super(key: key);
 
   final String title;
@@ -113,6 +114,7 @@ class TrendBaseView extends ConsumerStatefulWidget {
   final Widget? filterWidget;
   final ChartStatsConfig? primaryChartStats;
   final ChartStatsConfig? secondaryChartStats;
+  final String? overrideStoreId;
 
   @override
   ConsumerState<TrendBaseView> createState() => _TrendBaseViewState();
@@ -141,7 +143,9 @@ class _TrendBaseViewState extends ConsumerState<TrendBaseView> {
       ),
       body: Consumer(
         builder: (context, ref, child) {
-          final storeIdAsync = ref.watch(userStoreIdProvider);
+          final storeIdAsync = widget.overrideStoreId != null
+              ? AsyncValue.data(widget.overrideStoreId)
+              : ref.watch(userStoreIdProvider);
 
           return storeIdAsync.when(
             data: (storeId) {

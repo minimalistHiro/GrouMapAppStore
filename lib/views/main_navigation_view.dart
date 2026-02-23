@@ -228,13 +228,13 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
             return _buildOwnerMainContent();
           },
           loading: () => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: const Center(
               child: CircularProgressIndicator(),
             ),
           ),
           error: (error, _) => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: Center(
               child: Text(
                 'ユーザー情報の取得に失敗しました: ${error.toString()}',
@@ -245,7 +245,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
         );
       },
       loading: () => Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: const Color(0xFFFBF6F2),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -276,13 +276,13 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
             return _buildMainScaffold();
           },
           loading: () => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: const Center(
               child: CircularProgressIndicator(),
             ),
           ),
           error: (error, _) => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -317,13 +317,13 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
         );
       },
       loading: () => Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: const Color(0xFFFBF6F2),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
       ),
       error: (error, _) => Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: const Color(0xFFFBF6F2),
         body: Center(
           child: Text(
             'ユーザー情報の取得に失敗しました: ${error.toString()}',
@@ -336,7 +336,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
 
   Widget _buildUserAccountLockedView(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -613,7 +613,7 @@ class _MainNavigationViewState extends ConsumerState<MainNavigationView> {
 
   Widget _buildApprovalPendingView(BuildContext context, String storeId) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

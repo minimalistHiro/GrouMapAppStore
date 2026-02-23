@@ -1,6 +1,7 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-02-23更新: `PrivacyPolicyView` / `TermsOfServiceView` を最新規約Markdownに同期（制定日/改定日・条文・問い合わせ先を反映）。問い合わせ先は `info@groumapapp.com` / `080-6050-7194（平日 11:00-18:00）` に統一。
 
 ## 起動・ナビゲーション
 
@@ -68,8 +69,8 @@
 ## 分析（推移画面）
 
 ### TrendBaseView (`lib/views/analytics/trend_base_view.dart`)
-- 構成: CommonHeader、期間切替、グラフ、統計カード
-- 説明: 各種推移表示の共通ベース画面
+- 構成: CommonHeader、期間切替、グラフ、統計カード、overrideStoreId（任意：指定時はuserStoreIdProviderの代わりに使用）
+- 説明: 各種推移表示の共通ベース画面。overrideStoreIdを指定すると、ログインユーザーの選択店舗ではなく指定店舗のデータを表示
 
 ### NewCustomerTrendView (`lib/views/analytics/new_customer_trend_view.dart`)
 - 構成: 推移グラフ、統計カード（オレンジ統一）
@@ -135,11 +136,11 @@
 - 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
-- 構成: クーポン基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成ボタン、店舗固定モード時のロック済み店舗表示
+- 構成: クーポンタイプ選択（割引/プレゼント/特別オファー）、割引タイプ/基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成ボタン、店舗固定モード時のロック済み店舗表示。スタンプ達成特典（requiredStampCount > 0）の場合はクーポンタイプを「割引クーポン」に制限（ドロップダウン無効化＋ヘルプテキスト表示）
 - 説明: 新規クーポン作成画面。店舗設定詳細経由では選択店舗を固定して作成
 
 ### EditCouponView (`lib/views/coupons/edit_coupon_view.dart`)
-- 構成: クーポン編集フォーム、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、画像更新、保存
+- 構成: クーポンタイプ選択（スタンプ達成特典時は割引クーポンに制限＋ヘルプテキスト表示）、割引タイプ、クーポン編集フォーム、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、画像更新、保存。既存データの自動補正（スタンプ達成特典で値引型以外の場合はdiscountに自動補正）
 - 説明: 既存クーポンの編集画面
 
 ### StoreCouponDetailView (`lib/views/coupons/coupon_detail_view.dart`)
@@ -229,8 +230,8 @@
 - 説明: 店舗の稼働状態管理画面
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存
+- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -306,16 +307,28 @@
 - 構成: 画像プレビュー、切り抜き、保存
 - 説明: 店舗アイコンのトリミング画面
 
+### PasswordChangeView (`lib/views/settings/password_change_view.dart`)
+- 構成: CommonHeader、現在のパスワード入力、新しいパスワード入力、確認パスワード入力、変更ボタン
+- 説明: ログインパスワードの変更画面。メール/パスワード認証のアカウントのみ利用可能（設定画面にもパスワード認証時のみ表示）
+
+### EmailChangeView (`lib/views/settings/email_change_view.dart`)
+- 構成: 説明テキスト、現在のメールアドレス表示（読み取り専用）、新しいメールアドレス入力、現在のパスワード入力（パスワード表示/非表示トグル付き）、「認証コードを送信」ボタン
+- 説明: メールアドレス変更画面。パスワード再認証後、新メールアドレスに6桁OTP認証コードを送信し、EmailChangeOtpViewに遷移。メール/パスワード認証のアカウントのみ利用可能（設定画面にもパスワード認証時のみ表示）
+
+### EmailChangeOtpView (`lib/views/settings/email_change_otp_view.dart`)
+- 構成: メールアイコン、タイトル「メールアドレス変更の認証」、送信先メール表示、注意事項ボックス、6桁コード入力フィールド（数字のみ・6桁制限）、「認証する」ボタン、「認証コードを再送信」ボタン
+- 説明: メールアドレス変更用OTPコード入力画面。認証成功時にFirebase Auth/Firestoreのメールを更新してpop(true)で戻る
+
 ### NotificationSettingsView (`lib/views/settings/notification_settings_view.dart`)
 - 構成: CommonHeader、プッシュ通知セクション（新規来店者/クーポン使用/フィードバック）、メール通知セクション（システム/プロモーション）のCustomSwitchListTileトグル、トグル切替時にFirestore即時保存
 - 説明: 通知設定画面（stores/{storeId}のnotificationSettings・emailNotificationSettingsに保存）
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
-- 構成: 還元率/キャンペーン（友達紹介・店舗紹介・スロット）/メンテナンス/バージョン管理の設定
+- 構成: 還元率/キャンペーン（友達紹介・店舗紹介・~~スロット（廃止）~~）/メンテナンス/バージョン管理の設定
 - 説明: オーナー向けの高度設定画面
 
 ### HelpSupportView (`lib/views/settings/help_support_view.dart`)
-- 構成: FAQ、問い合わせ導線、アプリ情報
+- 構成: FAQ、問い合わせ導線
 - 説明: ヘルプ・サポート入口画面
 
 ### EmailSupportView (`lib/views/settings/email_support_view.dart`)
@@ -335,24 +348,24 @@
 - 説明: ライブチャットの会話画面
 
 ### AppInfoView (`lib/views/settings/app_info_view.dart`)
-- 構成: アプリ情報、開発者情報、法的リンク
-- 説明: アプリ情報表示画面
+- 構成: アプリ情報（名前・バージョン・更新日）、開発者情報（会社名・代表者・設立日・所在地・サポートメール・電話・公式サイト）、ライセンス・法的事項（プライバシーポリシー・利用規約・セキュリティポリシーへの遷移）、公式アカウント（公式サイト・メールサポートへの遷移）
+- 説明: アプリのバージョン情報・開発者情報・法的リンクを表示する画面。設定画面から遷移
 
 ### PrivacyPolicyView (`lib/views/settings/privacy_policy_view.dart`)
-- 構成: ポリシー本文、更新日
-- 説明: プライバシーポリシー画面
+- 構成: ポリシー本文（制定日/改定日、各章、事業者情報、問い合わせ先）
+- 説明: プライバシーポリシー画面（`/groumapapp_store/PRIVACY_POLICY.md` 準拠）
 
 ### TermsOfServiceView (`lib/views/settings/terms_of_service_view.dart`)
-- 構成: 利用規約本文、更新日
-- 説明: 利用規約画面
+- 構成: 利用規約本文（制定日/改定日、条文、事業者情報、問い合わせ先）
+- 説明: 利用規約画面（`/groumapapp_store/TERMS_OF_SERVICE.md` 準拠）
 
 ### SecurityPolicyView (`lib/views/settings/security_policy_view.dart`)
 - 構成: セキュリティポリシー本文、更新日
 - 説明: セキュリティポリシー画面
 
 ### PlanContractView (`lib/views/plans/plan_contract_view.dart`)
-- 構成: 現在プラン、プラン一覧、契約情報
-- 説明: プラン・契約情報の表示画面
+- 構成: 現在プランカード（店舗名・プラン名・ステータスバッジ）、契約情報セクション（ステータス・開始日・請求日・支払方法）、プラン機能一覧、サポート連絡先
+- 説明: 自店舗の契約情報をFirestore（`stores/{storeId}.subscription`）からリアルタイム取得して表示。ステータスに応じて表示項目を動的切替（無料期間中は料金・請求日を非表示、有料契約中は支払方法・請求サイクルを表示）。契約変更はサポート経由の案内のみ
 
 ### AccountDeletionRequestView (`lib/views/account_deletion/account_deletion_request_view.dart`)
 - 構成: 警告ヘッダー、店舗情報表示、退会理由入力、送信ボタン
@@ -418,6 +431,9 @@
             ├─ 店内画像設定（InteriorImagesView）
             ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
             ├─ Instagram連携（InstagramSyncView）
+            ├─ パスワード変更（PasswordChangeView）
+            ├─ メールアドレス変更（EmailChangeView）
+            │  └─ OTP認証（EmailChangeOtpView）
             ├─ 通知設定（NotificationSettingsView）
             ├─ プラン・契約情報（PlanContractView）
             ├─ フィードバック送信（FeedbackSendView）
@@ -430,9 +446,13 @@
             ├─ 店舗切替（StoreSelectionView）
             ├─ 店舗稼働設定（StoreActivationSettingsView）
             │  └─ 店舗設定詳細（StoreSettingsDetailView）
-            │     └─ クーポン管理（CouponsManageView）
-            │        ├─ 新規作成（CreateCouponView）
-            │        └─ 編集（EditCouponView）
+            │     ├─ クーポン管理（CouponsManageView）
+            │     │  ├─ 新規作成（CreateCouponView）
+            │     │  └─ 編集（EditCouponView）
+            │     ├─ 店舗利用者推移（StoreUserTrendView）
+            │     ├─ 新規顧客推移（NewCustomerTrendView）
+            │     ├─ クーポン利用者推移（CouponUsageTrendView）
+            │     └─ おすすめ表示推移（RecommendationTrendView）
             ├─ 店舗審査（PendingStoresView）
             │  └─ 店舗詳細（StoreDetailView）
             ├─ ヘルプ・サポート（HelpSupportView）

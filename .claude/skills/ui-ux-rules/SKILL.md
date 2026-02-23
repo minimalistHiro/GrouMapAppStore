@@ -23,8 +23,8 @@ GrouMapの画面作成・編集時に、既定のUI/UXルールを必ず適用�
 - 青色のテキストボタンは `Colors.blue`（`Color(0xFF2196F3)` 相当）を使用し、文字は **ボールド** にする。
 - 入力不備がある場合は、ボタンの下に赤文字（`Colors.red`）・フォントサイズ12のテキストを表示する（ボールドにしない）。
 - 店舗アイコン未設定時のデフォルト表示は、店舗詳細画面の既定仕様に合わせる（アイコンと背景色はカテゴリ依存、背景色はアイコン色の `withOpacity(0.1)` を使用）。
-  - アイコン: レストラン `Icons.restaurant` / カフェ `Icons.local_cafe` / ショップ `Icons.shopping_bag` / 美容院 `Icons.content_cut` / 薬局 `Icons.local_pharmacy` / コンビニ `Icons.store` / スーパー `Icons.shopping_cart` / 書店 `Icons.menu_book` / その他 `Icons.store`
-  - 背景色: レストラン `Colors.red` / カフェ `Colors.brown` / ショップ `Colors.blue` / 美容院 `Colors.pink` / 薬局 `Colors.green` / コンビニ `Colors.orange` / スーパー `Colors.lightGreen` / 書店 `Colors.purple` / その他 `Colors.grey`
+  - カテゴリごとのアイコン・色の一覧は `/Users/kanekohiroki/Desktop/groumapapp/CATEGORY_LIST.md` を参照する。
+  - コード上では `StampCardWidget.getCategoryIcon(category)` / `StampCardWidget.getCategoryColor(category)`（`lib/widgets/stamp_card_widget.dart`）を使用する。
 - ユーザーのデフォルトアイコンは、背景色をアイコン色の `withOpacity(0.1)` にし、アイコンはホーム画面と同じ人型（`Icons.person`）を使用する。
 - プロフィール画像の作成/更新は、店舗用・ユーザー用ともに共通のカスタムアイコンUIを使用する（`IconImagePickerField`）。タップで画像選択→位置調整画面へ遷移し、右上のマイナスボタンで画像削除を行う。
 - アイコン以外の画像を作成/更新する際は、共通の `ImagePickerField` を使用する。
@@ -39,9 +39,15 @@ GrouMapの画面作成・編集時に、既定のUI/UXルールを必ず適用�
 - キーボードのタップ外閉じは共通化する。原則として画面の body を `DismissKeyboard` でラップする（`lib/widgets/dismiss_keyboard.dart` / `groumapapp_store/lib/widgets/dismiss_keyboard.dart`）。
   - 例外: ユーザー用アプリのマップ画面は対象外（タップ操作が多いため適用しない）。
 - スクロール可能な画面では、最下部に `SizedBox(height: 16)` 相当の余白を入れる。
-- スタンプカードの各スタンプ（5×2グリッド）は以下の仕様で統一する。
-  - **取得済みスタンプ**: 店舗のプロフィールアイコン（`iconImageUrl`）を `ClipOval` で円形にクリップし、`SizedBox.expand` + `BoxFit.cover` で隙間なく表示する。アイコン未設定時はカテゴリアイコンにフォールバックする。
-  - **未取得スタンプ**: 背景色 `Colors.grey[200]` の円形（`BoxShape.circle`）に、カテゴリアイコン（`Icons.local_cafe` 等）を `Colors.grey` で中央配置する。店舗プロフィール画像は使用しない。`ColorFiltered` や `Opacity` による色の上乗せは行わない。
+- スタンプカードUIは共通のカスタムウィジェット `StampCardWidget`（`lib/widgets/stamp_card_widget.dart`）を使用する。スタンプカードを表示する画面では、直接グリッドを組み立てずに必ずこのウィジェットを利用する。
+  - **パラメータ**: `storeName`、`storeCategory`、`iconImageUrl`（任意）、`stamps`、`maxStamps`（デフォルト10）、`displayStamps`（任意）、`isLoading`、`isSyncing`、`errorMessage`、`punchIndex`、`scaleAnimation`、`shineAnimation`
+  - **カテゴリ色・アイコンの取得**: `StampCardWidget.getCategoryColor(category)` / `StampCardWidget.getCategoryIcon(category)` を静的メソッドとして使用する。
+  - スタンプカードのデザインや仕様を変更する場合は、各画面ではなく `StampCardWidget` 本体を修正する。
+- 統計情報UIは共通のカスタムウィジェット `StatsCard`（`lib/widgets/stats_card.dart`）を使用する。統計情報を表示する画面では、直接レイアウトを組み立てずに必ずこのウィジェットを利用する。
+  - **パラメータ**: `title`（タイトル）、`titleIcon`（任意）、`items`（`StatItem`リスト）、`showShadow`（デフォルトtrue）、`margin`（任意）、`child`（任意のカスタムコンテンツ）
+  - **`StatItem`**: 各統計項目のデータモデル。`label`（ラベル）、`value`（値）、`icon`（アイコン）、`color`（色）を指定する。
+  - **`StatsRow`**: 統計項目を横一列に並べるウィジェット。カードなしで単独利用も可能。
+  - 統計情報のデザインや仕様を変更する場合は、各画面ではなく `StatsCard` 本体を修正する。
 - **設定画面のリスト項目と通知バッジ**: 設定画面にリスト項目を追加する際は、必ず通知バッジ対応をセットで行う。以下のルールに従う。
   - 設定画面の各リスト項目は `_buildSettingsItem()` で生成し、`badgeCount` パラメータ（デフォルト `0`）でバッジ数を制御する。
   - `badgeCount > 0` のとき、リスト項目の右側に赤い数値バッジ（`padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2)`、`borderRadius: 10`、テキスト `fontSize: 11` 白・太字、99超は `99+` 表示）＋ `chevron_right` アイコンを表示する。`badgeCount == 0` のときは `chevron_right` アイコンのみ。

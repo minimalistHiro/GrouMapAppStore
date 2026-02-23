@@ -283,7 +283,7 @@ class _EditPostViewState extends State<EditPostView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: AppBar(
         title: const Text(
           '投稿編集',
@@ -707,7 +707,7 @@ class _EditPostViewState extends State<EditPostView> {
                     width: double.infinity,
                     height: 100,
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: const Color(0xFFFBF6F2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: Colors.grey[300]!,

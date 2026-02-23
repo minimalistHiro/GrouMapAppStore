@@ -44,6 +44,9 @@ class _EditCouponViewState extends State<EditCouponView> {
   final List<String> _discountTypes = ['percentage', 'fixed_amount', 'fixed_price'];
   final List<String> _couponTypes = ['discount', 'gift', 'special_offer'];
 
+  bool get _isStampRewardCoupon =>
+      _selectedRequiredStampCount != null && _selectedRequiredStampCount! > 0;
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +62,14 @@ class _EditCouponViewState extends State<EditCouponView> {
     
     _selectedDiscountType = widget.couponData['discountType'] ?? 'percentage';
     _selectedCouponType = widget.couponData['couponType'] ?? 'discount';
-    
+
+    // スタンプ達成特典で値引型以外の場合、割引クーポンに自動補正
+    if (_selectedRequiredStampCount != null &&
+        _selectedRequiredStampCount! > 0 &&
+        _selectedCouponType != 'discount') {
+      _selectedCouponType = 'discount';
+    }
+
     // 日時の設定
     if (widget.couponData['validFrom'] != null) {
       _validFrom = widget.couponData['validFrom'].toDate();
@@ -126,6 +136,25 @@ class _EditCouponViewState extends State<EditCouponView> {
   }
 
   Future<void> _updateCoupon() async {
+    if (_isStampRewardCoupon && _selectedCouponType != 'discount') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('スタンプ達成特典は割引クーポンのみ設定可能です'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     if (_selectedRequiredStampCount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -326,7 +355,7 @@ class _EditCouponViewState extends State<EditCouponView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       appBar: AppBar(
         title: const Text(
           'クーポン編集',
@@ -687,7 +716,7 @@ class _EditCouponViewState extends State<EditCouponView> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _isStampRewardCoupon ? Colors.grey[100] : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[300]!),
           ),
@@ -715,21 +744,57 @@ class _EditCouponViewState extends State<EditCouponView> {
                   default:
                     label = type;
                 }
+                final isDisabled = _isStampRewardCoupon && type != 'discount';
                 return DropdownMenuItem<String>(
                   value: type,
-                  child: Text(label),
+                  enabled: !isDisabled,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isDisabled ? Colors.grey[400] : Colors.black87,
+                    ),
+                  ),
                 );
               }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedCouponType = newValue;
-                  });
-                }
-              },
+              onChanged: _isStampRewardCoupon
+                  ? null
+                  : (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedCouponType = newValue;
+                        });
+                      }
+                    },
             ),
           ),
         ),
+        if (_isStampRewardCoupon)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'スタンプ達成特典のクーポンは「割引クーポン」のみ設定可能です',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.amber[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -838,6 +903,9 @@ class _EditCouponViewState extends State<EditCouponView> {
               onChanged: (int? newValue) {
                 setState(() {
                   _selectedRequiredStampCount = newValue;
+                  if (newValue != null && newValue > 0) {
+                    _selectedCouponType = 'discount';
+                  }
                 });
               },
             ),

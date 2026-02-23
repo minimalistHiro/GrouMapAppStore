@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../theme/store_ui.dart';
+
 class CustomTopTabBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomTopTabBar({
     super.key,
     required this.tabs,
     this.controller,
-    this.backgroundColor = const Color(0xFFFF6B35),
-    this.labelColor = Colors.white,
-    this.unselectedLabelColor = Colors.white,
-    this.indicatorColor = Colors.white,
+    this.backgroundColor = StoreUi.primary,
+    this.labelColor = StoreUi.onPrimary,
+    this.unselectedLabelColor = StoreUi.onPrimary,
+    this.indicatorColor = StoreUi.onPrimary,
   });
 
   final List<Tab> tabs;

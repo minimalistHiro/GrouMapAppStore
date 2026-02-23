@@ -4,7 +4,8 @@ import '../../providers/store_provider.dart';
 import 'trend_base_view.dart';
 
 class StoreUserTrendView extends ConsumerStatefulWidget {
-  const StoreUserTrendView({super.key});
+  final String? storeId;
+  const StoreUserTrendView({super.key, this.storeId});
 
   @override
   ConsumerState<StoreUserTrendView> createState() => _StoreUserTrendViewState();
@@ -38,6 +39,7 @@ class _StoreUserTrendViewState extends ConsumerState<StoreUserTrendView> {
   @override
   Widget build(BuildContext context) {
     return TrendBaseView(
+      overrideStoreId: widget.storeId,
       title: '店舗利用者推移',
       chartTitle: '利用者推移グラフ',
       emptyDetail: '利用者データがありません',

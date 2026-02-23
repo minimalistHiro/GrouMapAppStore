@@ -1,4 +1,5 @@
 import 'package:archive/archive.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,10 @@ import 'menu_edit_view.dart';
 import 'interior_images_view.dart';
 import 'payment_methods_settings_view.dart';
 import '../coupons/coupons_manage_view.dart';
+import '../analytics/store_user_trend_view.dart';
+import '../analytics/new_customer_trend_view.dart';
+import '../analytics/coupon_usage_trend_view.dart';
+import '../analytics/recommendation_trend_view.dart';
 
 class StoreSettingsDetailView extends ConsumerWidget {
   final String storeId;
@@ -195,6 +200,10 @@ class StoreSettingsDetailView extends ConsumerWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
+                _buildDataSection(context),
+                const SizedBox(height: 24),
+                _buildPieChartsSection(ref),
               ],
             ),
           );
@@ -550,6 +559,390 @@ class StoreSettingsDetailView extends ConsumerWidget {
       const SnackBar(
         content: Text('ポスター用プロンプトをコピーしました'),
         duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildDataSection(BuildContext context) {
+    final dataItems = [
+      {
+        'title': '店舗利用者推移',
+        'icon': Icons.people_outline,
+      },
+      {
+        'title': '新規顧客推移',
+        'icon': Icons.person_add_outlined,
+      },
+      {
+        'title': 'クーポン利用者推移',
+        'icon': Icons.local_offer_outlined,
+      },
+      {
+        'title': 'おすすめ表示推移',
+        'icon': Icons.recommend_outlined,
+      },
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.analytics_outlined, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'データ',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: dataItems.length,
+            separatorBuilder: (context, index) => const Divider(height: 16),
+            itemBuilder: (context, index) {
+              final item = dataItems[index];
+
+              return InkWell(
+                onTap: () {
+                  _navigateToDataDetail(context, item['title'] as String);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(
+                        item['icon'] as IconData,
+                        color: const Color(0xFFFF6B35),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item['title'] as String,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Colors.black38,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToDataDetail(BuildContext context, String dataType) {
+    switch (dataType) {
+      case '店舗利用者推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StoreUserTrendView(storeId: storeId),
+          ),
+        );
+        break;
+      case '新規顧客推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NewCustomerTrendView(storeId: storeId),
+          ),
+        );
+        break;
+      case 'クーポン利用者推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CouponUsageTrendView(storeId: storeId),
+          ),
+        );
+        break;
+      case 'おすすめ表示推移':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RecommendationTrendView(storeId: storeId),
+          ),
+        );
+        break;
+    }
+  }
+
+  Widget _buildPieChartsSection(WidgetRef ref) {
+    final pieDataAsync = ref.watch(allVisitPieChartDataProvider(storeId));
+
+    return pieDataAsync.when(
+      data: (pieData) {
+        final genderData = (pieData['gender'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, (v as num).toInt()),
+        ) ?? <String, int>{};
+        final ageGroupData = (pieData['ageGroup'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, (v as num).toInt()),
+        ) ?? <String, int>{};
+        final newRepeatData = (pieData['newRepeat'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, (v as num).toInt()),
+        ) ?? <String, int>{};
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.pie_chart, color: Color(0xFFFF6B35), size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    '全来店記録',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildPieChartWithLegend(
+                title: '男女比',
+                data: genderData,
+                colorMap: const {
+                  '男性': Color(0xFF4FC3F7),
+                  '女性': Color(0xFFFF8A80),
+                  'その他': Color(0xFFCE93D8),
+                  '未設定': Color(0xFFBDBDBD),
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildPieChartWithLegend(
+                title: '年齢別',
+                data: ageGroupData,
+                colorMap: const {
+                  '~19': Color(0xFF81D4FA),
+                  '20s': Color(0xFF4FC3F7),
+                  '30s': Color(0xFF29B6F6),
+                  '40s': Color(0xFFFFB74D),
+                  '50s': Color(0xFFFF8A65),
+                  '60+': Color(0xFFEF5350),
+                  '未設定': Color(0xFFBDBDBD),
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildPieChartWithLegend(
+                title: '新規 / リピート',
+                data: newRepeatData,
+                colorMap: const {
+                  '新規': Color(0xFF66BB6A),
+                  'リピート': Color(0xFFFF6B35),
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => _buildPieChartPlaceholder(),
+      error: (error, stackTrace) {
+        debugPrint('Error loading pie chart data: $error');
+        return _buildPieChartPlaceholder();
+      },
+    );
+  }
+
+  Widget _buildPieChartWithLegend({
+    required String title,
+    required Map<String, int> data,
+    required Map<String, Color> colorMap,
+  }) {
+    final total = data.values.fold<int>(0, (sum, v) => sum + v);
+    final filteredData = Map.fromEntries(
+      data.entries.where((e) => e.value > 0),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (total == 0)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                'データがありません',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+          )
+        else
+          Row(
+            children: [
+              SizedBox(
+                width: 140,
+                height: 140,
+                child: PieChart(
+                  PieChartData(
+                    startDegreeOffset: 270,
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 30,
+                    sections: filteredData.entries.map((entry) {
+                      final percentage = (entry.value / total * 100);
+                      return PieChartSectionData(
+                        color: colorMap[entry.key] ?? Colors.grey,
+                        value: entry.value.toDouble(),
+                        title: '${percentage.round()}%',
+                        titleStyle: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        radius: 45,
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: filteredData.entries.map((entry) {
+                    final percentage = (entry.value / total * 100);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: colorMap[entry.key] ?? Colors.grey,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              entry.key,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${entry.value}件 (${percentage.round()}%)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPieChartPlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pie_chart, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '全来店記録',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Center(
+            child: Text(
+              '読込中...',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ),
+        ],
       ),
     );
   }

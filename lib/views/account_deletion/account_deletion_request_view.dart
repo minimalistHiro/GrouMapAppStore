@@ -112,7 +112,7 @@ class _AccountDeletionRequestViewState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: const Color(0xFFFBF6F2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[200]!),
               ),

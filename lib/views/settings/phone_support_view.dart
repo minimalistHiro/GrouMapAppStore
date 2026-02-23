@@ -261,7 +261,7 @@ class PhoneSupportView extends StatelessWidget {
       decoration: BoxDecoration(
         color: isToday 
             ? const Color(0xFFFF6B35).withOpacity(0.1)
-            : Colors.grey[50],
+            : const Color(0xFFFBF6F2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isToday 
@@ -398,7 +398,7 @@ class PhoneSupportView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: const Color(0xFFFBF6F2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[200]!),
       ),

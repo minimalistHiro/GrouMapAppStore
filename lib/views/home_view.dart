@@ -94,7 +94,7 @@ class HomeView extends ConsumerWidget {
             data: (isOwner) {
               if (!isOwner) {
                 return Scaffold(
-                  backgroundColor: Colors.grey[50],
+                  backgroundColor: const Color(0xFFFBF6F2),
                   body: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -127,13 +127,13 @@ class HomeView extends ConsumerWidget {
               return _buildHomeScaffold(context, ref, 'owner_no_store');
             },
             loading: () => Scaffold(
-              backgroundColor: Colors.grey[50],
+              backgroundColor: const Color(0xFFFBF6F2),
               body: const Center(
                 child: CircularProgressIndicator(),
               ),
             ),
             error: (_, __) => Scaffold(
-              backgroundColor: Colors.grey[50],
+              backgroundColor: const Color(0xFFFBF6F2),
               body: const Center(
                 child: Text('ユーザー情報の取得に失敗しました'),
               ),
@@ -156,13 +156,13 @@ class HomeView extends ConsumerWidget {
             return _buildHomeScaffold(context, ref, storeId, isActive: isActive);
           },
           loading: () => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: const Center(
               child: CircularProgressIndicator(),
             ),
           ),
           error: (error, _) => Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: const Color(0xFFFBF6F2),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -197,13 +197,13 @@ class HomeView extends ConsumerWidget {
         );
       },
       loading: () => Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: const Color(0xFFFBF6F2),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
       ),
       error: (error, _) => Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: const Color(0xFFFBF6F2),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -245,7 +245,7 @@ class HomeView extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -288,7 +288,7 @@ class HomeView extends ConsumerWidget {
 
   Widget _buildApprovalPendingView(BuildContext context, WidgetRef ref, String storeId) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFBF6F2),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

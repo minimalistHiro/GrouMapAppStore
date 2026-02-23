@@ -106,7 +106,7 @@ class _StoreActivationSettingsViewState extends State<StoreActivationSettingsVie
     return Scaffold(
       appBar: const CommonHeader(title: '店舗設定'),
       body: Container(
-        color: Colors.grey[50],
+        color: const Color(0xFFFBF6F2),
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('stores').snapshots(),
           builder: (context, snapshot) {

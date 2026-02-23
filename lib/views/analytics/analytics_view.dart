@@ -351,7 +351,7 @@ class AnalyticsView extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: const Color(0xFFFBF6F2),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[200]!),
           ),
@@ -1506,7 +1506,7 @@ class AnalyticsView extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: const Color(0xFFFBF6F2),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey[200]!),
             ),
@@ -1523,7 +1523,7 @@ class AnalyticsView extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: const Color(0xFFFBF6F2),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey[200]!),
             ),

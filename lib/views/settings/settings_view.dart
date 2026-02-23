@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../providers/settings_badge_provider.dart';
@@ -17,6 +18,8 @@ import 'payment_methods_settings_view.dart';
 import 'owner_settings_view.dart';
 import 'live_chat_user_list_view.dart';
 import 'instagram_sync_view.dart';
+import 'password_change_view.dart';
+import 'email_change_view.dart';
 import '../plans/plan_contract_view.dart';
 import '../auth/login_view.dart';
 import '../stores/pending_stores_view.dart';
@@ -201,6 +204,36 @@ class SettingsView extends ConsumerWidget {
             _buildSection(
               title: 'アカウント',
               children: [
+                if (FirebaseAuth.instance.currentUser?.providerData
+                        .any((p) => p.providerId == 'password') ??
+                    false)
+                  _buildSettingsItem(
+                    icon: Icons.lock,
+                    title: 'パスワード変更',
+                    subtitle: 'ログインパスワードを変更',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PasswordChangeView(),
+                        ),
+                      );
+                    },
+                  ),
+                if (FirebaseAuth.instance.currentUser?.providerData
+                        .any((p) => p.providerId == 'password') ??
+                    false)
+                  _buildSettingsItem(
+                    icon: Icons.email,
+                    title: 'メールアドレス変更',
+                    subtitle: 'ログインメールアドレスを変更',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const EmailChangeView(),
+                        ),
+                      );
+                    },
+                  ),
                 _buildSettingsItem(
                   icon: Icons.business,
                   title: 'プラン・契約情報',

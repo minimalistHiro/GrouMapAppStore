@@ -7,12 +7,14 @@ class StoreUserDetailView extends StatefulWidget {
   final String userId;
   final String storeId;
   final List<String> selectedCouponIds;
+  final Map<String, dynamic>? scannedUserProfile;
 
   const StoreUserDetailView({
     Key? key,
     required this.userId,
     required this.storeId,
     this.selectedCouponIds = const [],
+    this.scannedUserProfile,
   }) : super(key: key);
 
   @override
@@ -31,8 +33,12 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
 
   Future<_UserSummary> _loadSummary() async {
     final firestore = FirebaseFirestore.instance;
-    final userDoc = await firestore.collection('users').doc(widget.userId).get();
-    final balanceDoc = await firestore.collection('user_point_balances').doc(widget.userId).get();
+    final userDoc =
+        await firestore.collection('users').doc(widget.userId).get();
+    final balanceDoc = await firestore
+        .collection('user_point_balances')
+        .doc(widget.userId)
+        .get();
     final userStoreDoc = await firestore
         .collection('users')
         .doc(widget.userId)
@@ -46,8 +52,13 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
         .doc(widget.userId)
         .get();
 
+    final mergedUserData = <String, dynamic>{
+      ...?widget.scannedUserProfile,
+      ...?(userDoc.data()),
+    };
+
     return _UserSummary(
-      userData: userDoc.data(),
+      userData: mergedUserData.isEmpty ? null : mergedUserData,
       balanceData: balanceDoc.data(),
       userStoreData: userStoreDoc.data(),
       storeUserData: storeUserDoc.data(),
@@ -103,7 +114,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
       debugPrint(
         'Stamp: user=${widget.userId}, store=${widget.storeId}, coupons=${widget.selectedCouponIds.length}',
       );
-      final functions = FirebaseFunctions.instanceFor(region: 'asia-northeast1');
+      final functions =
+          FirebaseFunctions.instanceFor(region: 'asia-northeast1');
       final callable = functions.httpsCallable('punchStamp');
       final payload = {
         'userId': widget.userId,
@@ -172,7 +184,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
 
           final availablePoints = data.balanceData != null
               ? _parseInt(data.balanceData?['availablePoints'])
-              : _parseInt(data.userData?['points']) + _parseInt(data.userData?['specialPoints']);
+              : _parseInt(data.userData?['points']) +
+                  _parseInt(data.userData?['specialPoints']);
 
           final stamps = _parseInt(data.userStoreData?['stamps']);
           final totalVisits = _parseInt(data.storeUserData?['totalVisits']);
@@ -191,7 +204,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
                     const SizedBox(width: 12),
                     Expanded(child: _buildStatCard('スタンプ', '${stamps}個')),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard('ポイント', '${availablePoints}pt')),
+                    Expanded(
+                        child: _buildStatCard('ポイント', '${availablePoints}pt')),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -220,7 +234,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
                           )
                         : const Text(
                             'スタンプを押印する',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
@@ -260,7 +275,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(userName),
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildFallbackAvatar(userName),
                     )
                   : _buildFallbackAvatar(userName),
             ),
@@ -272,7 +288,8 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
               children: [
                 Text(
                   userName,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(

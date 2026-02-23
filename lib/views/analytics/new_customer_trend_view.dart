@@ -4,11 +4,13 @@ import '../../providers/store_provider.dart';
 import 'trend_base_view.dart';
 
 class NewCustomerTrendView extends StatelessWidget {
-  const NewCustomerTrendView({Key? key}) : super(key: key);
+  final String? storeId;
+  const NewCustomerTrendView({Key? key, this.storeId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TrendBaseView(
+      overrideStoreId: storeId,
       title: '新規顧客推移',
       chartTitle: '新規顧客推移グラフ',
       emptyDetail: '新規顧客の履歴がありません',

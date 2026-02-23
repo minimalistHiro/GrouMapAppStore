@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'security_policy_view.dart';
+import 'email_support_view.dart';
 
 class AppInfoView extends StatelessWidget {
   const AppInfoView({Key? key}) : super(key: key);
@@ -20,11 +21,6 @@ class AppInfoView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ヘッダーセクション
-            _buildHeaderSection(),
-            
-            const SizedBox(height: 24),
-            
             // アプリ情報セクション
             _buildAppInfoSection(),
             
@@ -41,84 +37,9 @@ class AppInfoView extends StatelessWidget {
             const SizedBox(height: 24),
             
             // ソーシャルリンクセクション
-            _buildSocialLinksSection(),
+            _buildSocialLinksSection(context),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF6B35), Color(0xFFFF8A65)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // アプリアイコン
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  spreadRadius: 2,
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.store,
-              size: 40,
-              color: Color(0xFFFF6B35),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'ぐるまっぷ店舗用',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'バージョン 1.0.0',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '店舗管理アプリケーション',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white60,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
@@ -135,27 +56,12 @@ class AppInfoView extends StatelessWidget {
         ),
         _buildInfoItem(
           label: 'バージョン',
-          value: '1.0.0',
-          copyable: true,
-        ),
-        _buildInfoItem(
-          label: 'ビルド番号',
-          value: '20241201001',
+          value: '1.1.1',
           copyable: true,
         ),
         _buildInfoItem(
           label: '最終更新日',
-          value: '2024年12月1日',
-          copyable: false,
-        ),
-        _buildInfoItem(
-          label: 'プラットフォーム',
-          value: 'Flutter Web',
-          copyable: false,
-        ),
-        _buildInfoItem(
-          label: '開発言語',
-          value: 'Dart / Flutter',
+          value: '2026年2月23日',
           copyable: false,
         ),
       ],
@@ -173,13 +79,33 @@ class AppInfoView extends StatelessWidget {
           copyable: true,
         ),
         _buildInfoItem(
+          label: '代表者',
+          value: '金子広樹',
+          copyable: false,
+        ),
+        _buildInfoItem(
+          label: '設立日',
+          value: '2026年2月1日',
+          copyable: false,
+        ),
+        _buildInfoItem(
+          label: '所在地',
+          value: '埼玉県川口市芝5-5-13',
+          copyable: false,
+        ),
+        _buildInfoItem(
           label: '開発チーム',
           value: 'ぐるまっぷ Development Team',
           copyable: false,
         ),
         _buildInfoItem(
           label: 'サポートメール',
-          value: 'support@groumap.com',
+          value: 'info@groumapapp.com',
+          copyable: true,
+        ),
+        _buildInfoItem(
+          label: '電話サポート',
+          value: '080-6050-7194（月〜金 11:00〜18:00）',
           copyable: true,
         ),
         _buildInfoItem(
@@ -218,7 +144,7 @@ class AppInfoView extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialLinksSection() {
+  Widget _buildSocialLinksSection(BuildContext context) {
     return _buildSection(
       title: '公式アカウント',
       icon: Icons.share,
@@ -231,21 +157,9 @@ class AppInfoView extends StatelessWidget {
         ),
         _buildActionItem(
           icon: Icons.email,
-          title: 'お問い合わせ',
-          subtitle: 'support@groumap.com',
-          onTap: () => _copyToClipboard('support@groumap.com'),
-        ),
-        _buildActionItem(
-          icon: Icons.bug_report,
-          title: 'バグレポート',
-          subtitle: '不具合やご要望をお寄せください',
-          onTap: () => _showBugReportDialog(),
-        ),
-        _buildActionItem(
-          icon: Icons.star,
-          title: 'アプリを評価する',
-          subtitle: 'App Storeで評価してください',
-          onTap: () => _showRatingDialog(),
+          title: 'メールサポート',
+          subtitle: 'お問い合わせフォームを開く',
+          onTap: () => _navigateToEmailSupport(context),
         ),
       ],
     );
@@ -392,19 +306,17 @@ class AppInfoView extends StatelessWidget {
     );
   }
 
+  void _navigateToEmailSupport(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const EmailSupportView(),
+      ),
+    );
+  }
 
   void _showLicenseInfo() {
     // ライセンス情報を表示
     // 実際のアプリではライセンスページを表示
   }
 
-  void _showBugReportDialog() {
-    // バグレポートダイアログを表示
-    // 実際のアプリではバグレポート機能を実装
-  }
-
-  void _showRatingDialog() {
-    // 評価ダイアログを表示
-    // 実際のアプリではストア評価機能を実装
-  }
 }

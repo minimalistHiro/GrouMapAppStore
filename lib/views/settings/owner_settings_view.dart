@@ -941,7 +941,7 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: const Color(0xFFFBF6F2),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey[300]!),
         ),

@@ -307,7 +307,7 @@ class _MenuCreateViewState extends ConsumerState<MenuCreateView> {
             child: Container(
               width: 200,
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: const Color(0xFFFBF6F2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[300]!),
               ),

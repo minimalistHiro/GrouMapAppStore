@@ -51,12 +51,20 @@ class ErrorDialog {
 
 class SuccessSnackBar {
   static void show(BuildContext context, {required String message}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('完了'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text('閉じる'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        );
+      },
     );
   }
 }
