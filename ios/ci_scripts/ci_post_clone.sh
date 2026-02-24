@@ -3,7 +3,7 @@ set -e
 
 echo "=== Flutter SDK のインストール ==="
 cd $HOME
-git clone https://github.com/flutter/flutter.git --depth=1 -b stable
+git clone https://github.com/flutter/flutter.git --depth=1 -b 3.24.0
 export PATH="$HOME/flutter/bin:$PATH"
 
 echo "=== Flutter の初期化 ==="
