@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
 import 'create_post_view.dart';
 import 'edit_post_view.dart';
 
@@ -16,44 +18,24 @@ class PostsManageView extends ConsumerStatefulWidget {
 
 class _PostsManageViewState extends ConsumerState<PostsManageView> {
   String _selectedFilter = 'all';
-  final List<String> _filterOptions = ['all', 'お知らせ', 'イベント', 'キャンペーン', 'メニュー', 'その他'];
+  final List<String> _filterOptions = [
+    'all',
+    'お知らせ',
+    'イベント',
+    'キャンペーン',
+    'メニュー',
+    'その他'
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF6F2),
-      appBar: AppBar(
-        title: const Text(
-          '投稿管理',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF6B35),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.black),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CreatePostView(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: const CommonHeader(title: '投稿管理'),
       body: Consumer(
         builder: (context, ref, child) {
           final user = FirebaseAuth.instance.currentUser;
-          
+
           if (user == null) {
             return const Center(
               child: Column(
@@ -66,9 +48,9 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
               ),
             );
           }
-          
+
           final userStoreIdAsync = ref.watch(userStoreIdProvider);
-          
+
           return userStoreIdAsync.when(
             data: (storeId) {
               if (storeId == null) {
@@ -83,16 +65,19 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                   ),
                 );
               }
-              
+
               return Column(
                 children: [
                   // フィルター
                   _buildFilterSection(),
-                  
+
                   // 投稿一覧
                   Expanded(
                     child: _buildPostsList(storeId),
                   ),
+
+                  // 下部固定の作成ボタン
+                  _buildCreatePostButton(),
                 ],
               );
             },
@@ -190,18 +175,22 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
         }
 
         final posts = snapshot.data?.docs ?? [];
-        
+
         // クライアントサイドでフィルタリングとソート
         List<QueryDocumentSnapshot> filteredPosts = posts.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           if (_selectedFilter == 'all') return true;
           return data['category'] == _selectedFilter;
         }).toList();
-        
+
         // 作成日時で降順ソート
         filteredPosts.sort((a, b) {
-          final aTime = (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
-          final bTime = (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
+          final aTime =
+              (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ??
+                  DateTime(1970);
+          final bTime =
+              (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ??
+                  DateTime(1970);
           return bTime.compareTo(aTime);
         });
 
@@ -215,22 +204,6 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                 const Text('投稿がありません'),
                 const SizedBox(height: 8),
                 const Text('新しい投稿を作成してみましょう！'),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreatePostView(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('新規投稿を作成'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
               ],
             ),
           );
@@ -249,21 +222,43 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
+  Widget _buildCreatePostButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF6F2),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: CustomButton(
+        text: '新規投稿を作成',
+        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const CreatePostView(),
+            ),
+          );
+        },
+        height: 48,
+      ),
+    );
+  }
+
   Widget _buildPostCard(Map<String, dynamic> post, String storeId) {
     // 作成日の表示用フォーマット
     String formatDate() {
       try {
         final timestamp = post['createdAt'];
         if (timestamp == null) return '日付不明';
-        
+
         final date = timestamp is DateTime ? timestamp : timestamp.toDate();
         final now = DateTime.now();
         final difference = now.difference(date).inDays;
-        
+
         if (difference == 0) return '今日';
         if (difference == 1) return '昨日';
         if (difference < 7) return '${difference}日前';
-        
+
         return '${date.month}月${date.day}日';
       } catch (e) {
         return '日付不明';
@@ -302,7 +297,8 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                 children: [
                   // カテゴリバッジ
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF6B35).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -319,33 +315,40 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       ),
                     ),
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // ステータス
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: post['isPublished'] == true ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                      color: post['isPublished'] == true
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: post['isPublished'] == true ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
+                        color: post['isPublished'] == true
+                            ? Colors.green.withOpacity(0.3)
+                            : Colors.orange.withOpacity(0.3),
                       ),
                     ),
                     child: Text(
                       post['isPublished'] == true ? '公開中' : '下書き',
                       style: TextStyle(
                         fontSize: 12,
-                        color: post['isPublished'] == true ? Colors.green : Colors.orange,
+                        color: post['isPublished'] == true
+                            ? Colors.green
+                            : Colors.orange,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // タイトル
               Text(
                 post['title'] ?? 'タイトルなし',
@@ -357,9 +360,9 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // 内容
               Text(
                 post['content'] ?? '',
@@ -370,11 +373,12 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // 画像がある場合
-              if (post['imageUrls'] != null && (post['imageUrls'] as List).isNotEmpty)
+              if (post['imageUrls'] != null &&
+                  (post['imageUrls'] as List).isNotEmpty)
                 Container(
                   height: 120,
                   child: ListView.builder(
@@ -410,9 +414,9 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                     },
                   ),
                 ),
-              
+
               const SizedBox(height: 12),
-              
+
               // フッター部分
               Row(
                 children: [
@@ -425,9 +429,9 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  
+
                   const SizedBox(width: 16),
-                  
+
                   Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
@@ -437,9 +441,9 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // アクションボタン
                   Row(
                     children: [
@@ -448,13 +452,15 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => EditPostView(postData: post),
+                              builder: (context) =>
+                                  EditPostView(postData: post),
                             ),
                           );
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                        icon: const Icon(Icons.delete,
+                            size: 20, color: Colors.red),
                         onPressed: () {
                           final imageUrls = (post['imageUrls'] as List?)
                                   ?.whereType<String>()
@@ -474,7 +480,8 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     );
   }
 
-  void _showDeleteDialog(String postId, String storeId, List<String> imageUrls) {
+  void _showDeleteDialog(
+      String postId, String storeId, List<String> imageUrls) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -520,7 +527,8 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
     return failedCount;
   }
 
-  Future<void> _deletePost(String postId, String storeId, List<String> imageUrls) async {
+  Future<void> _deletePost(
+      String postId, String storeId, List<String> imageUrls) async {
     try {
       final failedImageDeletes = await _deletePostImages(imageUrls);
       await FirebaseFirestore.instance

@@ -1,6 +1,9 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-02-24更新（3回目）: `ScheduleCalendarView` の不定休（`isRegularHoliday=true`）店舗向けオプションラベルを「臨時営業」→「通常営業」に変更。凡例の緑ドットラベルも不定休時は「通常営業」と表示するよう対応。
+※ 2026-02-24更新（2回目）: `ScheduleCalendarView`（営業カレンダー）を新規追加。`SettingsView` の店舗情報セクションに「営業カレンダー」メニューを追加。`table_calendar` / `intl` パッケージを導入。
+※ 2026-02-24更新（1回目）: クーポン管理/新規クーポン作成/投稿管理/新規投稿作成のUIを統一（ヘッダーを `CommonHeader`、主要作成ボタンを `CustomButton` のカプセル型に統一）。クーポン管理/投稿管理の空状態では中央ボタンを廃止し、下部固定ボタンに統一。投稿管理のヘッダー右上 `+` ボタンを削除。
 ※ 2026-02-23更新: `PrivacyPolicyView` / `TermsOfServiceView` を最新規約Markdownに同期（制定日/改定日・条文・問い合わせ先を反映）。問い合わせ先は `info@groumapapp.com` / `080-6050-7194（平日 11:00-18:00）` に統一。
 
 ## 起動・ナビゲーション
@@ -132,11 +135,11 @@
 ## クーポン・投稿
 
 ### CouponsManageView (`lib/views/coupons/coupons_manage_view.dart`)
-- 構成: `CommonHeader`、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除、下部固定の新規クーポン作成ボタン（1店舗あたり最大3枚、上限時は非活性＋制限メッセージ表示）
+- 構成: `CommonHeader`、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除、下部固定の新規クーポン作成 `CustomButton`（カプセル型、1店舗あたり最大3枚、上限時は非活性＋制限メッセージ表示）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
 - 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
-- 構成: クーポンタイプ選択（割引/プレゼント/特別オファー）、割引タイプ/基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成ボタン、店舗固定モード時のロック済み店舗表示。スタンプ達成特典（requiredStampCount > 0）の場合はクーポンタイプを「割引クーポン」に制限（ドロップダウン無効化＋ヘルプテキスト表示）
+- 構成: `CommonHeader`、クーポンタイプ選択（割引/プレゼント/特別オファー）、割引タイプ/基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成 `CustomButton`（カプセル型）、店舗固定モード時のロック済み店舗表示。スタンプ達成特典（requiredStampCount > 0）の場合はクーポンタイプを「割引クーポン」に制限（ドロップダウン無効化＋ヘルプテキスト表示）
 - 説明: 新規クーポン作成画面。店舗設定詳細経由では選択店舗を固定して作成
 
 ### EditCouponView (`lib/views/coupons/edit_coupon_view.dart`)
@@ -152,11 +155,11 @@
 - 説明: 会計時に使うクーポンの選択画面
 
 ### PostsManageView (`lib/views/posts/posts_manage_view.dart`)
-- 構成: フィルター、投稿一覧、作成導線
+- 構成: `CommonHeader`（右上 `+` ボタンなし）、フィルター、投稿一覧、下部固定の新規投稿作成 `CustomButton`（カプセル型）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
 - 説明: 投稿管理（一覧・編集）画面
 
 ### CreatePostView (`lib/views/posts/create_post_view.dart`)
-- 構成: 投稿フォーム（店舗選択/画像/本文）、作成（店舗ジャンルは店舗情報から自動取得して保存）
+- 構成: `CommonHeader`、投稿フォーム（店舗選択/画像/本文）、作成 `CustomButton`（カプセル型、店舗ジャンルは店舗情報から自動取得して保存）
 - 説明: 新規投稿作成画面
 
 ### EditPostView (`lib/views/posts/edit_post_view.dart`)
@@ -303,6 +306,11 @@
 - 構成: 決済方法カテゴリ別一覧（現金/カード/電子マネー/QR決済）、各項目トグル切替、保存
 - 説明: 店舗で利用可能な決済方法の設定画面
 
+### ScheduleCalendarView (`lib/views/settings/schedule_calendar_view.dart`)
+- 構成: 凡例（臨時休業=赤/時間変更=青/不定休店舗は「通常営業」=緑・通常店舗は「臨時営業」=緑）、月カレンダー（`table_calendar`）、色マーカー付き日付表示（定休日=グレー）、日付タップで `_ScheduleOverrideSheet`（ボトムシート）、今後の変更登録済み一覧（日付順・削除ボタン）
+- ボトムシート（`_ScheduleOverrideSheet`）: 選択日の通常状態表示、通常営業店舗向けオプション（通常通り/臨時休業/時間変更）、不定休店舗向けオプション（通常通り/**通常営業**）。不定休店舗の「通常営業」は時間変更・臨時営業と同じ type='open' で Firestore に保存されるが、ラベルを「通常営業」として表示することで店舗が「その日は営業する」と直感的に設定できる設計。時間変更・通常営業時の開始/終了時刻ピッカー、メモ入力欄、保存ボタン
+- 説明: 臨時休業・時間変更・通常営業（不定休時）を日付ごとにカレンダーUIで管理する画面。Firestoreの `stores/{storeId}.scheduleOverrides` に保存。不定休店舗では scheduleOverrides（type='open'）がある日のみ営業日とみなし、ユーザー側の店舗詳細では「通常営業 HH:mm〜HH:mm」と表示される
+
 ### StoreIconCropView (`lib/views/settings/store_icon_crop_view.dart`)
 - 構成: 画像プレビュー、切り抜き、保存
 - 説明: 店舗アイコンのトリミング画面
@@ -430,6 +438,7 @@
             │  └─ メニュー項目編集（MenuItemEditView）
             ├─ 店内画像設定（InteriorImagesView）
             ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
+            ├─ 営業カレンダー（ScheduleCalendarView）
             ├─ Instagram連携（InstagramSyncView）
             ├─ パスワード変更（PasswordChangeView）
             ├─ メールアドレス変更（EmailChangeView）

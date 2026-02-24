@@ -9,6 +9,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
 
 class CreatePostView extends ConsumerStatefulWidget {
   const CreatePostView({Key? key}) : super(key: key);
@@ -141,16 +143,16 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
       List<String> imageUrls = [];
       if (_selectedImages.isNotEmpty) {
         print('画像保存開始: ${_selectedImages.length}枚');
-        
+
         for (int i = 0; i < _selectedImages.length; i++) {
           final imageBytes = _selectedImages[i];
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final imageFileName = 'posts/$postId/image_${i}_$timestamp.jpg';
-          
+
           try {
             print('Firebase Storage保存試行: $imageFileName');
             final ref = _storage.ref().child(imageFileName);
-            
+
             // メタデータを設定
             final metadata = SettableMetadata(
               contentType: 'image/jpeg',
@@ -160,11 +162,11 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                 'uploadedAt': timestamp.toString(),
               },
             );
-            
+
             final uploadTask = ref.putData(imageBytes, metadata);
             final snapshot = await uploadTask;
             final downloadUrl = await snapshot.ref.getDownloadURL();
-            
+
             imageUrls.add(downloadUrl);
             print('Firebase Storage保存完了 - $downloadUrl');
           } catch (e) {
@@ -182,7 +184,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
           }
         }
       }
-      
+
       // 店舗のアイコン画像URLとジャンルを取得
       String? storeIconImageUrl;
       String? storeCategory;
@@ -327,22 +329,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF6F2),
-      appBar: AppBar(
-        title: const Text(
-          '新規投稿作成',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF6B35),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: const CommonHeader(title: '新規投稿作成'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -386,19 +373,19 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
 
               // 店舗選択
               _buildStoreDropdown(),
 
               const SizedBox(height: 20),
-              
+
               // 写真選択
               _buildImageSection(),
-              
+
               const SizedBox(height: 20),
-              
+
               // 内容
               _buildInputField(
                 controller: _contentController,
@@ -416,44 +403,19 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // 作成ボタン
-              SizedBox(
-                width: double.infinity,
+              CustomButton(
+                text: '投稿を作成',
+                onPressed: _isLoading ? null : _createPost,
+                isLoading: _isLoading,
                 height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _createPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B35),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          '投稿を作成',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // 注意事項
               Container(
                 padding: const EdgeInsets.all(16),
@@ -549,7 +511,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
     return Consumer(
       builder: (context, ref, child) {
         final userStoreIdAsync = ref.watch(userStoreIdProvider);
-        
+
         return userStoreIdAsync.when(
           data: (storeId) {
             if (storeId == null) {
@@ -588,16 +550,16 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                 ),
               );
             }
-            
+
             final storeDataAsync = ref.watch(storeDataProvider(storeId));
-            
+
             return storeDataAsync.when(
               data: (storeData) {
                 if (storeData != null) {
                   _selectedStoreId = storeId;
                   _selectedStoreName = storeData['name'] ?? '店舗名なし';
                 }
-                
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -631,7 +593,8 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                               ),
                             ),
                           ),
-                          Icon(Icons.check_circle, color: Colors.green, size: 20),
+                          Icon(Icons.check_circle,
+                              color: Colors.green, size: 20),
                         ],
                       ),
                     ),
@@ -735,7 +698,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                   children: _selectedImages.asMap().entries.map((entry) {
                     final int index = entry.key;
                     final Uint8List imageBytes = entry.value;
-                    
+
                     return Stack(
                       children: [
                         Container(
@@ -779,7 +742,7 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               // 写真追加ボタン
               if (_selectedImages.length < _maxImages)
                 GestureDetector(
@@ -859,5 +822,4 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
       ],
     );
   }
-
 }

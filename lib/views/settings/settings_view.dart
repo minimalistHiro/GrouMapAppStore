@@ -10,6 +10,7 @@ import 'store_location_edit_view.dart';
 import 'menu_edit_view.dart';
 import 'store_selection_view.dart';
 import 'store_activation_settings_view.dart';
+import 'schedule_calendar_view.dart';
 import 'help_support_view.dart';
 import 'app_info_view.dart';
 import 'notification_settings_view.dart';
@@ -158,6 +159,18 @@ class SettingsView extends ConsumerWidget {
                       MaterialPageRoute(
                         builder: (context) =>
                             const PaymentMethodsSettingsView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.calendar_month,
+                  title: '営業カレンダー',
+                  subtitle: '臨時休業・営業時間変更を管理',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ScheduleCalendarView(),
                       ),
                     );
                   },

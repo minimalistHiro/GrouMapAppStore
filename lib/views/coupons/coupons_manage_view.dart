@@ -39,14 +39,17 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  Future<String?> _resolveStoreName(String storeId, {String? fallbackName}) async {
+  Future<String?> _resolveStoreName(String storeId,
+      {String? fallbackName}) async {
     final normalizedFallback = _sanitizeStoreName(fallbackName);
     if (normalizedFallback != null) {
       return normalizedFallback;
     }
     try {
-      final storeDoc =
-          await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get();
       final storeData = storeDoc.data();
       return _sanitizeStoreName(storeData?['name'] as String?);
     } catch (_) {
@@ -80,7 +83,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       body: Consumer(
         builder: (context, ref, child) {
           final user = FirebaseAuth.instance.currentUser;
-          
+
           if (user == null) {
             return const Center(
               child: Column(
@@ -93,7 +96,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
               ),
             );
           }
-          
+
           final targetStoreId = widget.targetStoreId;
           if (targetStoreId != null && targetStoreId.isNotEmpty) {
             return _buildCouponsContent(
@@ -261,8 +264,10 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
 
     // 作成日時で降順ソート
     coupons.sort((a, b) {
-      final aTime = (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
-      final bTime = (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ?? DateTime(1970);
+      final aTime = (a.data() as Map<String, dynamic>)['createdAt']?.toDate() ??
+          DateTime(1970);
+      final bTime = (b.data() as Map<String, dynamic>)['createdAt']?.toDate() ??
+          DateTime(1970);
       return bTime.compareTo(aTime);
     });
 
@@ -298,23 +303,6 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
             Text(isLimitReached
                 ? 'フィルター条件に一致するクーポンがありません'
                 : '新しいクーポンを作成してみましょう！'),
-            if (!isLimitReached) ...[
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: CustomButton(
-                  text: '新規クーポンを作成',
-                  icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                  onPressed: () => _openCreateCouponView(
-                    storeId: storeId,
-                    storeName: storeName,
-                  ),
-                  borderRadius: 12,
-                  height: 48,
-                  backgroundColor: _accentColor,
-                ),
-              ),
-            ],
           ],
         ),
       );
@@ -338,12 +326,12 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
         final endDate = coupon['validUntil']?.toDate();
         if (endDate == null) return '期限不明';
         if (coupon['noExpiry'] == true || endDate.year >= 2100) return '無期限';
-        
+
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final tomorrow = today.add(const Duration(days: 1));
         final couponDate = DateTime(endDate.year, endDate.month, endDate.day);
-        
+
         String dateText;
         if (couponDate.isAtSameMomentAs(today)) {
           dateText = '今日';
@@ -352,7 +340,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
         } else {
           dateText = '${endDate.month}月${endDate.day}日';
         }
-        
+
         return '$dateText ${endDate.hour.toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')}まで';
       } catch (e) {
         return '期限不明';
@@ -363,7 +351,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     String getDiscountText() {
       final discountType = coupon['discountType'] ?? 'percentage';
       final discountValue = coupon['discountValue'] ?? 0.0;
-      
+
       if (discountType == 'percentage') {
         return '${discountValue.toInt()}%OFF';
       } else if (discountType == 'fixed_amount') {
@@ -415,7 +403,8 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                 children: [
                   // ステータスバッジ
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: expired
                           ? Colors.red.withOpacity(0.1)
@@ -448,12 +437,13 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                       ),
                     ),
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // 割引情報
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _accentColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -472,9 +462,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // タイトル
               Text(
                 coupon['title'] ?? 'タイトルなし',
@@ -486,9 +476,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // 説明
               Text(
                 coupon['description'] ?? '',
@@ -499,9 +489,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // 画像がある場合
               if (coupon['imageUrl'] != null)
                 Container(
@@ -530,7 +520,7 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                     ),
                   ),
                 ),
-              
+
               // フッター部分
               Row(
                 children: [
@@ -543,9 +533,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                       color: expired ? Colors.red : Colors.grey[600],
                     ),
                   ),
-                  
+
                   const SizedBox(width: 16),
-                  
+
                   if (coupon['noUsageLimit'] != true) ...[
                     Icon(Icons.people, size: 16, color: Colors.grey[600]),
                     const SizedBox(width: 4),
@@ -557,9 +547,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                       ),
                     ),
                   ],
-                  
+
                   const Spacer(),
-                  
+
                   // アクションボタン
                   Row(
                     children: [
@@ -570,11 +560,13 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                           color: isActive ? Colors.orange : Colors.green,
                         ),
                         onPressed: () {
-                          _toggleCouponStatus(coupon['couponId'], storeId, !isActive);
+                          _toggleCouponStatus(
+                              coupon['couponId'], storeId, !isActive);
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                        icon: const Icon(Icons.delete,
+                            size: 20, color: Colors.red),
                         onPressed: () {
                           _showDeleteDialog(coupon['couponId'], storeId);
                         },
@@ -629,9 +621,9 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                       storeId: storeId,
                       storeName: storeName,
                     ),
-            borderRadius: 12,
             height: 48,
-            backgroundColor: isLimitReached ? Colors.grey.shade400 : _accentColor,
+            backgroundColor:
+                isLimitReached ? Colors.grey.shade400 : _accentColor,
           ),
         ],
       ),
@@ -704,7 +696,8 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
     }
   }
 
-  Future<void> _toggleCouponStatus(String couponId, String storeId, bool isActive) async {
+  Future<void> _toggleCouponStatus(
+      String couponId, String storeId, bool isActive) async {
     try {
       await FirebaseFirestore.instance
           .collection('coupons')

@@ -64,6 +64,10 @@ dependencies:
   # Charts
   fl_chart: ^0.68.0
 
+  # Calendar
+  table_calendar: ^3.1.2
+  intl: ^0.19.0
+
   # URL Launcher
   url_launcher: ^6.3.0
 

@@ -9,6 +9,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
 
 class CreateCouponView extends ConsumerStatefulWidget {
   final String? initialStoreId;
@@ -44,12 +46,12 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
   bool _isNoExpiry = false;
   bool _isNoUsageLimit = false;
   bool _isLoading = false;
-  
+
   // 写真関連
   final ImagePicker _picker = ImagePicker();
   final FirebaseStorage _storage = FirebaseStorage.instance;
   Uint8List? _selectedImage;
-  
+
   final List<Map<String, String>> _discountTypes = [
     {'value': 'percentage', 'label': '割合（%）'},
     {'value': 'fixed_amount', 'label': '固定金額（円）'},
@@ -227,10 +229,10 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       if (_selectedImage != null) {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final imageFileName = 'coupons/$couponId/image_$timestamp.jpg';
-        
+
         try {
           final ref = _storage.ref().child(imageFileName);
-          
+
           final metadata = SettableMetadata(
             contentType: 'image/jpeg',
             customMetadata: {
@@ -239,7 +241,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
               'uploadedAt': timestamp.toString(),
             },
           );
-          
+
           final uploadTask = ref.putData(_selectedImage!, metadata);
           final snapshot = await uploadTask;
           imageUrl = await snapshot.ref.getDownloadURL();
@@ -259,7 +261,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
       // Firestoreにクーポン情報を保存
       final validUntil = _isNoExpiry
           ? _noExpirySentinel
-          : (_selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)));
+          : (_selectedValidUntil ??
+              DateTime.now().add(const Duration(days: 30)));
 
       await FirebaseFirestore.instance
           .collection('coupons')
@@ -276,7 +279,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
         'validUntil': validUntil,
-        'usageLimit': _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
+        'usageLimit':
+            _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
         'noUsageLimit': _isNoUsageLimit,
         'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
@@ -304,7 +308,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         'discountType': _selectedDiscountType,
         'discountValue': double.parse(_discountValueController.text),
         'validUntil': validUntil,
-        'usageLimit': _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
+        'usageLimit':
+            _isNoUsageLimit ? 0 : int.parse(_usageLimitController.text),
         'noUsageLimit': _isNoUsageLimit,
         'requiredStampCount': _selectedRequiredStampCount!,
         'usedCount': 0,
@@ -388,22 +393,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF6F2),
-      appBar: AppBar(
-        title: const Text(
-          '新規クーポン作成',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF6B35),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: const CommonHeader(title: '新規クーポン作成'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -447,14 +437,14 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // 店舗選択
               _buildStoreDropdown(),
-              
+
               const SizedBox(height: 20),
-              
+
               // タイトル
               _buildInputField(
                 controller: _titleController,
@@ -471,9 +461,9 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // 説明
               _buildInputField(
                 controller: _descriptionController,
@@ -491,7 +481,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
 
               // クーポンタイプ
@@ -501,9 +491,9 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
 
               // 割引タイプ
               _buildDiscountTypeDropdown(),
-              
+
               const SizedBox(height: 20),
-              
+
               // 割引値
               _buildInputField(
                 controller: _discountValueController,
@@ -522,15 +512,16 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                   if (doubleValue <= 0) {
                     return '0より大きい値を入力してください';
                   }
-                  if (_selectedDiscountType == 'percentage' && doubleValue > 100) {
+                  if (_selectedDiscountType == 'percentage' &&
+                      doubleValue > 100) {
                     return '割合は100%以下で入力してください';
                   }
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // 発券枚数
               Row(
                 children: [
@@ -584,59 +575,34 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                     return null;
                   },
                 ),
-              
+
               const SizedBox(height: 20),
 
               // スタンプ条件
               _buildRequiredStampCountDropdown(),
 
               const SizedBox(height: 20),
-              
+
               // 有効期限
               _buildValidUntilPicker(),
-              
+
               const SizedBox(height: 20),
-              
+
               // 画像選択
               _buildImageSection(),
-              
+
               const SizedBox(height: 32),
-              
+
               // 作成ボタン
-              SizedBox(
-                width: double.infinity,
+              CustomButton(
+                text: 'クーポンを作成',
+                onPressed: _isLoading ? null : _createCoupon,
+                isLoading: _isLoading,
                 height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _createCoupon,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'クーポンを作成',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // 注意事項
               Container(
                 padding: const EdgeInsets.all(16),
@@ -863,7 +829,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                 color: Colors.black87,
               ),
               items: _couponTypes.map((Map<String, String> type) {
-                final isDisabled = _isStampRewardCoupon && type['value'] != 'discount';
+                final isDisabled =
+                    _isStampRewardCoupon && type['value'] != 'discount';
                 return DropdownMenuItem<String>(
                   value: type['value'],
                   enabled: !isDisabled,
@@ -956,18 +923,19 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
           onTap: _isNoExpiry
               ? null
               : () async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: _selectedValidUntil ?? DateTime.now().add(const Duration(days: 30)),
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
-            );
-            if (picked != null) {
-              setState(() {
-                _selectedValidUntil = picked;
-              });
-            }
-          },
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedValidUntil ??
+                        DateTime.now().add(const Duration(days: 30)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedValidUntil = picked;
+                    });
+                  }
+                },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -1070,7 +1038,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               // 画像追加ボタン
               if (_selectedImage == null)
                 GestureDetector(
@@ -1184,7 +1152,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
     return Consumer(
       builder: (context, ref, child) {
         if (widget.lockStore) {
-          final lockedStoreId = _sanitizeStoreId(_selectedStoreId ?? widget.initialStoreId);
+          final lockedStoreId =
+              _sanitizeStoreId(_selectedStoreId ?? widget.initialStoreId);
           if (lockedStoreId == null) {
             return Container(
               width: double.infinity,
@@ -1205,9 +1174,12 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
           return lockedStoreAsync.when(
             data: (storeData) {
               _selectedStoreId = lockedStoreId;
-              final fetchedStoreName = _sanitizeStoreName(storeData?['name'] as String?);
-              final initialStoreName = _sanitizeStoreName(widget.initialStoreName);
-              _selectedStoreName = fetchedStoreName ?? initialStoreName ?? _selectedStoreName;
+              final fetchedStoreName =
+                  _sanitizeStoreName(storeData?['name'] as String?);
+              final initialStoreName =
+                  _sanitizeStoreName(widget.initialStoreName);
+              _selectedStoreName =
+                  fetchedStoreName ?? initialStoreName ?? _selectedStoreName;
               final displayName =
                   _selectedStoreName.isNotEmpty ? _selectedStoreName : '店舗名未設定';
 
@@ -1274,7 +1246,7 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
         }
 
         final userStoreIdAsync = ref.watch(userStoreIdProvider);
-        
+
         return userStoreIdAsync.when(
           data: (storeId) {
             if (storeId == null) {
@@ -1313,17 +1285,18 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                 ),
               );
             }
-            
+
             final storeDataAsync = ref.watch(storeDataProvider(storeId));
-            
+
             return storeDataAsync.when(
               data: (storeData) {
                 if (storeData != null) {
                   _selectedStoreId = storeId;
                   _selectedStoreName =
-                      _sanitizeStoreName(storeData['name'] as String?) ?? '店舗名なし';
+                      _sanitizeStoreName(storeData['name'] as String?) ??
+                          '店舗名なし';
                 }
-                
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1357,7 +1330,8 @@ class _CreateCouponViewState extends ConsumerState<CreateCouponView> {
                               ),
                             ),
                           ),
-                          Icon(Icons.check_circle, color: Colors.green, size: 20),
+                          Icon(Icons.check_circle,
+                              color: Colors.green, size: 20),
                         ],
                       ),
                     ),
