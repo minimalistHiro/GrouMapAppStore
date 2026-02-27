@@ -17,7 +17,7 @@ flutter pub get
 
 echo "=== CocoaPods インストール ==="
 cd ios
-pod install --repo-update
+pod install --no-repo-update
 cd ..
 
 echo "=== iOSビルド（署名なし） ==="
