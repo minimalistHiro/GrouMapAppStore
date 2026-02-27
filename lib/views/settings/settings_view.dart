@@ -29,10 +29,11 @@ import '../feedback/feedback_manage_view.dart';
 import '../notifications/announcement_manage_view.dart';
 import '../news/news_manage_view.dart';
 import '../account_deletion/account_deletion_requests_list_view.dart';
+import '../account_deletion/user_account_deletion_reasons_view.dart';
 import '../../providers/account_deletion_provider.dart';
 
 class SettingsView extends ConsumerWidget {
-  const SettingsView({Key? key}) : super(key: key);
+  const SettingsView({super.key});
 
   Color _getDefaultStoreColor(String category) {
     switch (category) {
@@ -95,9 +96,9 @@ class SettingsView extends ConsumerWidget {
           children: [
             // 店舗情報カード
             _buildStoreInfoCard(ref),
-            
+
             const SizedBox(height: 24),
-            
+
             // 店舗情報セクション
             _buildSection(
               title: '店舗情報',
@@ -177,9 +178,9 @@ class SettingsView extends ConsumerWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // アプリ設定セクション
             _buildSection(
               title: 'アプリ設定',
@@ -210,9 +211,9 @@ class SettingsView extends ConsumerWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // アカウントセクション
             _buildSection(
               title: 'アカウント',
@@ -313,10 +314,11 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.manage_accounts,
                       title: 'フィードバック管理',
                       subtitle: 'お客様のフィードバックを確認',
-                      badgeCount: ref.watch(pendingFeedbackCountProvider).maybeWhen(
-                        data: (v) => v,
-                        orElse: () => 0,
-                      ),
+                      badgeCount:
+                          ref.watch(pendingFeedbackCountProvider).maybeWhen(
+                                data: (v) => v,
+                                orElse: () => 0,
+                              ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -329,10 +331,11 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.chat,
                       title: 'ライブチャット',
                       subtitle: 'ユーザーからの問い合わせを確認',
-                      badgeCount: ref.watch(unreadLiveChatCountProvider).maybeWhen(
-                        data: (v) => v,
-                        orElse: () => 0,
-                      ),
+                      badgeCount:
+                          ref.watch(unreadLiveChatCountProvider).maybeWhen(
+                                data: (v) => v,
+                                orElse: () => 0,
+                              ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -348,7 +351,8 @@ class SettingsView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const StoreActivationSettingsView(),
+                            builder: (context) =>
+                                const StoreActivationSettingsView(),
                           ),
                         );
                       },
@@ -357,10 +361,11 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.storefront,
                       title: '未承認店舗一覧',
                       subtitle: '未承認の店舗申請を確認',
-                      badgeCount: ref.watch(pendingStoresCountProvider).maybeWhen(
-                        data: (v) => v,
-                        orElse: () => 0,
-                      ),
+                      badgeCount:
+                          ref.watch(pendingStoresCountProvider).maybeWhen(
+                                data: (v) => v,
+                                orElse: () => 0,
+                              ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -400,7 +405,8 @@ class SettingsView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const AnnouncementManageView(),
+                            builder: (context) =>
+                                const AnnouncementManageView(),
                           ),
                         );
                       },
@@ -409,14 +415,32 @@ class SettingsView extends ConsumerWidget {
                       icon: Icons.person_remove,
                       title: 'アカウント削除申請',
                       subtitle: '店舗のアカウント削除申請を管理',
-                      badgeCount: ref.watch(pendingDeletionRequestsCountProvider).maybeWhen(
-                        data: (v) => v,
-                        orElse: () => 0,
-                      ),
+                      badgeCount: ref
+                          .watch(pendingDeletionRequestsCountProvider)
+                          .maybeWhen(
+                            data: (v) => v,
+                            orElse: () => 0,
+                          ),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const AccountDeletionRequestsListView(),
+                            builder: (context) =>
+                                const AccountDeletionRequestsListView(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.manage_search,
+                      title: 'ユーザー退会理由一覧',
+                      subtitle: 'ユーザーの退会理由を確認',
+                      badgeCount:
+                          ref.watch(unreadUserDeletionReasonsCountProvider),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const UserAccountDeletionReasonsView(),
                           ),
                         );
                       },
@@ -427,9 +451,9 @@ class SettingsView extends ConsumerWidget {
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // ログアウトボタン
             CustomButton(
               text: 'ログアウト',
@@ -437,7 +461,6 @@ class SettingsView extends ConsumerWidget {
               backgroundColor: Colors.red,
               textColor: Colors.white,
             ),
-            
 
             const SizedBox(height: 20),
           ],
@@ -539,21 +562,21 @@ class SettingsView extends ConsumerWidget {
     return Consumer(
       builder: (context, ref, child) {
         final storeIdAsync = ref.watch(userStoreIdProvider);
-        
+
         return storeIdAsync.when(
           data: (storeId) {
             if (storeId == null) {
               return _buildStoreInfoCardPlaceholder();
             }
-            
+
             final storeDataAsync = ref.watch(storeDataProvider(storeId));
-            
+
             return storeDataAsync.when(
               data: (storeData) {
                 if (storeData == null) {
                   return _buildStoreInfoCardPlaceholder();
                 }
-                
+
                 final String category = storeData['category'] ?? 'その他';
                 final Color baseColor = _getDefaultStoreColor(category);
 
@@ -591,7 +614,8 @@ class SettingsView extends ConsumerWidget {
                               ? Image.network(
                                   storeData['iconImageUrl'],
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Container(
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
                                     color: baseColor.withOpacity(0.1),
                                     child: Icon(
                                       _getDefaultStoreIcon(category),
@@ -610,9 +634,9 @@ class SettingsView extends ConsumerWidget {
                                 ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 16),
-                      
+
                       // 店舗情報
                       Expanded(
                         child: Column(
@@ -659,7 +683,7 @@ class SettingsView extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      
+
                       // ボタン群
                       Column(
                         children: [
@@ -682,14 +706,16 @@ class SettingsView extends ConsumerWidget {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const StoreSelectionView(),
+                                    builder: (context) =>
+                                        const StoreSelectionView(),
                                   ),
                                 );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
@@ -753,9 +779,9 @@ class SettingsView extends ConsumerWidget {
               color: Colors.grey,
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // 店舗情報（プレースホルダー）
           Expanded(
             child: Column(
@@ -790,7 +816,7 @@ class SettingsView extends ConsumerWidget {
               ],
             ),
           ),
-          
+
           // 編集ボタン（プレースホルダー）
           Container(
             width: 40,
@@ -874,5 +900,4 @@ class SettingsView extends ConsumerWidget {
       }
     }
   }
-
 }

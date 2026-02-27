@@ -14,9 +14,6 @@ class OwnerSettingsView extends ConsumerStatefulWidget {
 }
 
 class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
-  final _friendCampaignPointsController = TextEditingController();
-  final _storeCampaignPointsController = TextEditingController();
-  final _basePointReturnRateController = TextEditingController();
   final _minRequiredVersionController = TextEditingController();
   final _latestVersionController = TextEditingController();
   final _iosStoreUrlController = TextEditingController();
@@ -25,8 +22,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   final _userLatestVersionController = TextEditingController();
   final _userIosStoreUrlController = TextEditingController();
   final _userAndroidStoreUrlController = TextEditingController();
-  final List<_LevelRateRangeControllers> _levelRateRanges = [];
-  final List<_LevelRateRangeControllers> _pendingDisposals = [];
+  final _friendCampaignInviterCoinsController = TextEditingController();
+  final _friendCampaignInviteeCoinsController = TextEditingController();
   DateTime? _friendCampaignStartDate;
   DateTime? _friendCampaignEndDate;
   DateTime? _storeCampaignStartDate;
@@ -43,9 +40,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
 
   @override
   void dispose() {
-    _friendCampaignPointsController.dispose();
-    _storeCampaignPointsController.dispose();
-    _basePointReturnRateController.dispose();
     _minRequiredVersionController.dispose();
     _latestVersionController.dispose();
     _iosStoreUrlController.dispose();
@@ -54,8 +48,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     _userLatestVersionController.dispose();
     _userIosStoreUrlController.dispose();
     _userAndroidStoreUrlController.dispose();
-    _clearLevelRateRanges(deferDispose: false);
-    _disposePendingRanges();
+    _friendCampaignInviterCoinsController.dispose();
+    _friendCampaignInviteeCoinsController.dispose();
     super.dispose();
   }
 
@@ -93,56 +87,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                     ),
                   ),
                 _buildSectionCard(
-                  title: 'ポイント還元率',
-                  subtitle: '一律の還元率(%)を設定します',
-                  icon: Icons.percent,
-                  children: [
-                    CustomTextField(
-                      controller: _basePointReturnRateController,
-                      labelText: 'ポイント還元率(%)',
-                      hintText: '例: 1.0',
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      prefixIcon: const Icon(Icons.percent),
-                      suffixIcon: const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Text('%'),
-                      ),
-                      onChanged: (_) {
-                        _hasLocalEdits = true;
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildSectionCard(
-                  title: 'レベル別ポイント還元率',
-                  subtitle: 'レベル範囲ごとの還元率(%)を設定します',
-                  icon: Icons.stacked_line_chart,
-                  children: [
-                    for (var i = 0; i < _levelRateRanges.length; i++)
-                      _buildLevelRateRangeRow(
-                        index: i,
-                        controllers: _levelRateRanges[i],
-                      ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _addLevelRateRange();
-                            _hasLocalEdits = true;
-                          });
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('範囲を追加'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildSectionCard(
                   title: '友達紹介キャンペーン',
-                  subtitle: '開始日と終了日を設定してください',
+                  subtitle: '開始日・終了日と特典コイン数を設定してください',
                   icon: Icons.group,
                   children: [
                     _buildDatePickerRow(
@@ -175,15 +121,22 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                     ),
                     const SizedBox(height: 8),
                     CustomTextField(
-                      controller: _friendCampaignPointsController,
-                      labelText: '付与ポイント',
-                      hintText: '例: 100',
+                      controller: _friendCampaignInviterCoinsController,
+                      labelText: '招待者へのコイン数（招待した側）',
+                      hintText: '例: 5',
+                      prefixIcon: const Icon(Icons.stars_outlined),
                       keyboardType: TextInputType.number,
-                      prefixIcon: const Icon(Icons.stars),
-                      suffixIcon: const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Text('pt'),
-                      ),
+                      onChanged: (_) {
+                        _hasLocalEdits = true;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    CustomTextField(
+                      controller: _friendCampaignInviteeCoinsController,
+                      labelText: '被招待者へのコイン数（招待された側）',
+                      hintText: '例: 5',
+                      prefixIcon: const Icon(Icons.card_giftcard_outlined),
+                      keyboardType: TextInputType.number,
                       onChanged: (_) {
                         _hasLocalEdits = true;
                       },
@@ -223,21 +176,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                           });
                         },
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    CustomTextField(
-                      controller: _storeCampaignPointsController,
-                      labelText: '付与ポイント',
-                      hintText: '例: 50',
-                      keyboardType: TextInputType.number,
-                      prefixIcon: const Icon(Icons.stars),
-                      suffixIcon: const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Text('pt'),
-                      ),
-                      onChanged: (_) {
-                        _hasLocalEdits = true;
-                      },
                     ),
                   ],
                 ),
@@ -454,9 +392,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           _maintenanceEndDate = null;
           _maintenanceStartTime = null;
           _maintenanceEndTime = null;
-          _friendCampaignPointsController.text = '';
-          _storeCampaignPointsController.text = '';
-          _basePointReturnRateController.text = '';
           _minRequiredVersionController.text = '';
           _latestVersionController.text = '';
           _iosStoreUrlController.text = '';
@@ -465,7 +400,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           _userLatestVersionController.text = '';
           _userIosStoreUrlController.text = '';
           _userAndroidStoreUrlController.text = '';
-          _setLevelRateRanges(null);
+          _friendCampaignInviterCoinsController.text = '5';
+          _friendCampaignInviteeCoinsController.text = '5';
           _hasInitialized = true;
         });
       });
@@ -485,13 +421,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         _storeCampaignEndDate = settings.storeCampaignEndDate;
         _lotteryCampaignStartDate = settings.lotteryCampaignStartDate;
         _lotteryCampaignEndDate = settings.lotteryCampaignEndDate;
-        _friendCampaignPointsController.text =
-            settings.friendCampaignPoints?.toString() ?? '';
-        _storeCampaignPointsController.text =
-            settings.storeCampaignPoints?.toString() ?? '';
-        _basePointReturnRateController.text =
-            settings.basePointReturnRate?.toString() ?? '';
-        _setLevelRateRanges(settings.levelPointReturnRateRanges);
         _maintenanceStartDate = settings.maintenanceStartDate;
         _maintenanceEndDate = settings.maintenanceEndDate;
         _maintenanceStartTime = settings.maintenanceStartTime;
@@ -505,6 +434,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         _userLatestVersionController.text = settings.userLatestVersion ?? '';
         _userIosStoreUrlController.text = settings.userIosStoreUrl ?? '';
         _userAndroidStoreUrlController.text = settings.userAndroidStoreUrl ?? '';
+        _friendCampaignInviterCoinsController.text =
+            (settings.friendCampaignInviterCoins ?? 5).toString();
+        _friendCampaignInviteeCoinsController.text =
+            (settings.friendCampaignInviteeCoins ?? 5).toString();
         _hasInitialized = true;
       });
     });
@@ -587,26 +520,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       return;
     }
 
-    final baseRateText = _basePointReturnRateController.text.trim();
-    final basePointReturnRate = _parseRate(baseRateText, context);
-    if (baseRateText.isNotEmpty && basePointReturnRate == null) {
-      return;
-    }
-    final levelRateRanges = _parseLevelRateRanges(context);
-    if (levelRateRanges == null) {
-      return;
-    }
-
-    final friendPointsText = _friendCampaignPointsController.text.trim();
-    final storePointsText = _storeCampaignPointsController.text.trim();
-    final friendPoints = _parsePoints(friendPointsText, context, '友達紹介');
-    if (friendPointsText.isNotEmpty && friendPoints == null) {
-      return;
-    }
-    final storePoints = _parsePoints(storePointsText, context, '店舗紹介');
-    if (storePointsText.isNotEmpty && storePoints == null) {
-      return;
-    }
     final minRequiredVersion = _parseVersion(
       _minRequiredVersionController.text.trim(),
       context,
@@ -678,6 +591,22 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       return;
     }
 
+    final inviterCoinsText = _friendCampaignInviterCoinsController.text.trim();
+    final inviterCoins = int.tryParse(inviterCoinsText);
+    if (inviterCoinsText.isNotEmpty &&
+        (inviterCoins == null || inviterCoins < 1 || inviterCoins > 999)) {
+      _showSnackBar(context, '招待者へのコイン数は1〜999の整数を入力してください');
+      return;
+    }
+
+    final inviteeCoinsText = _friendCampaignInviteeCoinsController.text.trim();
+    final inviteeCoins = int.tryParse(inviteeCoinsText);
+    if (inviteeCoinsText.isNotEmpty &&
+        (inviteeCoins == null || inviteeCoins < 1 || inviteeCoins > 999)) {
+      _showSnackBar(context, '被招待者へのコイン数は1〜999の整数を入力してください');
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -686,15 +615,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       final settings = OwnerSettings(
         friendCampaignStartDate: _friendCampaignStartDate,
         friendCampaignEndDate: _friendCampaignEndDate,
-        friendCampaignPoints: friendPoints,
         storeCampaignStartDate: _storeCampaignStartDate,
         storeCampaignEndDate: _storeCampaignEndDate,
-        storeCampaignPoints: storePoints,
         lotteryCampaignStartDate: _lotteryCampaignStartDate,
         lotteryCampaignEndDate: _lotteryCampaignEndDate,
-        basePointReturnRate: basePointReturnRate,
-        levelPointReturnRateRanges:
-            levelRateRanges.isEmpty ? null : levelRateRanges,
         maintenanceStartDate: _maintenanceStartDate,
         maintenanceEndDate: _maintenanceEndDate,
         maintenanceStartTime: _maintenanceStartTime,
@@ -707,6 +631,8 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
         userLatestVersion: userLatestVersion,
         userIosStoreUrl: userIosStoreUrl,
         userAndroidStoreUrl: userAndroidStoreUrl,
+        friendCampaignInviterCoins: inviterCoins ?? 5,
+        friendCampaignInviteeCoins: inviteeCoins ?? 5,
       );
 
       final service = ref.read(ownerSettingsServiceProvider);
@@ -755,97 +681,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       return false;
     }
     return end.isBefore(start);
-  }
-
-  double? _parseRate(String value, BuildContext context) {
-    if (value.isEmpty) {
-      return null;
-    }
-    final parsed = double.tryParse(value);
-    if (parsed == null || parsed < 0) {
-      _showSnackBar(context, 'ポイント還元率は0以上の数字で入力してください');
-      return null;
-    }
-    return parsed;
-  }
-
-  List<LevelPointReturnRateRange>? _parseLevelRateRanges(BuildContext context) {
-    final List<LevelPointReturnRateRange> result = [];
-    for (var i = 0; i < _levelRateRanges.length; i++) {
-      final controllers = _levelRateRanges[i];
-      final minText = controllers.minLevel.text.trim();
-      final maxText = controllers.maxLevel.text.trim();
-      final rateText = controllers.rate.text.trim();
-      if (minText.isEmpty && maxText.isEmpty && rateText.isEmpty) {
-        continue;
-      }
-      final minLevel = int.tryParse(minText);
-      final maxLevel = controllers.noUpperLimit ? null : int.tryParse(maxText);
-      final rate = double.tryParse(rateText);
-      if (minLevel == null || minLevel < 1) {
-        _showSnackBar(context, '範囲${i + 1}の開始レベルは1以上で入力してください');
-        return null;
-      }
-      if (!controllers.noUpperLimit) {
-        if (maxLevel == null || maxLevel < minLevel) {
-          _showSnackBar(context, '範囲${i + 1}の終了レベルは開始以上で入力してください');
-          return null;
-        }
-      }
-      if (rate == null || rate < 0) {
-        _showSnackBar(context, '範囲${i + 1}の還元率は0以上の数字で入力してください');
-        return null;
-      }
-      result.add(LevelPointReturnRateRange(
-        minLevel: minLevel,
-        maxLevel: maxLevel,
-        rate: rate,
-      ));
-    }
-    if (!_validateLevelRateOverlap(result, context)) {
-      return null;
-    }
-    return result;
-  }
-
-  bool _validateLevelRateOverlap(
-    List<LevelPointReturnRateRange> ranges,
-    BuildContext context,
-  ) {
-    if (ranges.length <= 1) {
-      return true;
-    }
-    final sorted = [...ranges]
-      ..sort((a, b) {
-        if (a.minLevel != b.minLevel) {
-          return a.minLevel.compareTo(b.minLevel);
-        }
-        final aMax = a.maxLevel ?? 1 << 30;
-        final bMax = b.maxLevel ?? 1 << 30;
-        return aMax.compareTo(bMax);
-      });
-    for (var i = 1; i < sorted.length; i++) {
-      final prev = sorted[i - 1];
-      final current = sorted[i];
-      final prevMax = prev.maxLevel ?? 1 << 30;
-      if (current.minLevel <= prevMax) {
-        _showSnackBar(context, 'レベル範囲が重複しています（範囲${i}と範囲${i + 1}）');
-        return false;
-      }
-    }
-    return true;
-  }
-
-  int? _parsePoints(String value, BuildContext context, String label) {
-    if (value.isEmpty) {
-      return null;
-    }
-    final parsed = int.tryParse(value);
-    if (parsed == null || parsed < 0) {
-      _showSnackBar(context, '$labelの付与ポイントは0以上の数字で入力してください');
-      return null;
-    }
-    return parsed;
   }
 
   String? _parseVersion(String value, BuildContext context, String label) {
@@ -926,116 +761,6 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
             ),
             const SizedBox(height: 12),
             ...children,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLevelRateRangeRow({
-    required int index,
-    required _LevelRateRangeControllers controllers,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFBF6F2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '範囲${index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    controller: controllers.minLevel,
-                    labelText: '開始レベル',
-                    hintText: '例: 1',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: const Icon(Icons.arrow_upward),
-                    onChanged: (_) {
-                      _hasLocalEdits = true;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: CustomTextField(
-                    controller: controllers.maxLevel,
-                    labelText: '終了レベル',
-                    hintText: '例: 10',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: const Icon(Icons.arrow_downward),
-                    enabled: !controllers.noUpperLimit,
-                    onChanged: (_) {
-                      _hasLocalEdits = true;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: controllers.noUpperLimit,
-                  onChanged: (value) {
-                    setState(() {
-                      controllers.noUpperLimit = value ?? false;
-                      if (controllers.noUpperLimit) {
-                        controllers.maxLevel.text = '';
-                      }
-                      _hasLocalEdits = true;
-                    });
-                  },
-                ),
-                const Text('上限なし（例: 101以上）'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    controller: controllers.rate,
-                    labelText: '還元率(%)',
-                    hintText: '例: 1.0',
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    prefixIcon: const Icon(Icons.percent),
-                    suffixIcon: const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: Text('%'),
-                    ),
-                    onChanged: (_) {
-                      _hasLocalEdits = true;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _levelRateRanges.length <= 1
-                      ? null
-                      : () {
-                          setState(() {
-                            _removeLevelRateRange(index);
-                            _hasLocalEdits = true;
-                          });
-                        },
-                  icon: const Icon(Icons.delete_outline),
-                  color: Colors.red[400],
-                  tooltip: '削除',
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -1126,84 +851,4 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
     return DateTime(date.year, date.month, date.day, parsed.hour, parsed.minute);
   }
 
-  void _setLevelRateRanges(List<LevelPointReturnRateRange>? ranges) {
-    _clearLevelRateRanges(deferDispose: true);
-    if (ranges == null || ranges.isEmpty) {
-      _addLevelRateRange();
-      return;
-    }
-    for (final range in ranges) {
-      _levelRateRanges.add(_LevelRateRangeControllers(
-        minLevel: range.minLevel.toString(),
-        maxLevel: range.maxLevel?.toString(),
-        rate: range.rate.toString(),
-        noUpperLimit: range.maxLevel == null,
-      ));
-    }
-  }
-
-  void _addLevelRateRange() {
-    _levelRateRanges.add(_LevelRateRangeControllers());
-  }
-
-  void _removeLevelRateRange(int index) {
-    final controllers = _levelRateRanges.removeAt(index);
-    _queueRangeForDisposal(controllers);
-    if (_levelRateRanges.isEmpty) {
-      _addLevelRateRange();
-    }
-  }
-
-  void _clearLevelRateRanges({required bool deferDispose}) {
-    for (final controllers in _levelRateRanges) {
-      if (deferDispose) {
-        _queueRangeForDisposal(controllers);
-      } else {
-        controllers.dispose();
-      }
-    }
-    _levelRateRanges.clear();
-  }
-
-  void _queueRangeForDisposal(_LevelRateRangeControllers controllers) {
-    _pendingDisposals.add(controllers);
-    if (!mounted) {
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      _disposePendingRanges();
-    });
-  }
-
-  void _disposePendingRanges() {
-    for (final controllers in _pendingDisposals) {
-      controllers.dispose();
-    }
-    _pendingDisposals.clear();
-  }
-}
-
-class _LevelRateRangeControllers {
-  final TextEditingController minLevel;
-  final TextEditingController maxLevel;
-  final TextEditingController rate;
-  bool noUpperLimit;
-
-  _LevelRateRangeControllers({
-    String? minLevel,
-    String? maxLevel,
-    String? rate,
-    this.noUpperLimit = false,
-  })  : minLevel = TextEditingController(text: minLevel ?? ''),
-        maxLevel = TextEditingController(text: maxLevel ?? ''),
-        rate = TextEditingController(text: rate ?? '');
-
-  void dispose() {
-    minLevel.dispose();
-    maxLevel.dispose();
-    rate.dispose();
-  }
 }

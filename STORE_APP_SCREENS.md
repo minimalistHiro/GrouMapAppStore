@@ -1,6 +1,9 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-02-26更新: `InstagramSyncView` に定期同期設定を追加。毎日1回の同期時刻を `09:00〜21:00`（30分刻み）で設定可能にし、次回自動同期時刻を表示する構成に更新。
+※ 2026-02-25更新: `StoreActivationSettingsView` の店舗公開トグルを `CustomSwitchListTile` へ統一し、タイトルを「店舗一覧に表示」に変更。`StoreSettingsDetailView` に「100円引きクーポン利用枚数」（コイン交換クーポンの累計使用枚数）カードを追加し、全来店記録の上に大きく表示。
+※ 2026-02-25更新（2回目）: 管理者向けに `UserAccountDeletionReasonsView`（ユーザー退会理由一覧）を新規追加。`SettingsView` のオーナー管理セクションに「ユーザー退会理由一覧」メニューを追加し、未読件数バッジを表示。一覧画面で未読項目を「既読にする」操作が可能。
 ※ 2026-02-24更新（3回目）: `ScheduleCalendarView` の不定休（`isRegularHoliday=true`）店舗向けオプションラベルを「臨時営業」→「通常営業」に変更。凡例の緑ドットラベルも不定休時は「通常営業」と表示するよう対応。
 ※ 2026-02-24更新（2回目）: `ScheduleCalendarView`（営業カレンダー）を新規追加。`SettingsView` の店舗情報セクションに「営業カレンダー」メニューを追加。`table_calendar` / `intl` パッケージを導入。
 ※ 2026-02-24更新（1回目）: クーポン管理/新規クーポン作成/投稿管理/新規投稿作成のUIを統一（ヘッダーを `CommonHeader`、主要作成ボタンを `CustomButton` のカプセル型に統一）。クーポン管理/投稿管理の空状態では中央ボタンを廃止し、下部固定ボタンに統一。投稿管理のヘッダー右上 `+` ボタンを削除。
@@ -66,8 +69,8 @@
 - 説明: 投稿/クーポンの統合管理画面
 
 ### SettingsView (`lib/views/settings/settings_view.dart`)
-- 構成: 店舗情報カード、各設定/管理メニュー
-- 説明: 店舗設定・運用の入口画面
+- 構成: 店舗情報カード、各設定/管理メニュー（オーナー管理内に「ユーザー退会理由一覧」を含む。未読時は数値バッジ表示）
+- 説明: 店舗設定・運用の入口画面。管理者オーナーは退会理由の未読件数をここで把握可能
 
 ## 分析（推移画面）
 
@@ -229,12 +232,12 @@
 - 説明: 管理対象店舗の切替画面
 
 ### StoreActivationSettingsView (`lib/views/settings/store_activation_settings_view.dart`)
-- 構成: 承認済み店舗の一覧、稼働ON/OFFスイッチ、各店舗カードタップで詳細設定へ遷移
-- 説明: 店舗の稼働状態管理画面
+- 構成: 承認済み店舗の一覧、店舗カード（上段: 店舗情報タップで詳細遷移 / 下段: `CustomSwitchListTile` トグル「店舗一覧に表示」）、更新中状態表示
+- 説明: 店舗の公開/非公開（`isActive`）を管理する画面。トグル下に「現在、ユーザーに公開中です / 現在、ユーザーには非表示です」を表示し、更新中はトグルを無効化
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「100円引きクーポン利用枚数」カード（コイン交換クーポンの累計使用枚数）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「100円引きクーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -283,8 +286,8 @@
 - 説明: QR検証に必要な店舗設定画面
 
 ### InstagramSyncView (`lib/views/settings/instagram_sync_view.dart`)
-- 構成: 連携状況、OAuth手順案内、コード入力、同期/解除ボタン、同期完了ダイアログ
-- 説明: Instagram連携の設定・同期管理画面
+- 構成: 連携状況、OAuth手順案内、コード入力、定期同期トグル、同期時刻ドロップダウン（毎日 `09:00〜21:00`・30分刻み）、次回自動同期表示、手動同期/解除ボタン、完了ダイアログ
+- 説明: Instagram連携の設定・同期管理画面。店舗ごとに毎日1回の定期同期時刻を設定できる
 
 ### MenuEditView (`lib/views/settings/menu_edit_view.dart`)
 - 構成: 新規メニュー作成ボタン、カテゴリフィルタバー（コース/料理/ドリンク/デザート）、メニュー一覧（ReorderableListView）、編集/削除導線
@@ -332,8 +335,8 @@
 - 説明: 通知設定画面（stores/{storeId}のnotificationSettings・emailNotificationSettingsに保存）
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
-- 構成: 還元率/キャンペーン（友達紹介・店舗紹介・~~スロット（廃止）~~）/メンテナンス/バージョン管理の設定
-- 説明: オーナー向けの高度設定画面
+- 構成: キャンペーン（友達紹介・店舗紹介・くじ引き・~~スロット（廃止）~~）/メンテナンス/バージョン管理の設定。友達紹介セクションでは開始日・終了日に加え、招待者へのコイン数・被招待者へのコイン数（各1〜999）も設定可能
+- 説明: オーナー向けの高度設定画面。`owner_settings/current` に保存され、ユーザーアプリの友達紹介ページに即時反映される
 
 ### HelpSupportView (`lib/views/settings/help_support_view.dart`)
 - 構成: FAQ、問い合わせ導線
@@ -382,6 +385,10 @@
 ### AccountDeletionRequestsListView (`lib/views/account_deletion/account_deletion_requests_list_view.dart`)
 - 構成: 統計ヘッダー（未処理/承認済み/拒否件数）、申請一覧（店舗アイコン・店舗名・退会理由・承認ボタン・拒否ボタン）
 - 説明: 管理者がアカウント削除申請を確認・承認・拒否する画面（オーナー管理セクションから遷移）
+
+### UserAccountDeletionReasonsView (`lib/views/account_deletion/user_account_deletion_reasons_view.dart`)
+- 構成: 統計カード（退会理由件数/未読件数）、ユーザー退会理由一覧（ユーザー情報・退会理由・退会日時・未読/既読ラベル）、未読項目の「既読にする」ボタン
+- 説明: 管理者がユーザーの退会理由を確認し既読化する画面（オーナー管理セクションから遷移）
 
 ---
 
@@ -474,6 +481,7 @@
             │  ├─ 利用規約（TermsOfServiceView）
             │  └─ セキュリティポリシー（SecurityPolicyView）
             ├─ アカウント削除申請管理（AccountDeletionRequestsListView）
+            ├─ ユーザー退会理由一覧（UserAccountDeletionReasonsView）
             └─ お知らせ管理（AnnouncementManageView）
                ├─ 新規作成（CreateAnnouncementView）
                └─ 編集（AnnouncementEditView）

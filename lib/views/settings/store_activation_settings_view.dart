@@ -2,16 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/common_header.dart';
+import '../../widgets/custom_switch_tile.dart';
 import 'store_settings_detail_view.dart';
 
 class StoreActivationSettingsView extends StatefulWidget {
-  const StoreActivationSettingsView({Key? key}) : super(key: key);
+  const StoreActivationSettingsView({super.key});
 
   @override
-  State<StoreActivationSettingsView> createState() => _StoreActivationSettingsViewState();
+  State<StoreActivationSettingsView> createState() =>
+      _StoreActivationSettingsViewState();
 }
 
-class _StoreActivationSettingsViewState extends State<StoreActivationSettingsView> {
+class _StoreActivationSettingsViewState
+    extends State<StoreActivationSettingsView> {
   final Set<String> _updatingStoreIds = <String>{};
 
   Color _getDefaultStoreColor(String category) {
@@ -142,132 +145,118 @@ class _StoreActivationSettingsViewState extends State<StoreActivationSettingsVie
                 final bool isActive = data['isActive'] as bool? ?? true;
                 final bool isUpdating = _updatingStoreIds.contains(store.id);
                 final Color baseColor = _getDefaultStoreColor(category);
+                final String visibilityStatusText = isUpdating
+                    ? '設定を更新しています...'
+                    : isActive
+                        ? '現在、ユーザーに公開中です'
+                        : '現在、ユーザーには非表示です';
 
-                return InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => StoreSettingsDetailView(
-                          storeId: store.id,
-                          storeName: name,
-                        ),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: baseColor.withOpacity(0.3),
-                                width: 2,
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [],
+                  ),
+                  child: Column(
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => StoreSettingsDetailView(
+                                storeId: store.id,
+                                storeName: name,
                               ),
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: iconImageUrl != null
-                                  ? Image.network(
-                                      iconImageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        color: baseColor.withOpacity(0.1),
-                                        child: Icon(
-                                          _getDefaultStoreIcon(category),
-                                          size: 28,
-                                          color: baseColor,
+                          );
+                        },
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: baseColor.withOpacity(0.3),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: iconImageUrl != null
+                                      ? Image.network(
+                                          iconImageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                            color: baseColor.withOpacity(0.1),
+                                            child: Icon(
+                                              _getDefaultStoreIcon(category),
+                                              size: 28,
+                                              color: baseColor,
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          color: baseColor.withOpacity(0.1),
+                                          child: Icon(
+                                            _getDefaultStoreIcon(category),
+                                            size: 28,
+                                            color: baseColor,
+                                          ),
                                         ),
-                                      ),
-                                    )
-                                  : Container(
-                                      color: baseColor.withOpacity(0.1),
-                                      child: Icon(
-                                        _getDefaultStoreIcon(category),
-                                        size: 28,
-                                        color: baseColor,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
                                       ),
                                     ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  category,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'isActive',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[600],
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      category,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Switch(
-                                value: isActive,
-                                onChanged: isUpdating
-                                    ? null
-                                    : (value) => _toggleStoreActive(store.id, value),
-                                activeColor: const Color(0xFF2196F3),
-                              ),
-                              Text(
-                                isActive ? 'true' : 'false',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isActive ? Colors.green : Colors.grey,
-                                ),
+                              Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey[400],
                               ),
                             ],
                           ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right,
-                            color: Colors.grey[400],
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                      const Divider(height: 0),
+                      CustomSwitchListTile(
+                        title: const Text('店舗一覧に表示'),
+                        subtitle: Text(visibilityStatusText),
+                        value: isActive,
+                        onChanged: isUpdating
+                            ? null
+                            : (value) => _toggleStoreActive(store.id, value),
+                      ),
+                    ],
                   ),
                 );
               },

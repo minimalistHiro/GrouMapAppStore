@@ -28,6 +28,8 @@ class AccountDeletionService {
         'userId': userId,
         'reason': reason,
         'status': 'pending',
+        'requestType': 'store',
+        'sourceApp': 'store',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -38,7 +40,9 @@ class AccountDeletionService {
   }
 
   // 申請一覧を取得（管理者用）
-  Stream<List<Map<String, dynamic>>> getDeletionRequestList() {
+  Stream<List<Map<String, dynamic>>> getDeletionRequestList({
+    String? requestType,
+  }) {
     try {
       return _firestore
           .collection('account_deletion_requests')
@@ -49,6 +53,14 @@ class AccountDeletionService {
           final data = doc.data();
           data['id'] = doc.id;
           return data;
+        }).where((data) {
+          if (requestType == null) return true;
+          final type = data['requestType'] as String?;
+          if (requestType == 'store') {
+            // 既存データ互換: requestType 未設定は店舗申請として扱う
+            return type == null || type == 'store';
+          }
+          return type == requestType;
         }).toList();
       }).handleError((error) {
         debugPrint('Error fetching deletion request list: $error');
@@ -107,13 +119,50 @@ class AccountDeletionService {
       rethrow;
     }
   }
+
+  // ユーザー退会理由を既読にする（オーナー管理用）
+  Future<void> markUserDeletionReasonAsRead({
+    required String requestId,
+    required String processedByUid,
+  }) async {
+    try {
+      await _firestore
+          .collection('account_deletion_requests')
+          .doc(requestId)
+          .update({
+        'readByOwnerAt': FieldValue.serverTimestamp(),
+        'readByOwnerUid': processedByUid.isEmpty ? null : processedByUid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error marking user deletion reason as read: $e');
+      rethrow;
+    }
+  }
 }
 
 // 申請一覧ストリームプロバイダー
 final deletionRequestListProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) {
   final service = ref.read(accountDeletionProvider);
-  return service.getDeletionRequestList();
+  return service.getDeletionRequestList(requestType: 'store');
+});
+
+// ユーザー退会理由一覧ストリームプロバイダー（管理者閲覧用）
+final userDeletionReasonListProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final service = ref.read(accountDeletionProvider);
+  return service.getDeletionRequestList(requestType: 'user');
+});
+
+// ユーザー退会理由の未読件数（設定画面バッジ用）
+final unreadUserDeletionReasonsCountProvider = Provider<int>((ref) {
+  return ref.watch(userDeletionReasonListProvider).maybeWhen(
+        data: (items) {
+          return items.where((item) => item['readByOwnerAt'] == null).length;
+        },
+        orElse: () => 0,
+      );
 });
 
 // pending申請数プロバイダー（バッジ表示用）
@@ -122,6 +171,11 @@ final pendingDeletionRequestsCountProvider = StreamProvider<int>((ref) {
       .collection('account_deletion_requests')
       .where('status', isEqualTo: 'pending')
       .snapshots()
-      .map((snapshot) => snapshot.docs.length)
-      .handleError((_) => 0);
+      .map((snapshot) {
+    return snapshot.docs.where((doc) {
+      final data = doc.data();
+      final type = data['requestType'] as String?;
+      return type == null || type == 'store';
+    }).length;
+  }).handleError((_) => 0);
 });

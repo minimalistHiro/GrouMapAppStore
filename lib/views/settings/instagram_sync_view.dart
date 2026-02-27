@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../widgets/common_header.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_switch_tile.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/dismiss_keyboard.dart';
 import '../../widgets/error_dialog.dart';
@@ -24,8 +25,22 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
   bool _isUnlinking = false;
   bool _isStartingAuth = false;
   bool _isExchanging = false;
+  bool _isSavingSyncSettings = false;
+  String? _localStoreId;
+  bool? _localPeriodicSyncEnabled;
+  String? _localSyncTime;
+  static final List<String> _syncTimeOptions = List<String>.generate(
+    25,
+    (index) {
+      final slot = (9 * 2) + index;
+      final hour = slot ~/ 2;
+      final minute = slot.isOdd ? 30 : 0;
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+    },
+  );
   final TextEditingController _authCodeController = TextEditingController();
-  final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(region: 'asia-northeast1');
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'asia-northeast1');
 
   @override
   void dispose() {
@@ -226,14 +241,129 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
     }
   }
 
-  String _formatSyncAt(dynamic value) {
-    DateTime? date;
+  DateTime? _toDateTime(dynamic value) {
     if (value is Timestamp) {
-      date = value.toDate();
-    } else if (value is DateTime) {
-      date = value;
+      return value.toDate();
     }
-    if (date == null) return '未同期';
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
+  bool _isValidSyncTime(String value) {
+    return RegExp(r'^([01]\d|2[0-3]):(00|30)$').hasMatch(value);
+  }
+
+  int _toSyncMinutes(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return 9 * 60;
+    final hour = int.tryParse(parts[0]) ?? 9;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    return hour * 60 + minute;
+  }
+
+  String _toSyncTimeFromMinutes(int minutes) {
+    final clamped = minutes.clamp(9 * 60, 21 * 60);
+    final hour = (clamped ~/ 60).toString().padLeft(2, '0');
+    final minute = (clamped % 60).toString().padLeft(2, '0');
+    return '$hour:${minute.toString().padLeft(2, '0')}';
+  }
+
+  String _toSyncTimeFromDate(DateTime date) {
+    final totalMinutes = date.hour * 60 + date.minute;
+    final rounded = (totalMinutes / 30).round() * 30;
+    final normalized = ((rounded % (24 * 60)) + (24 * 60)) % (24 * 60);
+    return _toSyncTimeFromMinutes(normalized);
+  }
+
+  String _normalizeSyncTime(dynamic syncTimeValue, dynamic fallbackDateValue) {
+    final raw = (syncTimeValue as String?)?.trim() ?? '';
+    if (_isValidSyncTime(raw)) {
+      return _toSyncTimeFromMinutes(_toSyncMinutes(raw));
+    }
+    final fallbackDate = _toDateTime(fallbackDateValue);
+    if (fallbackDate != null) {
+      return _toSyncTimeFromDate(fallbackDate);
+    }
+    return '09:00';
+  }
+
+  Future<void> _updateSyncSettings({
+    required String storeId,
+    required bool enabled,
+    required String syncTime,
+  }) async {
+    if (_isSavingSyncSettings) return;
+    setState(() {
+      _isSavingSyncSettings = true;
+    });
+
+    try {
+      final callable = _functions.httpsCallable('updateInstagramSyncSettings');
+      final result = await callable.call({
+        'storeId': storeId,
+        'enabled': enabled,
+        'syncTime': syncTime,
+      });
+      final data = result.data as Map<dynamic, dynamic>?;
+      final responseEnabled = (data?['enabled'] as bool?) ?? enabled;
+      final responseSyncTime = _normalizeSyncTime(data?['syncTime'], null);
+
+      final serverDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(storeId)
+          .get(const GetOptions(source: Source.server));
+      final serverData = serverDoc.data();
+      final serverSettingsRaw = serverData?['instagramSyncSettings'];
+      final serverSettings = serverSettingsRaw is Map
+          ? Map<String, dynamic>.from(serverSettingsRaw)
+          : null;
+      final confirmedEnabled =
+          (serverSettings?['enabled'] as bool?) ?? responseEnabled;
+      final confirmedSyncTime = _normalizeSyncTime(
+        serverSettings?['syncTime'] ?? responseSyncTime,
+        serverSettings?['nextSyncAt'],
+      );
+
+      ref.invalidate(storeDataProvider(storeId));
+      if (!mounted) return;
+      setState(() {
+        _localStoreId = storeId;
+        _localPeriodicSyncEnabled = confirmedEnabled;
+        _localSyncTime = confirmedSyncTime;
+        _statusMessage = enabled
+            ? '定期同期を更新しました（毎日 $confirmedSyncTime）'
+            : '定期同期をオフにしました。';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (_localStoreId == storeId) {
+          _localPeriodicSyncEnabled = null;
+          _localSyncTime = null;
+        }
+      });
+      ErrorDialog.show(
+        context,
+        title: '設定更新に失敗しました',
+        message: '定期同期設定の更新に失敗しました。',
+        details: e.toString(),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isSavingSyncSettings = false;
+      });
+    }
+  }
+
+  String _formatSyncAt(dynamic value, {String fallback = '未同期'}) {
+    final date = _toDateTime(value);
+    if (date == null) return fallback;
     final y = date.year.toString().padLeft(4, '0');
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
@@ -266,14 +396,35 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                 );
               }
 
-              final instagramAuth = storeData['instagramAuth'] as Map<String, dynamic>?;
-              final instagramSync = storeData['instagramSync'] as Map<String, dynamic>?;
-              final socialMedia = storeData['socialMedia'] as Map<String, dynamic>?;
-              final instagramLink = (socialMedia?['instagram'] as String?) ?? '';
-              final instagramUserId = (instagramAuth?['instagramUserId'] as String?) ?? '';
+              final instagramAuth =
+                  storeData['instagramAuth'] as Map<String, dynamic>?;
+              final instagramSync =
+                  storeData['instagramSync'] as Map<String, dynamic>?;
+              final instagramSyncSettings =
+                  storeData['instagramSyncSettings'] as Map<String, dynamic>?;
+              final socialMedia =
+                  storeData['socialMedia'] as Map<String, dynamic>?;
+              final instagramLink =
+                  (socialMedia?['instagram'] as String?) ?? '';
+              final instagramUserId =
+                  (instagramAuth?['instagramUserId'] as String?) ?? '';
               final isLinked = instagramUserId.isNotEmpty;
               final lastSyncAt = instagramSync?['lastSyncAt'];
               final lastSyncCount = instagramSync?['lastSyncCount'];
+              final periodicSyncEnabledFromDb =
+                  (instagramSyncSettings?['enabled'] as bool?) ?? true;
+              final nextSyncAt = instagramSyncSettings?['nextSyncAt'];
+              final syncTimeFromDb = _normalizeSyncTime(
+                instagramSyncSettings?['syncTime'],
+                nextSyncAt ?? lastSyncAt,
+              );
+              final hasLocalValue = _localStoreId == storeId;
+              final periodicSyncEnabled = hasLocalValue
+                  ? (_localPeriodicSyncEnabled ?? periodicSyncEnabledFromDb)
+                  : periodicSyncEnabledFromDb;
+              final syncTime = hasLocalValue
+                  ? (_localSyncTime ?? syncTimeFromDb)
+                  : syncTimeFromDb;
 
               return DismissKeyboard(
                 child: SingleChildScrollView(
@@ -291,28 +442,34 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                                 instagramLink.isNotEmpty
                                     ? '対象アカウント: $instagramLink'
                                     : 'Instagramリンクが未設定です',
-                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
                               ),
                               const SizedBox(height: 8),
                               const Text(
                                 '1. 「連携を開始する」を押してInstagramにログイン',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 13, color: Colors.grey),
                               ),
                               const SizedBox(height: 4),
                               const Text(
                                 '2. 表示された認可コードをコピー',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 13, color: Colors.grey),
                               ),
                               const SizedBox(height: 4),
                               const Text(
                                 '3. 下の入力欄に貼り付けて連携を完了',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 13, color: Colors.grey),
                               ),
                               const SizedBox(height: 12),
                               CustomButton(
                                 text: '連携を開始する',
                                 isLoading: _isStartingAuth,
-                                onPressed: _isStartingAuth ? null : () => _startInstagramAuth(storeId),
+                                onPressed: _isStartingAuth
+                                    ? null
+                                    : () => _startInstagramAuth(storeId),
                               ),
                               const SizedBox(height: 12),
                               CustomTextField(
@@ -333,7 +490,9 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                               CustomButton(
                                 text: '連携を完了する',
                                 isLoading: _isExchanging,
-                                onPressed: _isExchanging ? null : () => _exchangeInstagramCode(storeId),
+                                onPressed: _isExchanging
+                                    ? null
+                                    : () => _exchangeInstagramCode(storeId),
                               ),
                             ],
                           ),
@@ -348,21 +507,113 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                             children: [
                               Text(
                                 '最終同期: ${_formatSyncAt(lastSyncAt)}',
-                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
                               ),
                               if (lastSyncCount != null) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   '前回取得件数: $lastSyncCount 件',
-                                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.grey),
                                 ),
                               ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '次回自動同期: ${periodicSyncEnabled ? _formatSyncAt(nextSyncAt, fallback: '未設定') : '停止中'}',
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '設定時刻: ${periodicSyncEnabled ? '毎日 $syncTime' : '停止中'}',
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
+                              ),
                               const SizedBox(height: 8),
                               const Text(
                                 'Instagramの最新投稿（動画を除外）を取得し、'
                                 'ユーザーアプリに表示するための同期です。',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 13, color: Colors.grey),
                               ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInfoCard(
+                          title: '定期同期設定',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CustomSwitchListTile(
+                                title: const Text('定期同期を有効にする'),
+                                subtitle: const Text('オフにすると手動同期のみ実行されます。'),
+                                value: periodicSyncEnabled,
+                                onChanged: _isSavingSyncSettings
+                                    ? null
+                                    : (value) {
+                                        setState(() {
+                                          _localStoreId = storeId;
+                                          _localPeriodicSyncEnabled = value;
+                                          _localSyncTime = syncTime;
+                                        });
+                                        _updateSyncSettings(
+                                          storeId: storeId,
+                                          enabled: value,
+                                          syncTime: syncTime,
+                                        );
+                                      },
+                              ),
+                              if (periodicSyncEnabled) ...[
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  value: syncTime,
+                                  decoration: const InputDecoration(
+                                    labelText: '同期時刻（毎日）',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                  items: _syncTimeOptions
+                                      .map(
+                                        (time) => DropdownMenuItem<String>(
+                                          value: time,
+                                          child: Text(time),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _isSavingSyncSettings
+                                      ? null
+                                      : (selected) {
+                                          if (selected == null ||
+                                              selected == syncTime) {
+                                            return;
+                                          }
+                                          setState(() {
+                                            _localStoreId = storeId;
+                                            _localPeriodicSyncEnabled =
+                                                periodicSyncEnabled;
+                                            _localSyncTime = selected;
+                                          });
+                                          _updateSyncSettings(
+                                            storeId: storeId,
+                                            enabled: periodicSyncEnabled,
+                                            syncTime: selected,
+                                          );
+                                        },
+                                ),
+                              ],
+                              if (_isSavingSyncSettings) ...[
+                                const SizedBox(height: 12),
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFFF6B35),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -372,7 +623,8 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                             title: '同期結果',
                             child: Text(
                               _statusMessage!,
-                              style: const TextStyle(fontSize: 13, color: Colors.black87),
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.black87),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -380,7 +632,8 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                         CustomButton(
                           text: '今すぐ同期する',
                           isLoading: _isSyncing,
-                          onPressed: _isSyncing ? null : () => _runSync(storeId),
+                          onPressed:
+                              _isSyncing ? null : () => _runSync(storeId),
                         ),
                         const SizedBox(height: 16),
                         CustomButton(
@@ -396,14 +649,19 @@ class _InstagramSyncViewState extends ConsumerState<InstagramSyncView> {
                                     context: context,
                                     builder: (dialogContext) => AlertDialog(
                                       title: const Text('連携解除の確認'),
-                                      content: const Text('Instagram連携を解除しますか？'),
+                                      content:
+                                          const Text('Instagram連携を解除しますか？'),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.of(dialogContext).pop(false),
+                                          onPressed: () =>
+                                              Navigator.of(dialogContext)
+                                                  .pop(false),
                                           child: const Text('キャンセル'),
                                         ),
                                         TextButton(
-                                          onPressed: () => Navigator.of(dialogContext).pop(true),
+                                          onPressed: () =>
+                                              Navigator.of(dialogContext)
+                                                  .pop(true),
                                           child: const Text(
                                             '解除する',
                                             style: TextStyle(color: Colors.red),

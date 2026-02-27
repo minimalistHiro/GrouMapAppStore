@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // 店舗のクーポンプロバイダー
-final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
+final storeCouponsProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
   try {
     return FirebaseFirestore.instance
         .collection('coupons')
@@ -11,13 +12,11 @@ final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, S
         .collection('coupons')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-            return data;
-          })
-          .toList()
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList()
         ..sort((a, b) {
           final aTime = a['createdAt']?.toDate() ?? DateTime(1970);
           final bTime = b['createdAt']?.toDate() ?? DateTime(1970);
@@ -34,7 +33,8 @@ final storeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, S
 });
 
 // アクティブなクーポンプロバイダー
-final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
+final activeCouponsProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
   try {
     return FirebaseFirestore.instance
         .collection('coupons')
@@ -43,19 +43,16 @@ final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
         .snapshots()
         .map((snapshot) {
       final now = DateTime.now();
-      return snapshot.docs
-          .where((doc) {
-            final data = doc.data();
-            final validUntil = data['validUntil']?.toDate();
-            final isActive = data['isActive'] ?? true;
-            return isActive && validUntil != null && validUntil.isAfter(now);
-          })
-          .map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-            return data;
-          })
-          .toList()
+      return snapshot.docs.where((doc) {
+        final data = doc.data();
+        final validUntil = data['validUntil']?.toDate();
+        final isActive = data['isActive'] ?? true;
+        return isActive && validUntil != null && validUntil.isAfter(now);
+      }).map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList()
         ..sort((a, b) {
           final aTime = a['createdAt']?.toDate() ?? DateTime(1970);
           final bTime = b['createdAt']?.toDate() ?? DateTime(1970);
@@ -72,7 +69,8 @@ final activeCouponsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
 });
 
 // クーポン使用統計プロバイダー
-final couponUsageStatsProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, storeId) {
+final couponUsageStatsProvider =
+    StreamProvider.family<Map<String, dynamic>?, String>((ref, storeId) {
   try {
     return FirebaseFirestore.instance
         .collection('stores')
@@ -110,23 +108,51 @@ final couponUsageStatsProvider = StreamProvider.family<Map<String, dynamic>?, St
   }
 });
 
+// コイン交換100円引きクーポンの利用枚数（累計）
+final coinExchangeCouponUsedCountProvider =
+    StreamProvider.family<int, String>((ref, storeId) {
+  try {
+    return FirebaseFirestore.instance
+        .collection('user_coupons')
+        .where('storeId', isEqualTo: storeId)
+        .snapshots()
+        .map((snapshot) {
+      var count = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['type'] == 'coin_exchange' && data['isUsed'] == true) {
+          count++;
+        }
+      }
+      return count;
+    }).handleError((error) {
+      debugPrint('Error fetching coin exchange coupon usage count: $error');
+      return 0;
+    });
+  } catch (e) {
+    debugPrint('Error creating coin exchange coupon usage stream: $e');
+    return Stream.value(0);
+  }
+});
+
 // 今日のクーポン使用数プロバイダー（usedByサブコレクションから取得）
-final todayCouponUsageCountProvider = FutureProvider.family<int, String>((ref, storeId) async {
+final todayCouponUsageCountProvider =
+    FutureProvider.family<int, String>((ref, storeId) async {
   try {
     // 今日の開始時刻と終了時刻を取得
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    
+
     // 店舗の全クーポンを取得
     final couponsSnapshot = await FirebaseFirestore.instance
         .collection('coupons')
         .doc(storeId)
         .collection('coupons')
         .get();
-    
+
     int totalUsedToday = 0;
-    
+
     // 各クーポンのusedByサブコレクションをチェック
     for (final couponDoc in couponsSnapshot.docs) {
       try {
@@ -136,16 +162,17 @@ final todayCouponUsageCountProvider = FutureProvider.family<int, String>((ref, s
             .collection('coupons')
             .doc(couponDoc.id)
             .collection('usedBy')
-            .where('usedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+            .where('usedAt',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
             .where('usedAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
             .get();
-        
+
         totalUsedToday += usedBySnapshot.docs.length;
       } catch (e) {
         debugPrint('Error fetching usedBy for coupon ${couponDoc.id}: $e');
       }
     }
-    
+
     return totalUsedToday;
   } catch (e) {
     debugPrint('Error fetching today coupon usage count: $e');
@@ -154,7 +181,8 @@ final todayCouponUsageCountProvider = FutureProvider.family<int, String>((ref, s
 });
 
 // 月間クーポン使用数プロバイダー（usedByサブコレクションから取得）
-final monthlyCouponUsageCountProvider = FutureProvider.family<int, String>((ref, storeId) async {
+final monthlyCouponUsageCountProvider =
+    FutureProvider.family<int, String>((ref, storeId) async {
   try {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
@@ -174,7 +202,8 @@ final monthlyCouponUsageCountProvider = FutureProvider.family<int, String>((ref,
             .collection('coupons')
             .doc(couponDoc.id)
             .collection('usedBy')
-            .where('usedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+            .where('usedAt',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
             .where('usedAt', isLessThanOrEqualTo: Timestamp.fromDate(now))
             .get();
 
@@ -192,13 +221,15 @@ final monthlyCouponUsageCountProvider = FutureProvider.family<int, String>((ref,
 });
 
 // クーポン利用者推移の状態管理
-class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+class CouponUsageTrendNotifier
+    extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   CouponUsageTrendNotifier() : super(const AsyncValue.loading());
 
   DateTime? _minAvailableDate;
   DateTime? get minAvailableDate => _minAvailableDate;
 
-  Future<void> fetchTrendData(String storeId, String period, {DateTime? anchorDate}) async {
+  Future<void> fetchTrendData(String storeId, String period,
+      {DateTime? anchorDate}) async {
     try {
       debugPrint('=== CouponUsageTrendNotifier START ===');
       debugPrint('StoreId: $storeId, Period: $period');
@@ -212,7 +243,8 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
       switch (period) {
         case 'day':
           startDate = DateTime(baseDate.year, baseDate.month, 1);
-          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          endDate =
+              DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
           break;
         case 'week':
           endDate = baseDate;
@@ -270,7 +302,7 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
               continue;
             }
 
-            if (earliestDate == null || docDate.isBefore(earliestDate!)) {
+            if (earliestDate == null || docDate.isBefore(earliestDate)) {
               earliestDate = docDate;
             }
 
@@ -283,16 +315,19 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
             switch (period) {
               case 'day':
               case 'week':
-                groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+                groupKey =
+                    '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
                 break;
               case 'month':
-                groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
+                groupKey =
+                    '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
                 break;
               case 'year':
                 groupKey = '${docDate.year}';
                 break;
               default:
-                groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+                groupKey =
+                    '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
             }
 
             groupedData[groupKey] = (groupedData[groupKey] ?? 0) + 1;
@@ -308,7 +343,8 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
         for (var date = startDate;
             !date.isAfter(endDate);
             date = date.add(const Duration(days: 1))) {
-          final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          final key =
+              '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
           days.add({
             'date': key,
             'couponUsageCount': groupedData[key] ?? 0,
@@ -336,7 +372,8 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
         }).toList();
       }
 
-      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+      result
+          .sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       debugPrint('Result: ${result.length} data points');
       if (result.isNotEmpty) {
@@ -355,18 +392,21 @@ class CouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String,
 }
 
 // クーポン利用者推移プロバイダー（StateNotifier版）
-final couponUsageTrendNotifierProvider = StateNotifierProvider<CouponUsageTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+final couponUsageTrendNotifierProvider = StateNotifierProvider<
+    CouponUsageTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
   return CouponUsageTrendNotifier();
 });
 
 // 個別クーポン利用推移の状態管理
-class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+class IndividualCouponUsageTrendNotifier
+    extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   IndividualCouponUsageTrendNotifier() : super(const AsyncValue.loading());
 
   DateTime? _minAvailableDate;
   DateTime? get minAvailableDate => _minAvailableDate;
 
-  Future<void> fetchTrendData(String storeId, String couponId, String period, {DateTime? anchorDate}) async {
+  Future<void> fetchTrendData(String storeId, String couponId, String period,
+      {DateTime? anchorDate}) async {
     try {
       state = const AsyncValue.loading();
 
@@ -377,7 +417,8 @@ class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<M
       switch (period) {
         case 'day':
           startDate = DateTime(baseDate.year, baseDate.month, 1);
-          endDate = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
+          endDate =
+              DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
           break;
         case 'week':
           endDate = baseDate;
@@ -435,16 +476,19 @@ class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<M
         switch (period) {
           case 'day':
           case 'week':
-            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            groupKey =
+                '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
             break;
           case 'month':
-            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
+            groupKey =
+                '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}';
             break;
           case 'year':
             groupKey = '${docDate.year}';
             break;
           default:
-            groupKey = '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
+            groupKey =
+                '${docDate.year}-${docDate.month.toString().padLeft(2, '0')}-${docDate.day.toString().padLeft(2, '0')}';
         }
 
         groupedData[groupKey] = (groupedData[groupKey] ?? 0) + 1;
@@ -456,7 +500,8 @@ class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<M
         for (var date = startDate;
             !date.isAfter(endDate);
             date = date.add(const Duration(days: 1))) {
-          final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          final key =
+              '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
           days.add({
             'date': key,
             'couponUsageCount': groupedData[key] ?? 0,
@@ -484,7 +529,8 @@ class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<M
         }).toList();
       }
 
-      result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+      result
+          .sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       _minAvailableDate = earliestDate;
       state = AsyncValue.data(result);
@@ -496,7 +542,9 @@ class IndividualCouponUsageTrendNotifier extends StateNotifier<AsyncValue<List<M
 }
 
 // 個別クーポン利用推移プロバイダー
-final individualCouponUsageTrendNotifierProvider = StateNotifierProvider<IndividualCouponUsageTrendNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+final individualCouponUsageTrendNotifierProvider = StateNotifierProvider<
+    IndividualCouponUsageTrendNotifier,
+    AsyncValue<List<Map<String, dynamic>>>>((ref) {
   return IndividualCouponUsageTrendNotifier();
 });
 
@@ -557,10 +605,7 @@ class CouponService {
       await couponDoc.set(couponData);
 
       // 公開クーポンも作成
-      await _firestore
-          .collection('public_coupons')
-          .doc(couponId)
-          .set({
+      await _firestore.collection('public_coupons').doc(couponId).set({
         'key': '$storeId::$couponId',
         ...couponData,
       });
@@ -648,10 +693,7 @@ class CouponService {
           .collection('coupons')
           .doc(couponId)
           .delete();
-      await _firestore
-          .collection('public_coupons')
-          .doc(couponId)
-          .delete();
+      await _firestore.collection('public_coupons').doc(couponId).delete();
     } catch (e) {
       debugPrint('Error deleting coupon: $e');
       throw Exception('クーポンの削除に失敗しました: $e');
@@ -674,10 +716,7 @@ class CouponService {
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      await _firestore
-          .collection('public_coupons')
-          .doc(couponId)
-          .update({
+      await _firestore.collection('public_coupons').doc(couponId).update({
         'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),
       });

@@ -25,10 +25,10 @@ class StoreSettingsDetailView extends ConsumerWidget {
   final String storeName;
 
   const StoreSettingsDetailView({
-    Key? key,
+    super.key,
     required this.storeId,
     required this.storeName,
-  }) : super(key: key);
+  });
 
   Color _getDefaultStoreColor(String category) {
     switch (category) {
@@ -104,7 +104,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => StoreProfileEditView(storeId: storeId),
+                            builder: (context) =>
+                                StoreProfileEditView(storeId: storeId),
                           ),
                         );
                       },
@@ -116,7 +117,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => StoreLocationEditView(storeId: storeId),
+                            builder: (context) =>
+                                StoreLocationEditView(storeId: storeId),
                           ),
                         );
                       },
@@ -128,7 +130,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => MenuEditView(storeId: storeId),
+                            builder: (context) =>
+                                MenuEditView(storeId: storeId),
                           ),
                         );
                       },
@@ -140,7 +143,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => InteriorImagesView(storeId: storeId),
+                            builder: (context) =>
+                                InteriorImagesView(storeId: storeId),
                           ),
                         );
                       },
@@ -152,7 +156,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => PaymentMethodsSettingsView(storeId: storeId),
+                            builder: (context) =>
+                                PaymentMethodsSettingsView(storeId: storeId),
                           ),
                         );
                       },
@@ -181,8 +186,10 @@ class StoreSettingsDetailView extends ConsumerWidget {
                     Expanded(
                       child: CustomButton(
                         text: 'ポスター用プロンプトをコピー',
-                        icon: const Icon(Icons.copy, size: 20, color: Colors.white),
-                        onPressed: () => _copyPosterPrompt(context, ref, storeData),
+                        icon: const Icon(Icons.copy,
+                            size: 20, color: Colors.white),
+                        onPressed: () =>
+                            _copyPosterPrompt(context, ref, storeData),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -195,7 +202,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.download, color: Colors.white),
-                        onPressed: () => _downloadPosterImages(context, ref, storeData),
+                        onPressed: () =>
+                            _downloadPosterImages(context, ref, storeData),
                       ),
                     ),
                   ],
@@ -203,7 +211,10 @@ class StoreSettingsDetailView extends ConsumerWidget {
                 const SizedBox(height: 24),
                 _buildDataSection(context),
                 const SizedBox(height: 24),
+                _buildCoinExchangeCouponUsageCard(ref),
+                const SizedBox(height: 24),
                 _buildPieChartsSection(ref),
+                const SizedBox(height: 16),
               ],
             ),
           );
@@ -373,7 +384,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
     );
   }
 
-  void _copyPosterPrompt(BuildContext context, WidgetRef ref, Map<String, dynamic> storeData) {
+  void _copyPosterPrompt(
+      BuildContext context, WidgetRef ref, Map<String, dynamic> storeData) {
     final buffer = StringBuffer();
 
     // 店舗名
@@ -401,7 +413,15 @@ class StoreSettingsDetailView extends ConsumerWidget {
     final businessHours = storeData['businessHours'] as Map<String, dynamic>?;
     if (businessHours != null) {
       buffer.writeln('## 営業時間');
-      const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const dayOrder = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
+      ];
       const dayNames = {
         'monday': '月曜日',
         'tuesday': '火曜日',
@@ -432,7 +452,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
     final couponsAsync = ref.read(storeCouponsProvider(storeId));
     couponsAsync.when(
       data: (coupons) {
-        final activeCoupons = coupons.where((c) => c['isActive'] == true).toList();
+        final activeCoupons =
+            coupons.where((c) => c['isActive'] == true).toList();
         if (activeCoupons.isNotEmpty) {
           buffer.writeln('## クーポン情報');
           for (final coupon in activeCoupons) {
@@ -449,7 +470,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
               final validUntil = coupon['validUntil'];
               if (validUntil != null) {
                 final date = validUntil.toDate();
-                buffer.writeln('- **期限**: ${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}');
+                buffer.writeln(
+                    '- **期限**: ${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}');
               }
             }
             final requiredStampCount = coupon['requiredStampCount'];
@@ -470,7 +492,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
     );
   }
 
-  Future<void> _downloadPosterImages(BuildContext context, WidgetRef ref, Map<String, dynamic> storeData) async {
+  Future<void> _downloadPosterImages(BuildContext context, WidgetRef ref,
+      Map<String, dynamic> storeData) async {
     // ローディングダイアログ表示
     showDialog(
       context: context,
@@ -487,7 +510,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
       if (storeImageUrl != null && storeImageUrl.isNotEmpty) {
         final response = await http.get(Uri.parse(storeImageUrl));
         if (response.statusCode == 200) {
-          archive.addFile(ArchiveFile('store_image.jpg', response.bodyBytes.length, response.bodyBytes));
+          archive.addFile(ArchiveFile('store_image.jpg',
+              response.bodyBytes.length, response.bodyBytes));
         }
       }
 
@@ -504,8 +528,10 @@ class StoreSettingsDetailView extends ConsumerWidget {
             final response = await http.get(Uri.parse(imageUrl));
             if (response.statusCode == 200) {
               final title = coupon['title'] ?? 'coupon';
-              final safeTitle = title.replaceAll(RegExp(r'[^\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]'), '_');
-              archive.addFile(ArchiveFile('coupon_${i + 1}_$safeTitle.jpg', response.bodyBytes.length, response.bodyBytes));
+              final safeTitle = title.replaceAll(
+                  RegExp(r'[^\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]'), '_');
+              archive.addFile(ArchiveFile('coupon_${i + 1}_$safeTitle.jpg',
+                  response.bodyBytes.length, response.bodyBytes));
             }
           } catch (_) {
             // 個別クーポン画像の取得失敗はスキップ
@@ -521,7 +547,11 @@ class StoreSettingsDetailView extends ConsumerWidget {
             builder: (context) => AlertDialog(
               title: const Text('お知らせ'),
               content: const Text('ダウンロード可能な画像がありません'),
-              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'))
+              ],
             ),
           );
         }
@@ -532,7 +562,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
       final zipData = ZipEncoder().encode(archive);
       if (zipData == null) throw Exception('ZIPの作成に失敗しました');
 
-      final safeStoreName = storeName.replaceAll(RegExp(r'[^\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]'), '_');
+      final safeStoreName = storeName.replaceAll(
+          RegExp(r'[^\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]'), '_');
       final fileName = '${safeStoreName}_poster_images.zip';
 
       if (context.mounted) Navigator.of(context).pop();
@@ -546,7 +577,11 @@ class StoreSettingsDetailView extends ConsumerWidget {
           builder: (context) => AlertDialog(
             title: const Text('エラー'),
             content: Text('画像のダウンロードに失敗しました: $e'),
-            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'))
+            ],
           ),
         );
       }
@@ -603,7 +638,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.analytics_outlined, color: Color(0xFFFF6B35), size: 24),
+              Icon(Icons.analytics_outlined,
+                  color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
                 'データ',
@@ -701,20 +737,99 @@ class StoreSettingsDetailView extends ConsumerWidget {
     }
   }
 
+  Widget _buildCoinExchangeCouponUsageCard(WidgetRef ref) {
+    final usedCountAsync =
+        ref.watch(coinExchangeCouponUsedCountProvider(storeId));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.monetization_on_outlined,
+                  color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '100円引きクーポン利用枚数',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'ミッション > コイン交換で取得されたクーポン（累計）',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: usedCountAsync.when(
+              data: (count) => Text(
+                '$count枚',
+                style: const TextStyle(
+                  fontSize: 48,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFFF6B35),
+                ),
+              ),
+              loading: () => const SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Color(0xFFFF6B35),
+                ),
+              ),
+              error: (_, __) => const Text(
+                '--枚',
+                style: TextStyle(
+                  fontSize: 44,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPieChartsSection(WidgetRef ref) {
     final pieDataAsync = ref.watch(allVisitPieChartDataProvider(storeId));
 
     return pieDataAsync.when(
       data: (pieData) {
         final genderData = (pieData['gender'] as Map<String, dynamic>?)?.map(
-          (k, v) => MapEntry(k, (v as num).toInt()),
-        ) ?? <String, int>{};
-        final ageGroupData = (pieData['ageGroup'] as Map<String, dynamic>?)?.map(
-          (k, v) => MapEntry(k, (v as num).toInt()),
-        ) ?? <String, int>{};
-        final newRepeatData = (pieData['newRepeat'] as Map<String, dynamic>?)?.map(
-          (k, v) => MapEntry(k, (v as num).toInt()),
-        ) ?? <String, int>{};
+              (k, v) => MapEntry(k, (v as num).toInt()),
+            ) ??
+            <String, int>{};
+        final ageGroupData =
+            (pieData['ageGroup'] as Map<String, dynamic>?)?.map(
+                  (k, v) => MapEntry(k, (v as num).toInt()),
+                ) ??
+                <String, int>{};
+        final newRepeatData =
+            (pieData['newRepeat'] as Map<String, dynamic>?)?.map(
+                  (k, v) => MapEntry(k, (v as num).toInt()),
+                ) ??
+                <String, int>{};
 
         return Container(
           width: double.infinity,

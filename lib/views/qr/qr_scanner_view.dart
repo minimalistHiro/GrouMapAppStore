@@ -252,7 +252,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('QRコードを手動入力'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -275,8 +275,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
                           await Clipboard.getData('text/plain');
                       if (clipboardData != null && clipboardData.text != null) {
                         _manualInputController.text = clipboardData.text!;
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (dialogContext.mounted) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
                             const SnackBar(
                               content: Text('クリップボードから貼り付けました'),
                               duration: Duration(seconds: 1),
@@ -284,8 +284,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
                           );
                         }
                       } else {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (dialogContext.mounted) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
                             const SnackBar(
                               content: Text('クリップボードにテキストがありません'),
                               backgroundColor: Colors.orange,
@@ -296,8 +296,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
                       }
                     } catch (e) {
                       print('クリップボード読み取りエラー: $e');
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
                           SnackBar(
                             content: Text('貼り付けに失敗しました: $e'),
                             backgroundColor: Colors.red,
@@ -318,7 +318,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
               _startScanning();
             },
             child: const Text('キャンセル'),
@@ -326,7 +326,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
           ElevatedButton(
             onPressed: () {
               final qrCode = _manualInputController.text.trim();
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
               if (qrCode.isNotEmpty) {
                 _processQRCode(context, qrCode);
               } else {
@@ -404,13 +404,13 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       }
     });
 
-    // 同期的な処理を開始
-    _processQRCodeSync(context, qrCode, timeoutTimer);
+    // 非同期処理を開始（unawaited で fire-and-forget）
+    unawaited(_processQRCodeSync(context, qrCode, timeoutTimer));
   }
 
-  /// QRコードの同期的処理（完全に同期的に実行）
-  void _processQRCodeSync(
-      BuildContext context, String qrCode, Timer? timeoutTimer) {
+  /// QRコードの同期的処理
+  Future<void> _processQRCodeSync(
+      BuildContext context, String qrCode, Timer? timeoutTimer) async {
     try {
       print('同期的QRコード処理開始: $qrCode');
 
@@ -449,7 +449,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         print('QR検証成功、支払い画面に遷移開始');
 
         if (context.mounted) {
-          _routeAfterVerified(context, result.uid!, timeoutTimer);
+          await _routeAfterVerified(context, result.uid!, timeoutTimer);
         } else {
           _closeLoadingDialog(context, timeoutTimer);
           print('画面遷移時にウィジェットが破棄されています');
@@ -539,7 +539,7 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
         print('QR検証成功、画面遷移開始');
         if (result.uid != null) {
           if (context.mounted) {
-            _routeAfterVerified(context, result.uid!, timeoutTimer);
+            await _routeAfterVerified(context, result.uid!, timeoutTimer);
           } else {
             _closeLoadingDialog(context, timeoutTimer);
             print('画面遷移時にウィジェットが破棄されています');
@@ -671,7 +671,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(storeUser.uid)
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 5));
     final data = doc.data();
     final currentStoreId = data?['currentStoreId'];
     if (currentStoreId is String && currentStoreId.isNotEmpty) {
@@ -685,23 +686,29 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       final balanceDoc = await FirebaseFirestore.instance
           .collection('user_point_balances')
           .doc(userId)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 5));
       if (balanceDoc.exists) {
         final data = balanceDoc.data() ?? {};
         return _parseInt(data['availablePoints']);
       }
-    } catch (_) {}
+    } catch (e) {
+      print('user_point_balances 取得エラー（続行）: $e');
+    }
 
     try {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 5));
       final data = userDoc.data() ?? {};
       final points = _parseInt(data['points']);
       final special = _parseInt(data['specialPoints']);
       return points + special;
-    } catch (_) {}
+    } catch (e) {
+      print('users ポイント取得エラー（続行）: $e');
+    }
 
     return 0;
   }
@@ -711,12 +718,18 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
     final storeUser = authState.value;
     if (storeUser == null) return false;
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(storeUser.uid)
-        .get();
-    final data = doc.data() ?? {};
-    return (data['isOwner'] as bool?) ?? false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(storeUser.uid)
+          .get()
+          .timeout(const Duration(seconds: 5));
+      final data = doc.data() ?? {};
+      return (data['isOwner'] as bool?) ?? false;
+    } catch (e) {
+      print('isOwner 取得エラー（続行）: $e');
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>?> _fetchScannedUserProfile(String userId) async {
@@ -724,7 +737,8 @@ class _QRScannerViewState extends ConsumerState<QRScannerView> {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 5));
       if (!userDoc.exists) {
         return null;
       }

@@ -50,30 +50,31 @@ final pendingFeedbackCountProvider = StreamProvider<int>((ref) {
 // 新しい設定項目にバッジを追加した場合は、ここにもカウントを追加すること
 final settingsTotalBadgeCountProvider = Provider<int>((ref) {
   final isAdminOwner = ref.watch(userIsAdminOwnerProvider).maybeWhen(
-    data: (v) => v,
-    orElse: () => false,
-  );
+        data: (v) => v,
+        orElse: () => false,
+      );
 
   int total = 0;
 
   // オーナー管理セクションのバッジ（管理者オーナーのみ表示）
   if (isAdminOwner) {
     total += ref.watch(pendingStoresCountProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => 0,
-    );
+          data: (v) => v,
+          orElse: () => 0,
+        );
     total += ref.watch(unreadLiveChatCountProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => 0,
-    );
+          data: (v) => v,
+          orElse: () => 0,
+        );
     total += ref.watch(pendingDeletionRequestsCountProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => 0,
-    );
+          data: (v) => v,
+          orElse: () => 0,
+        );
     total += ref.watch(pendingFeedbackCountProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => 0,
-    );
+          data: (v) => v,
+          orElse: () => 0,
+        );
+    total += ref.watch(unreadUserDeletionReasonsCountProvider);
   }
 
   // 全ユーザー共通セクションのバッジ

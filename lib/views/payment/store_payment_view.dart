@@ -7,7 +7,6 @@ import '../../models/point_request_model.dart';
 import '../../widgets/custom_button.dart';
 import '../user/point_request_confirmation_view.dart';
 import '../main_navigation_view.dart';
-import '../../models/owner_settings_model.dart';
 
 class StorePaymentView extends ConsumerStatefulWidget {
   final String userId;
@@ -36,7 +35,6 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   String _storeName = '店舗名';
   bool _isLoadingStoreInfo = true;
   String? _currentRequestId;
-  double _pointReturnRate = 1.0; // デフォルト1.0%（100円で1ポイント）
 
   @override
   void initState() {
@@ -83,24 +81,13 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
           profileImageUrl = userData['profileImageUrl'] as String;
         }
         
-        // ポイント還元率を取得（オーナー設定/レベル範囲を優先）
-        final userLevel = _extractUserLevel(userData);
-        final userOverrideRate = _extractUserPointReturnRate(userData);
-        final ownerSettings = await _loadOwnerSettings();
-        final pointReturnRate = _resolvePointReturnRate(
-          userLevel: userLevel,
-          ownerSettings: ownerSettings,
-          userOverrideRate: userOverrideRate,
-        );
-        
         setState(() {
           _actualUserName = displayName;
           _profileImageUrl = profileImageUrl;
-          _pointReturnRate = pointReturnRate;
           _isLoadingUserInfo = false;
         });
-        
-        print('ユーザー情報を取得しました: $displayName, 還元率: $pointReturnRate%');
+
+        print('ユーザー情報を取得しました: $displayName');
       } else {
         print('ユーザードキュメントが存在しません');
         setState(() {
@@ -119,98 +106,6 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         });
       }
     }
-  }
-
-  Future<OwnerSettings?> _loadOwnerSettings() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('owner_settings')
-          .doc('current')
-          .get();
-      if (!doc.exists) {
-        return null;
-      }
-      final data = doc.data();
-      if (data == null) {
-        return null;
-      }
-      return OwnerSettings.fromMap(data);
-    } catch (e) {
-      print('オーナー設定取得エラー: $e');
-      return null;
-    }
-  }
-
-  int? _extractUserLevel(Map<String, dynamic> userData) {
-    final candidates = [
-      userData['level'],
-      userData['userLevel'],
-      userData['user_level'],
-    ];
-    for (final value in candidates) {
-      if (value is int) {
-        return value > 0 ? value : null;
-      }
-      if (value is num) {
-        final level = value.toInt();
-        return level > 0 ? level : null;
-      }
-      if (value is String) {
-        final level = int.tryParse(value);
-        if (level != null && level > 0) {
-          return level;
-        }
-      }
-    }
-    return null;
-  }
-
-  double? _extractUserPointReturnRate(Map<String, dynamic> userData) {
-    final value = userData['pointReturnRate'];
-    if (value is num) {
-      return value.toDouble();
-    }
-    if (value is String) {
-      return double.tryParse(value);
-    }
-    return null;
-  }
-
-  double _resolvePointReturnRate({
-    required int? userLevel,
-    required OwnerSettings? ownerSettings,
-    required double? userOverrideRate,
-  }) {
-    final ranges = ownerSettings?.levelPointReturnRateRanges;
-    final rangeRate = _findRangeRate(ranges, userLevel);
-    if (rangeRate != null) {
-      return rangeRate;
-    }
-    final baseRate = ownerSettings?.basePointReturnRate;
-    final hasOwnerRate =
-        baseRate != null || (ranges != null && ranges.isNotEmpty);
-    if (hasOwnerRate) {
-      return baseRate ?? 1.0;
-    }
-    return userOverrideRate ?? 1.0;
-  }
-
-  double? _findRangeRate(
-    List<LevelPointReturnRateRange>? ranges,
-    int? userLevel,
-  ) {
-    if (ranges == null || ranges.isEmpty || userLevel == null) {
-      return null;
-    }
-    final sorted = [...ranges]..sort((a, b) => a.minLevel.compareTo(b.minLevel));
-    for (final range in sorted) {
-      final maxLevel = range.maxLevel;
-      if (userLevel >= range.minLevel &&
-          (maxLevel == null || userLevel <= maxLevel)) {
-        return range.rate;
-      }
-    }
-    return null;
   }
 
   int _parseInt(dynamic value) {
@@ -408,7 +303,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
   }
 
   void _showPointAwardConfirmation(int amount) {
-    final pointsToAward = (amount * _pointReturnRate / 100).floor();
+    const pointsToAward = 0;
     
     showDialog(
       context: context,
@@ -773,14 +668,6 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '付与予定ポイント: ${((int.tryParse(_amount) ?? 0) * _pointReturnRate / 100).floor()}pt',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.green,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
         ],
       ),
     );

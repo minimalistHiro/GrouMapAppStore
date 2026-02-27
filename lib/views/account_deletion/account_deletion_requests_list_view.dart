@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/account_deletion_provider.dart';
 
 class AccountDeletionRequestsListView extends ConsumerStatefulWidget {
-  const AccountDeletionRequestsListView({Key? key}) : super(key: key);
+  const AccountDeletionRequestsListView({super.key});
 
   @override
   ConsumerState<AccountDeletionRequestsListView> createState() =>
@@ -58,8 +58,8 @@ class _AccountDeletionRequestsListViewState
           return Column(
             children: [
               // 統計ヘッダー
-              _buildStatsHeader(
-                  pendingRequests.length, approvedRequests.length, rejectedRequests.length),
+              _buildStatsHeader(pendingRequests.length, approvedRequests.length,
+                  rejectedRequests.length),
               // リスト
               Expanded(
                 child: ListView.builder(
@@ -81,7 +81,8 @@ class _AccountDeletionRequestsListViewState
     );
   }
 
-  Widget _buildStatsHeader(int pendingCount, int approvedCount, int rejectedCount) {
+  Widget _buildStatsHeader(
+      int pendingCount, int approvedCount, int rejectedCount) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -160,7 +161,8 @@ class _AccountDeletionRequestsListViewState
     String dateStr = '';
     if (createdAt != null) {
       final dt = createdAt.toDate();
-      dateStr = '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      dateStr =
+          '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
 
     return Container(
@@ -233,7 +235,11 @@ class _AccountDeletionRequestsListViewState
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    isPending ? '未処理' : status == 'rejected' ? '拒否' : '承認済み',
+                    isPending
+                        ? '未処理'
+                        : status == 'rejected'
+                            ? '拒否'
+                            : '承認済み',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
