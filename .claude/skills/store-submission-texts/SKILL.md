@@ -9,15 +9,27 @@ description: アプリストア（App Store / Google Play Store）の申請テ�
 
 App Store / Google Play Store の申請用テキスト（プロモーション用テキスト・概要・簡単な説明・詳しい説明など）の作成・変更・修正を行う際に、ビジネスモデルとサービス機能を把握した上でテキストを編集する。
 
+## 対象ファイル
+
+| アプリ | ストア申請テキスト |
+|-------|-----------------|
+| ユーザー用アプリ | `/Users/kanekohiroki/Desktop/groumapapp/STORE_SUBMISSION_TEXTS.md` |
+| 店舗用アプリ | `/Users/kanekohiroki/Desktop/groumapapp_store/STORE_SUBMISSION_TEXTS.md` |
+
 ## 手順
 
-1. 以下の3ファイルを必ず読み込む:
+1. 以下のファイルを必ず読み込む:
    - `/Users/kanekohiroki/Desktop/groumapapp/BUSINESS_MODEL.md`（ビジネスモデル定義）
    - `/Users/kanekohiroki/Desktop/groumapapp/SERVICE_FEATURES.md`（サービス機能一覧）
-   - `/Users/kanekohiroki/Desktop/groumapapp/STORE_SUBMISSION_TEXTS.md`（現在のストア申請テキスト集）
-2. 各ファイルの内容を把握した上で、ユーザーの依頼に基づきテキストを作成・修正する。
-3. 修正後は `/Users/kanekohiroki/Desktop/groumapapp/STORE_SUBMISSION_TEXTS.md` を更新する。
-4. 更新後、文字数サマリー表の文字数・残り文字数も必ず更新する。
+   - `/Users/kanekohiroki/Desktop/groumapapp/STORE_SUBMISSION_TEXTS.md`（ユーザー用アプリのストア申請テキスト集）
+   - `/Users/kanekohiroki/Desktop/groumapapp_store/STORE_SUBMISSION_TEXTS.md`（店舗用アプリのストア申請テキスト集）
+2. ユーザーの依頼がどちらのアプリ向けか特定する。明示されていない場合は確認する。
+   - 「ユーザー用」「ユーザーアプリ」→ ユーザー用アプリのテキストを編集
+   - 「店舗用」「店舗アプリ」「for Business」→ 店舗用アプリのテキストを編集
+   - 「両方」→ 両方のテキストを編集
+3. 各ファイルの内容を把握した上で、ユーザーの依頼に基づきテキストを作成・修正する。
+4. 修正後は対象のストア申請テキストファイルを更新する。
+5. 更新後、文字数サマリー表の文字数・残り文字数も必ず更新する。
 
 ## 各ストアのテキスト文字数制限
 
