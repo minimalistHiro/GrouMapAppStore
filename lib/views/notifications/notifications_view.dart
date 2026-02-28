@@ -81,6 +81,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('お知らせ'),
         backgroundColor: const Color(0xFFFF6B35),
@@ -229,7 +230,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
 
   Widget _buildListItem(BuildContext context, _UnifiedNotificationItem item) {
     return Container(
-      color: item.isRead ? null : Colors.blue.shade50,
+      color: item.isRead ? Colors.white : Colors.blue.shade50,
       child: ListTile(
         leading: item.isRead
             ? null

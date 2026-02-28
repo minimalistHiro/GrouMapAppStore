@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
 
-class TermsOfServiceView extends StatelessWidget {
-  const TermsOfServiceView({super.key});
+class TermsOfServiceView extends StatefulWidget {
+  const TermsOfServiceView({
+    super.key,
+    this.showConsentButton = false,
+  });
+
+  final bool showConsentButton;
+
+  @override
+  State<TermsOfServiceView> createState() => _TermsOfServiceViewState();
+}
+
+class _TermsOfServiceViewState extends State<TermsOfServiceView> {
+  final ScrollController _scrollController = ScrollController();
+  bool _canAgree = false;
 
   static const _titleStyle = TextStyle(
     fontSize: 20,
@@ -25,14 +40,46 @@ class TermsOfServiceView extends StatelessWidget {
   );
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.showConsentButton) {
+      _scrollController.addListener(_updateAgreementAvailability);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateAgreementAvailability();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateAgreementAvailability);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _updateAgreementAvailability() {
+    if (!widget.showConsentButton || !_scrollController.hasClients) {
+      return;
+    }
+
+    final position = _scrollController.position;
+    final reachedBottom = position.extentAfter <= 8;
+
+    if (!reachedBottom || _canAgree) {
+      return;
+    }
+
+    setState(() {
+      _canAgree = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('利用規約'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
-      ),
+      appBar: const CommonHeader(title: '利用規約'),
       body: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,6 +236,23 @@ class TermsOfServiceView extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: widget.showConsentButton
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: CustomButton(
+                  text: '同意する',
+                  onPressed:
+                      _canAgree ? () => Navigator.of(context).pop(true) : null,
+                  height: 52,
+                  backgroundColor: const Color(0xFFFF6B35),
+                  textColor: Colors.white,
+                  borderRadius: 999,
+                ),
+              ),
+            )
+          : null,
     );
   }
 

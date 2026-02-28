@@ -314,7 +314,7 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
       color: Colors.white,
       child: Column(
         children: [
-          // 統計情報（いいね数・閲覧数）
+          // 統計情報（いいね数・コメント数・閲覧数）
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -322,17 +322,27 @@ class _StorePostDetailViewState extends ConsumerState<StorePostDetailView> {
                   const Icon(Icons.favorite, color: Colors.red, size: 18),
                   const SizedBox(width: 4),
                   Text(
-                    '$_likeCount件のいいね',
+                    '$_likeCount',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Icon(Icons.visibility, color: Colors.grey, size: 18),
+                  Icon(Icons.chat_bubble_outline, color: Colors.grey[600], size: 18),
                   const SizedBox(width: 4),
                   Text(
-                    '$_viewCount回の閲覧',
+                    '${_comments.length}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.visibility_outlined, color: Colors.grey, size: 18),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$_viewCount',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,

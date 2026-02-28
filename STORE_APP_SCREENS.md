@@ -1,6 +1,16 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-03-01更新（3回目）: `StoreSettingsDetailView` の「100円引きクーポン利用枚数」を「特別クーポン利用枚数」にリネームし合計割引額を追加表示。`AnalyticsView` の特別クーポン分析セクションにオーナー限定で「全店舗の特別クーポンを見る」遷移ボタンを追加。`AllStoreSpecialCouponView`（全店舗特別クーポン一覧画面）を新規追加。
+※ 2026-03-01更新（2回目）: `AnalyticsView` のクーポン統計セクションの下に「特別クーポン分析」セクションを追加。コイン交換クーポンの発行枚数・使用済み・割引合計金額を表示。
+※ 2026-03-01更新: 投稿一覧画面・投稿詳細画面・投稿管理画面に閲覧数表示を追加。投稿詳細にコメント数アイコンを追加。一覧グリッドに閲覧数オーバーレイを通常投稿・Instagram投稿共通で表示。管理画面のフッターにいいね数・コメント数・閲覧数（サブコレクションベース）を追加。
+※ 2026-02-28更新（7回目）: 物理スタンプカード移行システム（D-1）を実装。`StampMigrationScanView`（QRスキャン）・`StampMigrationConfirmView`（確認/スタンプ数入力）・`StampMigrationCompleteView`（移行完了）の3画面を新規追加。設定画面「店舗情報」セクションに「物理スタンプカード移行」メニューを追加。
+※ 2026-02-28更新（6回目）: `CouponsManageView`・`PostsManageView` のカードUIをユーザー用アプリのクーポン画面と統一（横並びレイアウト・86×86画像エリア・角丸16・ボーダーなし・影なし・`ListView.separated`）。`stamp_migration_scan_view.dart` の `storeSettingsProvider` 未定義エラー（importが欠落）を修正。
+※ 2026-02-28更新（5回目）: `EditCouponView`・`EditPostView` のヘッダーを `CommonHeader` に統一。クーポン作成・編集画面の画像欄・投稿作成・編集画面の画像サムネイルを共通ウィジェット `ImagePickerField(aspectRatio: 1.0)` で 1:1 比率に統一。
+※ 2026-02-28更新（4回目）: `AnalyticsView`・`SettingsView` のヘッダーを `CommonHeader`（ベージュ背景・黒テキスト・戻るボタンなし）に統一。`CustomTopTabBar` のデフォルト配色をオレンジ背景/白テキストから `surface`（ベージュ）背景/`primary`（オレンジ）テキスト・インジケーターに変更し、ユーザー用アプリと統一。
+※ 2026-02-28更新（3回目）: `MenuOptionGroupEditView` のトグルを `CustomSwitchListTile` に統一。「各メニューごとに追加料金を設定」ON時に各選択肢の料金入力フィールドを非活性化（グレーアウト）。`DefaultMenuOptionGroups` から「温度」テンプレートを削除し「サイズ」のみに整理。
+※ 2026-02-28更新（2回目）: `HomeView` のプロフィール完成度ゲージに、不定休（`isRegularHoliday=true`）時の6項目目「営業カレンダー」ステップを条件付き追加。`scheduleOverrides` に1件以上の設定で完了扱い。
+※ 2026-02-28更新: `OwnerSettingsView` にデータ管理セクション（スタンプ不整合チェック・同期・詳細表示）を追加。`StampSyncDetailView`（スタンプ不整合ユーザー一覧）を新規追加。
 ※ 2026-02-26更新: `InstagramSyncView` に定期同期設定を追加。毎日1回の同期時刻を `09:00〜21:00`（30分刻み）で設定可能にし、次回自動同期時刻を表示する構成に更新。
 ※ 2026-02-25更新: `StoreActivationSettingsView` の店舗公開トグルを `CustomSwitchListTile` へ統一し、タイトルを「店舗一覧に表示」に変更。`StoreSettingsDetailView` に「100円引きクーポン利用枚数」（コイン交換クーポンの累計使用枚数）カードを追加し、全来店記録の上に大きく表示。
 ※ 2026-02-25更新（2回目）: 管理者向けに `UserAccountDeletionReasonsView`（ユーザー退会理由一覧）を新規追加。`SettingsView` のオーナー管理セクションに「ユーザー退会理由一覧」メニューを追加し、未読件数バッジを表示。一覧画面で未読項目を「既読にする」操作が可能。
@@ -24,6 +34,10 @@
 ### LoginView (`lib/views/auth/login_view.dart`)
 - 構成: ロゴ、メール/パスワード入力、ログインボタン、パスワード再設定導線
 - 説明: 店舗アカウントのログイン画面
+
+### TermsPrivacyConsentView (`lib/views/auth/terms_privacy_consent_view.dart`)
+- 構成: イントロ説明、白枠カード（利用規約/プライバシーポリシー）×2、各カード内の青色「確認する（必須）」ボタン、各カードの同意状態表示（未同意/同意済み）、下部固定「同意して次へ」ボタン（2項目同意済み時のみ有効）
+- 説明: 登録前の規約同意画面。各「確認する（必須）」から文書画面を開き、最下部までスクロール後に有効化される「同意する」を押して戻ると該当カードが同意済みに切り替わる。同意済みカードの確認ボタンはグレーアウトされる
 
 ### SignUpView (`lib/views/auth/sign_up_view.dart`)
 - 構成: メール/パスワード入力、登録ボタン
@@ -53,12 +67,16 @@
 
 ### HomeView (`lib/views/home_view.dart`)
 - 構成: 店舗サマリー、QRスキャン導線、投稿/クーポン作成（クーポン3枚上限時は非活性）、アクティブクーポン横スクロール、投稿セクション（セクションタイトルは「投稿」で統一、Instagram投稿と通常投稿を日付降順で混合表示・最大10件・タイトル非表示・テキスト2行表示）、各管理画面への導線
-- isActive=false時: QRスキャン・投稿作成・クーポン作成ボタンを非表示にし、代わりにプロフィール完成度ゲージ（5段階セグメントバー）を表示。5項目（店舗プロフィール・店舗位置情報・メニュー・店内画像・決済方法）のチェックリストと、次に設定すべき項目への遷移ボタンを配置。全項目完了時にisActiveを自動trueにして通常ホーム画面へ切り替え
+- isActive=false時: QRスキャン・投稿作成・クーポン作成ボタンを非表示にし、代わりにプロフィール完成度ゲージ（セグメントバー）を表示。基本5項目（店舗プロフィール・店舗位置情報・メニュー・店内画像・決済方法）のチェックリストと、次に設定すべき項目への遷移ボタンを配置。不定休（`isRegularHoliday=true`）の店舗は6項目目として「営業カレンダー」ステップを末尾に追加表示し、`scheduleOverrides` に1件以上の設定がある場合に完了扱い（ゲージは5/5→X/6、カレンダータップで `ScheduleCalendarView` へ遷移）。全項目完了かつ `isActive` フィールドが未設定の場合のみ自動trueに初期化（手動トグルで設定済みの場合は上書きしない）
 - 説明: 店舗のダッシュボード兼ショートカット集約画面
 
 ### AnalyticsView (`lib/views/analytics/analytics_view.dart`)
-- 構成: 店舗ヘッダー、統計カード、KPIセクション、クーポン統計（発行クーポン一覧＋各合計使用者数、各クーポンタップで個別利用推移画面へ遷移）、各推移画面への導線
+- 構成: `CommonHeader`（戻るボタンなし）、店舗ヘッダー、統計カード、KPIセクション、クーポン統計（発行クーポン一覧＋各合計使用者数、各クーポンタップで個別利用推移画面へ遷移）、特別クーポン分析（コイン交換クーポンの発行枚数・使用済み・割引合計金額をカード表示。`user_coupons` から `type=coin_exchange` を集計。コインアイコンは `assets/images/icon_coin.png` を使用。オーナー（`isOwner=true`）のみ「全店舗の特別クーポンを見る →」テキストボタンを表示し、`AllStoreSpecialCouponView`へ遷移）、各推移画面への導線
 - 説明: 店舗の分析ダッシュボード
+
+### AllStoreSpecialCouponView (`lib/views/analytics/all_store_special_coupon_view.dart`)
+- 構成: `CommonHeader`（タイトル「全店舗 特別クーポン」）、全店舗リスト（各店舗名＋コイン交換クーポンカード：発行枚数・使用済み・割引合計を黄色枠で表示）
+- 説明: 全店舗のコイン交換クーポン統計を一覧表示する画面。オーナーのみアクセス可能
 
 ### QRScannerView (`lib/views/qr/qr_scanner_view.dart`)
 - 構成: QRスキャナー、手動入力、スキャンガイド
@@ -69,7 +87,7 @@
 - 説明: 投稿/クーポンの統合管理画面
 
 ### SettingsView (`lib/views/settings/settings_view.dart`)
-- 構成: 店舗情報カード、各設定/管理メニュー（オーナー管理内に「ユーザー退会理由一覧」を含む。未読時は数値バッジ表示）
+- 構成: `CommonHeader`（戻るボタンなし）、店舗情報カード、各設定/管理メニュー（オーナー管理内に「ユーザー退会理由一覧」を含む。未読時は数値バッジ表示）
 - 説明: 店舗設定・運用の入口画面。管理者オーナーは退会理由の未読件数をここで把握可能
 
 ## 分析（推移画面）
@@ -138,15 +156,15 @@
 ## クーポン・投稿
 
 ### CouponsManageView (`lib/views/coupons/coupons_manage_view.dart`)
-- 構成: `CommonHeader`、ステータスフィルター、クーポン一覧カード（カードタップで編集）、有効/無効切替、削除、下部固定の新規クーポン作成 `CustomButton`（カプセル型、1店舗あたり最大3枚、上限時は非活性＋制限メッセージ表示）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
+- 構成: `CommonHeader`、ステータスフィルター（白背景・角丸16・ボーダーなし・影なし）、クーポン一覧（`ListView.separated`・間隔12・左右上下パディング16）、クーポンカード（白背景・角丸16・ボーダーなし・影なし・padding12。左: 86×86 画像エリア（オレンジ薄背景・角丸12・画像なし時 `Icons.card_giftcard`）・右: ステータスバッジ＋コンパクトな有効/無効切替・削除ボタン＋タイトル（14px bold）＋割引ラベル（12px オレンジ bold）＋有効期限・使用数（11px グレー））、下部固定の新規クーポン作成 `CustomButton`（カプセル型、1店舗あたり最大3枚、上限時は非活性＋制限メッセージ表示）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
 - 説明: クーポン管理（一覧・編集）画面。店舗設定詳細から遷移した場合は対象店舗固定で管理
 
 ### CreateCouponView (`lib/views/coupons/create_coupon_view.dart`)
-- 構成: `CommonHeader`、クーポンタイプ選択（割引/プレゼント/特別オファー）、割引タイプ/基本情報/画像/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成 `CustomButton`（カプセル型）、店舗固定モード時のロック済み店舗表示。スタンプ達成特典（requiredStampCount > 0）の場合はクーポンタイプを「割引クーポン」に制限（ドロップダウン無効化＋ヘルプテキスト表示）
+- 構成: `CommonHeader`、クーポンタイプ選択（割引/プレゼント/特別オファー）、割引タイプ/基本情報/画像（`ImagePickerField` 1:1 比率・タップで選択・右上マイナスで削除）/条件入力、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、作成 `CustomButton`（カプセル型）、店舗固定モード時のロック済み店舗表示。スタンプ達成特典（requiredStampCount > 0）の場合はクーポンタイプを「割引クーポン」に制限（ドロップダウン無効化＋ヘルプテキスト表示）
 - 説明: 新規クーポン作成画面。店舗設定詳細経由では選択店舗を固定して作成
 
 ### EditCouponView (`lib/views/coupons/edit_coupon_view.dart`)
-- 構成: クーポンタイプ選択（スタンプ達成特典時は割引クーポンに制限＋ヘルプテキスト表示）、割引タイプ、クーポン編集フォーム、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、画像更新、保存。既存データの自動補正（スタンプ達成特典で値引型以外の場合はdiscountに自動補正）
+- 構成: `CommonHeader`、クーポンタイプ選択（スタンプ達成特典時は割引クーポンに制限＋ヘルプテキスト表示）、割引タイプ、クーポン編集フォーム、発行枚数（無制限チェックボックス付き・無制限ON時は入力フィールド非表示）、画像（`ImagePickerField` 1:1 比率・タップで変更・右上マイナスで削除）、保存。既存データの自動補正（スタンプ達成特典で値引型以外の場合はdiscountに自動補正）
 - 説明: 既存クーポンの編集画面
 
 ### StoreCouponDetailView (`lib/views/coupons/coupon_detail_view.dart`)
@@ -154,27 +172,27 @@
 - 説明: クーポン詳細表示画面
 
 ### CouponSelectForCheckoutView (`lib/views/coupons/coupon_select_for_checkout_view.dart`)
-- 構成: クーポン選択リスト、次工程への導線
-- 説明: 会計時に使うクーポンの選択画面
+- 構成: 「通常クーポン」セクション（`coupons/{storeId}/coupons` から取得、スタンプ数条件付き）と「特別クーポン」セクション（`user_coupons` から取得・`coin_exchange`/`stamp_reward` タイプ）のリスト、チェックボックス選択、次工程への導線。特別クーポンカードには種別バッジ（コイン交換=オレンジ / スタンプ達成=緑）を表示。クーポンが1枚もない場合は「利用可能なクーポンがありません」を表示
+- 説明: 会計時に使うクーポンの選択画面（通常クーポン＋特別クーポンの両方を表示）
 
 ### PostsManageView (`lib/views/posts/posts_manage_view.dart`)
-- 構成: `CommonHeader`（右上 `+` ボタンなし）、フィルター、投稿一覧、下部固定の新規投稿作成 `CustomButton`（カプセル型）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
+- 構成: `CommonHeader`（右上 `+` ボタンなし）、カテゴリフィルター（白背景・角丸16・ボーダーなし・影なし）、投稿一覧（`ListView.separated`・間隔12・左右上下パディング16）、投稿カード（白背景・角丸16・ボーダーなし・影なし・padding12。左: 86×86 画像エリア（オレンジ薄背景・角丸12・画像なし時 `Icons.article`・複数画像がある場合は先頭1枚を表示）・右: カテゴリバッジ＋公開状態バッジ＋コンパクトな編集・削除ボタン＋タイトル（14px bold）＋投稿内容（12px グレー・最大2行）＋いいね数❤️・コメント数💬・閲覧数👁・投稿日🕐（11px グレー・サブコレクションベースで正確にカウント））、下部固定の新規投稿作成 `CustomButton`（カプセル型）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
 - 説明: 投稿管理（一覧・編集）画面
 
 ### CreatePostView (`lib/views/posts/create_post_view.dart`)
-- 構成: `CommonHeader`、投稿フォーム（店舗選択/画像/本文）、作成 `CustomButton`（カプセル型、店舗ジャンルは店舗情報から自動取得して保存）
+- 構成: `CommonHeader`、投稿フォーム（店舗選択/画像サムネイル（`ImagePickerField` 1:1 比率・最大5枚・右上マイナスで削除）/本文）、作成 `CustomButton`（カプセル型、店舗ジャンルは店舗情報から自動取得して保存）
 - 説明: 新規投稿作成画面
 
 ### EditPostView (`lib/views/posts/edit_post_view.dart`)
-- 構成: 投稿編集フォーム、画像追加/削除、保存
+- 構成: `CommonHeader`、投稿編集フォーム（カテゴリ/タイトル/画像サムネイル（`ImagePickerField` 1:1 比率・既存画像と新規追加画像を区分表示・右上マイナスで削除）/本文）、保存
 - 説明: 既存投稿の編集画面
 
 ### StorePostsListView (`lib/views/posts/store_posts_list_view.dart`)
-- 構成: 3列グリッドでInstagram投稿と通常投稿を混合表示（最大51件・日付降順）
+- 構成: 3列グリッドでInstagram投稿と通常投稿を混合表示（最大51件・日付降順）。各グリッドカードの下部にいいね数❤️・閲覧数👁のオーバーレイバッジを表示（通常投稿・Instagram投稿共通、0件の場合は非表示）
 - 説明: 投稿一覧画面（ホーム画面の「全て見る」から遷移）
 
 ### StorePostDetailView (`lib/views/posts/store_post_detail_view.dart`)
-- 構成: 画像スライダー、店舗アイコン画像+店舗名+投稿日付、いいね数/閲覧数表示（Instagram投稿・通常投稿の両方で表示）、タイトル/本文、Instagram投稿時は本文下部に青テキスト「Instagramを開く」ボタン（タップで外部ブラウザ/Instagramアプリに遷移）、コメント一覧（閲覧専用、Instagram投稿・通常投稿の両方で表示）
+- 構成: 画像スライダー、店舗アイコン画像+店舗名+投稿日付、いいね数❤️/コメント数💬/閲覧数👁の統計行（Instagram投稿・通常投稿の両方で表示）、タイトル/本文、Instagram投稿時は本文下部に青テキスト「Instagramを開く」ボタン（タップで外部ブラウザ/Instagramアプリに遷移）、コメント一覧（閲覧専用、Instagram投稿・通常投稿の両方で表示）
 - 説明: 投稿詳細画面（店舗オーナー向け閲覧専用、いいね・コメントは閲覧のみで操作不可、店舗アイコンはFirestoreから取得、Instagram投稿はpermalinkフィールドで元投稿にリンク）
 
 ## ニュース管理
@@ -236,8 +254,8 @@
 - 説明: 店舗の公開/非公開（`isActive`）を管理する画面。トグル下に「現在、ユーザーに公開中です / 現在、ユーザーには非表示です」を表示し、更新中はトグルを無効化
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「100円引きクーポン利用枚数」カード（コイン交換クーポンの累計使用枚数）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「100円引きクーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「特別クーポン利用枚数」カード（コイン交換クーポンの累計使用枚数＋合計割引額）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「特別クーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して枚数と合計割引額を表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -290,16 +308,24 @@
 - 説明: Instagram連携の設定・同期管理画面。店舗ごとに毎日1回の定期同期時刻を設定できる
 
 ### MenuEditView (`lib/views/settings/menu_edit_view.dart`)
-- 構成: 新規メニュー作成ボタン、カテゴリフィルタバー（コース/料理/ドリンク/デザート）、メニュー一覧（ReorderableListView）、編集/削除導線
+- 構成: 新規メニュー作成ボタン、オプション管理ボタン、カテゴリフィルタバー（コース/料理/ドリンク/デザート）、メニュー一覧（ReorderableListView）、編集/削除導線
 - 説明: メニュー管理画面。カテゴリ別にメニューをフィルタ表示し、ドラッグ&ドロップで並び替え可能
 
 ### MenuCreateView (`lib/views/settings/menu_create_view.dart`)
-- 構成: メニュー画像選択、カテゴリ選択（コース/料理/ドリンク/デザート）、メニュー名/説明/価格入力フォーム、追加ボタン
+- 構成: メニュー画像選択、カテゴリ選択（コース/料理/ドリンク/デザート）、メニュー名/説明/価格入力フォーム、オプション選択セクション（ボトムシートで既存オプションから選択）、追加ボタン
 - 説明: 新規メニューアイテム作成画面
 
 ### MenuItemEditView (`lib/views/settings/menu_item_edit_view.dart`)
-- 構成: メニュー編集フォーム、画像、カテゴリ選択（コース/料理/ドリンク/デザート）、保存
+- 構成: メニュー編集フォーム、画像、カテゴリ選択（コース/料理/ドリンク/デザート）、オプション選択セクション（ボトムシートで既存オプションから選択）、保存
 - 説明: メニューアイテム編集画面
+
+### MenuOptionGroupsView (`lib/views/settings/menu_option_groups_view.dart`)
+- 構成: 新規オプション作成ボタン、追加済みオプション一覧（編集/削除）、未追加デフォルトテンプレート一覧（追加ボタン）
+- 説明: メニューオプショングループの管理画面。デフォルトテンプレート（サイズのみ）の追加、カスタムオプションの作成・編集・削除が可能
+
+### MenuOptionGroupEditView (`lib/views/settings/menu_option_group_edit_view.dart`)
+- 構成: オプション名入力、`CustomSwitchListTile` による「各メニューごとに追加料金を設定」トグル、選択肢リスト（選択肢名+追加料金、動的追加/削除）、保存ボタン
+- 説明: オプショングループの新規作成・編集画面。最低2つの選択肢が必要。トグルON時は各選択肢の料金入力フィールドをグレーアウトして非活性化（メニューごとに個別設定するため）
 
 ### InteriorImagesView (`lib/views/settings/interior_images_view.dart`)
 - 構成: 店内画像一覧、追加/並び替え、保存
@@ -308,6 +334,19 @@
 ### PaymentMethodsSettingsView (`lib/views/settings/payment_methods_settings_view.dart`)
 - 構成: 決済方法カテゴリ別一覧（現金/カード/電子マネー/QR決済）、各項目トグル切替、保存
 - 説明: 店舗で利用可能な決済方法の設定画面
+
+### StampMigrationScanView (`lib/views/stamps/stamp_migration_scan_view.dart`)
+- 構成: `CommonHeader`（「物理スタンプカード移行」）、`MobileScanner` QRスキャナー、スキャンガイドオーバーレイ（オレンジ枠250×250・「お客様のQRコードをスキャン」テキスト）、説明テキスト（半透明背景）
+- 説明: 来店ユーザーのQRコードをスキャンし、UID抽出・移行済みチェックを行ってStampMigrationConfirmViewへ遷移するスキャン画面。QRトークンはBase64デコード→JSONパース→sub/exp検証で有効なUIDを取得。`stamp_migrations/${storeId}_${userId}` を事前チェックし、既に移行済みの場合はダイアログで通知して再スキャン待機。
+- 遷移元: SettingsView の「物理スタンプカード移行」メニュー
+
+### StampMigrationConfirmView (`lib/views/stamps/stamp_migration_confirm_view.dart`)
+- 構成: `CommonHeader`（「物理スタンプカード移行」）、ユーザー情報カード（CircleAvatar（プロフィール画像 or 名前先頭文字フォールバック）・表示名・「移行対象ユーザー」ラベル）、注意事項バナー（オレンジ・「目視確認済みの上で移行してください・1回のみ実行可能」）、現在のデジタルスタンプ数カード、物理スタンプ数入力カード（`TextFormField`・整数1〜99・`FilteringTextInputFormatter.digitsOnly`・LengthLimiting2桁）、移行後プレビューカード（入力後のみ表示、緑背景・現在/加算/合計/達成カード枚数）、「移行を実行する」ボタン（オレンジ・確認ダイアログあり）、キャンセルボタン
+- 説明: ユーザー情報の確認と物理スタンプ数の入力を行い、Cloud Function `migrateStampCard` を呼び出す確認画面。入力値に応じてリアルタイムでプレビュー（移行後スタンプ合計・達成カード枚数）を表示。最終確認ダイアログで「確認済み・移行する」押下後に処理実行。`FirebaseFunctionsException` のエラーコード別メッセージ（already-exists/permission-denied/not-found/invalid-argument）を表示。
+
+### StampMigrationCompleteView (`lib/views/stamps/stamp_migration_complete_view.dart`)
+- 構成: `CommonHeader`（「移行完了」）、緑チェックアイコン、「移行が完了しました」テキスト、ユーザー名付き説明、移行結果カード（移行前スタンプ/物理カードから移行数/移行後合計、Divider、移行後合計をオレンジ太字で強調）、達成クーポン付与メッセージ（completedCards > 0 の場合のみオレンジバナー）、「完了」ボタン（`Navigator.popUntil(route.isFirst)` でメイン画面に戻る）
+- 説明: 物理スタンプカード移行の完了結果を表示する画面。移行前後のスタンプ数と達成カード枚数（= 付与クーポン枚数）をサマリー表示。
 
 ### ScheduleCalendarView (`lib/views/settings/schedule_calendar_view.dart`)
 - 構成: 凡例（臨時休業=赤/時間変更=青/不定休店舗は「通常営業」=緑・通常店舗は「臨時営業」=緑）、月カレンダー（`table_calendar`）、色マーカー付き日付表示（定休日=グレー）、日付タップで `_ScheduleOverrideSheet`（ボトムシート）、今後の変更登録済み一覧（日付順・削除ボタン）
@@ -335,8 +374,12 @@
 - 説明: 通知設定画面（stores/{storeId}のnotificationSettings・emailNotificationSettingsに保存）
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
-- 構成: キャンペーン（友達紹介・店舗紹介・くじ引き・~~スロット（廃止）~~）/メンテナンス/バージョン管理の設定。友達紹介セクションでは開始日・終了日に加え、招待者へのコイン数・被招待者へのコイン数（各1〜999）も設定可能
+- 構成: キャンペーン（友達紹介・店舗紹介・くじ引き・~~スロット（廃止）~~）/メンテナンス/バージョン管理/データ管理の設定。友達紹介セクションでは開始日・終了日に加え、招待者へのコイン数・被招待者へのコイン数（各1〜999）も設定可能。データ管理セクションでは「不整合を確認」ボタンでスタンプと来店数の整合性チェック、「スタンプを同期」ボタンで一括修正、不整合件数表示と「詳細を見る」ボタンで `StampSyncDetailView` へ遷移
 - 説明: オーナー向けの高度設定画面。`owner_settings/current` に保存され、ユーザーアプリの友達紹介ページに即時反映される
+
+### StampSyncDetailView (`lib/views/settings/stamp_sync_detail_view.dart`)
+- 構成: CommonHeader「スタンプ不整合ユーザー」、不整合ユーザー一覧（CircleAvatar（プロフィール画像 or 名前先頭文字フォールバック）、ユーザー名、店舗名、来店数、スタンプ数）、不整合0件時は緑チェックアイコン＋「不整合はありません」メッセージ
+- 説明: スタンプと来店数に不整合があるユーザーの一覧画面。OwnerSettingsViewの「詳細を見る」ボタンから遷移。Cloud Function `syncStampsWithVisits` のレスポンスデータを表示
 
 ### HelpSupportView (`lib/views/settings/help_support_view.dart`)
 - 構成: FAQ、問い合わせ導線
@@ -399,7 +442,9 @@
 └─ AuthWrapper
    ├─ 未ログイン
    │  └─ LoginView
-   │     └─ PasswordResetView
+   │     ├─ PasswordResetView
+   │     └─ TermsPrivacyConsentView（規約同意）
+   │        └─ StoreInfoView（店舗情報入力）
    └─ ログイン済み
       ├─ EmailVerificationPendingView（認証必須時）
       └─ MainNavigationView
@@ -433,7 +478,8 @@
          │  ├─ 店舗ユーザー推移（StoreUserTrendView）
          │  ├─ 全ユーザー推移（AllUserTrendView）
          │  ├─ 全ユーザーログイン数推移（AllLoginTrendView）
-         │  └─ ランキング（LeaderboardView）
+         │  ├─ ランキング（LeaderboardView）
+         │  └─ 全店舗特別クーポン（AllStoreSpecialCouponView）※オーナーのみ
          │
          └─ 設定（SettingsView）
             ├─ 店舗プロフィール（StoreProfileEditView）
@@ -442,10 +488,15 @@
             ├─ 店舗位置情報（StoreLocationEditView）
             ├─ メニュー編集（MenuEditView）
             │  ├─ 新規メニュー作成（MenuCreateView）
-            │  └─ メニュー項目編集（MenuItemEditView）
+            │  ├─ メニュー項目編集（MenuItemEditView）
+            │  └─ オプション管理（MenuOptionGroupsView）
+            │     └─ オプション作成/編集（MenuOptionGroupEditView）
             ├─ 店内画像設定（InteriorImagesView）
             ├─ 店舗決済方法設定（PaymentMethodsSettingsView）
             ├─ 営業カレンダー（ScheduleCalendarView）
+            ├─ 物理スタンプカード移行（StampMigrationScanView）
+            │  └─ 移行確認（StampMigrationConfirmView）
+            │     └─ 移行完了（StampMigrationCompleteView）
             ├─ Instagram連携（InstagramSyncView）
             ├─ パスワード変更（PasswordChangeView）
             ├─ メールアドレス変更（EmailChangeView）
@@ -459,6 +510,7 @@
             │  ├─ 新規作成（NewsCreateView）
             │  └─ 編集（NewsEditView）
             ├─ オーナー設定（OwnerSettingsView）
+            │  └─ スタンプ不整合ユーザー一覧（StampSyncDetailView）
             ├─ 店舗切替（StoreSelectionView）
             ├─ 店舗稼働設定（StoreActivationSettingsView）
             │  └─ 店舗設定詳細（StoreSettingsDetailView）

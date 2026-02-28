@@ -12,6 +12,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/icon_image_picker_field.dart';
 import '../../widgets/image_picker_field.dart';
 import '../../utils/icon_image_flow.dart';
+import '../../widgets/custom_switch_tile.dart';
+import '../../theme/store_ui.dart';
 import 'sign_up_view.dart';
 import 'store_location_picker_view.dart';
 import '../settings/store_icon_crop_view.dart';
@@ -1287,23 +1289,14 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Checkbox(
-              value: _isRegularHoliday,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _isRegularHoliday = value;
-                });
-              },
-              activeColor: const Color(0xFFFF6B35),
-            ),
-            const Text(
-              '不定休',
-              style: TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-          ],
+        CustomSwitchListTile(
+          title: const Text('不定休'),
+          value: _isRegularHoliday,
+          onChanged: (value) {
+            setState(() {
+              _isRegularHoliday = value;
+            });
+          },
         ),
         const SizedBox(height: 8),
         Container(
@@ -1351,7 +1344,11 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
           Switch(
             value: isOpen,
             onChanged: isEnabled ? (value) => setState(() => _businessDaysOpen[dayKey] = value) : null,
-            activeColor: const Color(0xFFFF6B35),
+            activeColor: Colors.white,
+            activeTrackColor: StoreUi.primary,
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: const Color(0xFFE0E0E0),
+            trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1640,11 +1637,9 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         const SizedBox(height: 16),
 
         // テイクアウト
-        SwitchListTile(
+        CustomSwitchListTile(
           title: const Text('テイクアウト対応'),
           value: _hasTakeout,
-          activeColor: const Color(0xFFFF6B35),
-          contentPadding: EdgeInsets.zero,
           onChanged: (value) {
             setState(() => _hasTakeout = value);
           },
@@ -1683,11 +1678,9 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         const SizedBox(height: 16),
 
         // Wi-Fi
-        SwitchListTile(
+        CustomSwitchListTile(
           title: const Text('Wi-Fi'),
           value: _hasWifi,
-          activeColor: const Color(0xFFFF6B35),
-          contentPadding: EdgeInsets.zero,
           onChanged: (value) {
             setState(() => _hasWifi = value);
           },
@@ -1706,33 +1699,27 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
         const SizedBox(height: 8),
 
         // バリアフリー
-        SwitchListTile(
+        CustomSwitchListTile(
           title: const Text('バリアフリー対応'),
           value: _isBarrierFree,
-          activeColor: const Color(0xFFFF6B35),
-          contentPadding: EdgeInsets.zero,
           onChanged: (value) {
             setState(() => _isBarrierFree = value);
           },
         ),
 
         // 子連れ対応
-        SwitchListTile(
+        CustomSwitchListTile(
           title: const Text('子連れ対応'),
           value: _isChildFriendly,
-          activeColor: const Color(0xFFFF6B35),
-          contentPadding: EdgeInsets.zero,
           onChanged: (value) {
             setState(() => _isChildFriendly = value);
           },
         ),
 
         // ペット同伴可
-        SwitchListTile(
+        CustomSwitchListTile(
           title: const Text('ペット同伴可'),
           value: _isPetFriendly,
-          activeColor: const Color(0xFFFF6B35),
-          contentPadding: EdgeInsets.zero,
           onChanged: (value) {
             setState(() => _isPetFriendly = value);
           },

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../providers/owner_settings_provider.dart';
 import '../../models/owner_settings_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../providers/auth_provider.dart';
+import 'stamp_sync_detail_view.dart';
 
 class OwnerSettingsView extends ConsumerStatefulWidget {
   const OwnerSettingsView({Key? key}) : super(key: key);
@@ -37,6 +39,10 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
   bool _isSaving = false;
   bool _hasInitialized = false;
   bool _hasLocalEdits = false;
+  bool _isSyncChecking = false;
+  bool _isSyncExecuting = false;
+  String? _syncResultMessage;
+  List<Map<String, dynamic>> _syncMismatches = [];
 
   @override
   void dispose() {
@@ -348,6 +354,85 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                       onChanged: (_) {
                         _hasLocalEdits = true;
                       },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'データ管理',
+                  subtitle: 'スタンプ数と来店回数の整合性チェック・修正',
+                  icon: Icons.sync,
+                  children: [
+                    if (_syncResultMessage != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _syncResultMessage!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue[900],
+                              ),
+                            ),
+                            if (_syncMismatches.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => StampSyncDetailView(
+                                          mismatches: _syncMismatches,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.list_alt, size: 18),
+                                  label: const Text('詳細を見る'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.blue[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: '不整合を確認',
+                            onPressed: (!isOwner || _isSyncChecking || _isSyncExecuting)
+                                ? null
+                                : () => _runStampSync(dryRun: true),
+                            backgroundColor: Colors.blue,
+                            isLoading: _isSyncChecking,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: CustomButton(
+                            text: '同期実行',
+                            onPressed: (!isOwner || _isSyncChecking || _isSyncExecuting)
+                                ? null
+                                : () => _confirmAndRunStampSync(),
+                            backgroundColor: const Color(0xFFFF6B35),
+                            isLoading: _isSyncExecuting,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -712,6 +797,87 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
       return null;
     }
     return value;
+  }
+
+  Future<void> _runStampSync({required bool dryRun}) async {
+    setState(() {
+      if (dryRun) {
+        _isSyncChecking = true;
+      } else {
+        _isSyncExecuting = true;
+      }
+      _syncResultMessage = null;
+      _syncMismatches = [];
+    });
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+          .httpsCallable('syncStampsWithVisits');
+      final result = await callable.call({'dryRun': dryRun});
+      final data = result.data as Map<String, dynamic>;
+      final totalChecked = data['totalChecked'] ?? 0;
+      final mismatchCount = data['mismatchCount'] ?? 0;
+      final updatedCount = data['updatedCount'] ?? 0;
+      final rawMismatches = data['mismatches'] as List<dynamic>? ?? [];
+
+      if (mounted) {
+        setState(() {
+          _syncMismatches = rawMismatches
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+          if (dryRun) {
+            _syncResultMessage =
+                '確認結果: $totalChecked件チェック、$mismatchCount件の不整合を検出';
+          } else {
+            _syncResultMessage =
+                '同期完了: $totalChecked件チェック、$updatedCount件を更新しました';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _syncResultMessage = 'エラー: $e';
+          _syncMismatches = [];
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncChecking = false;
+          _isSyncExecuting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmAndRunStampSync() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('スタンプ同期の実行'),
+        content: const Text(
+          '来店回数よりスタンプ数が少ないユーザーのスタンプ数を来店回数に合わせて更新します。\n\nこの操作は元に戻せません。実行しますか？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFFF6B35),
+            ),
+            child: const Text('実行'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _runStampSync(dryRun: false);
+    }
   }
 
   void _showSnackBar(BuildContext context, String message, {bool isSuccess = false}) {

@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/image_picker_field.dart';
 
 class EditPostView extends StatefulWidget {
   final Map<String, dynamic> postData;
@@ -284,22 +286,7 @@ class _EditPostViewState extends State<EditPostView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF6F2),
-      appBar: AppBar(
-        title: const Text(
-          '投稿編集',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF6B35),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: const CommonHeader(title: '投稿編集'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -582,61 +569,30 @@ class _EditPostViewState extends State<EditPostView> {
                   children: _existingImageUrls.asMap().entries.map((entry) {
                     final int index = entry.key;
                     final String imageUrl = entry.value;
-                    
-                    return Stack(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: 80,
-                              height: 80,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.image,
-                                    color: Colors.grey,
-                                    size: 40,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+
+                    return SizedBox(
+                      width: 80,
+                      child: ImagePickerField(
+                        aspectRatio: 1.0,
+                        onRemove: () => _removeExistingImage(index),
+                        showRemove: true,
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image, color: Colors.grey, size: 40),
+                            );
+                          },
                         ),
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: GestureDetector(
-                            onTap: () => _removeExistingImage(index),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     );
                   }).toList(),
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               // 新しく選択された画像の表示
               if (_selectedImages.isNotEmpty) ...[
                 Text(
@@ -654,45 +610,15 @@ class _EditPostViewState extends State<EditPostView> {
                   children: _selectedImages.asMap().entries.map((entry) {
                     final int index = entry.key;
                     final Uint8List imageBytes = entry.value;
-                    
-                    return Stack(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(
-                              imageBytes,
-                              fit: BoxFit.cover,
-                              width: 80,
-                              height: 80,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: GestureDetector(
-                            onTap: () => _removeNewImage(index),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+
+                    return SizedBox(
+                      width: 80,
+                      child: ImagePickerField(
+                        aspectRatio: 1.0,
+                        onRemove: () => _removeNewImage(index),
+                        showRemove: true,
+                        child: Image.memory(imageBytes, fit: BoxFit.cover),
+                      ),
                     );
                   }).toList(),
                 ),

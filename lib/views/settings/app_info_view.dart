@@ -56,12 +56,12 @@ class AppInfoView extends StatelessWidget {
         ),
         _buildInfoItem(
           label: 'バージョン',
-          value: '1.1.1',
+          value: '1.2.0',
           copyable: true,
         ),
         _buildInfoItem(
           label: '最終更新日',
-          value: '2026年2月23日',
+          value: '2026年3月1日',
           copyable: false,
         ),
       ],

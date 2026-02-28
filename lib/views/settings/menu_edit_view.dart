@@ -8,6 +8,7 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/pill_tab_bar.dart';
 import 'menu_create_view.dart';
 import 'menu_item_edit_view.dart';
+import 'menu_option_groups_view.dart';
 
 class MenuEditView extends ConsumerStatefulWidget {
   static const List<String> menuCategories = ['コース', '料理', 'ドリンク', 'デザート'];
@@ -144,6 +145,16 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
     return _menuItems
         .where((item) => item['category'] == category)
         .toList();
+  }
+
+  void _navigateToOptionGroups() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MenuOptionGroupsView(
+          storeId: _selectedStoreId!,
+        ),
+      ),
+    );
   }
 
   Future<void> _navigateToCreateMenu() async {
@@ -310,6 +321,21 @@ class _MenuEditViewState extends ConsumerState<MenuEditView> {
                   child: CustomButton(
                     text: '新規メニューを作成',
                     onPressed: _navigateToCreateMenu,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // オプション管理ボタン
+                SizedBox(
+                  width: double.infinity,
+                  child: CustomButton(
+                    text: 'オプション管理',
+                    onPressed: _selectedStoreId != null
+                        ? () => _navigateToOptionGroups()
+                        : null,
+                    backgroundColor: Colors.white,
+                    textColor: const Color(0xFFFF6B35),
+                    borderColor: const Color(0xFFFF6B35),
+                    icon: const Icon(Icons.tune, size: 18, color: Color(0xFFFF6B35)),
                   ),
                 ),
                 const SizedBox(height: 16),

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'email_support_view.dart';
 import 'phone_support_view.dart';
+import 'live_chat_user_list_view.dart';
 import '../account_deletion/account_deletion_request_view.dart';
 
 class HelpSupportView extends StatelessWidget {
@@ -94,27 +95,31 @@ class HelpSupportView extends StatelessWidget {
     final faqs = [
       {
         'question': 'QRコードのスキャンができません',
-        'answer': 'カメラの許可を確認し、QRコードが画面内に収まるように調整してください。また、照明が十分にあることを確認してください。',
+        'answer': 'カメラの許可を確認し、QRコードが画面内に収まるよう調整してください。照明が十分にあることもご確認ください。読み取れない場合はホーム画面のQRスキャンボタンから「手動入力」もお試しいただけます。',
       },
       {
         'question': '店舗情報を変更したい',
-        'answer': '設定画面の「店舗プロフィール」から店舗情報を編集できます。',
+        'answer': '設定画面の「店舗設定」→「店舗プロフィール」から店舗名・カテゴリ・営業時間・説明などを編集できます。位置情報の変更は「店舗設定」→「位置情報」から行えます。',
       },
       {
         'question': 'クーポンの作成方法を教えて',
-        'answer': 'ホーム画面の「新規クーポンを作成」ボタンから、またはクーポン管理画面から作成できます。',
+        'answer': 'クーポン管理画面を開き、画面下部固定の「新規クーポンを作成」ボタンからタイトル・タイプ・有効期限・画像を設定して発行できます。1店舗あたり最大3枚まで同時発行可能です。スタンプ達成特典は「必要スタンプ数」を設定したクーポンが自動付与されます。',
       },
       {
-        'question': 'ポイント付与の履歴を確認したい',
-        'answer': 'ホーム画面の「ポイント履歴」から過去のポイント付与履歴を確認できます。',
+        'question': 'スタンプ押印の履歴を確認したい',
+        'answer': 'ホーム画面の「スタンプ履歴」から過去の押印履歴を確認できます。今日の来店者数・付与スタンプ数はホームのサマリーカードにもリアルタイム表示されます。',
       },
       {
         'question': 'アプリが正常に動作しません',
-        'answer': 'アプリを再起動するか、ブラウザのキャッシュをクリアしてみてください。',
+        'answer': 'アプリを一度終了して再起動してみてください。改善しない場合は端末を再起動するか、アプリを最新バージョンにアップデートしてください。それでも解消しない場合はサポートまでお問い合わせください。',
       },
       {
         'question': '店舗を切り替えたい',
-        'answer': '設定画面の店舗情報カード右下の「店舗切り替え」ボタンから切り替えできます。',
+        'answer': '設定画面の上部にある店舗情報カードの「切り替え」ボタンから、管理する店舗を変更できます。複数店舗を登録している場合に利用できます。',
+      },
+      {
+        'question': '店舗が承認されない・審査中のままです',
+        'answer': '店舗登録後、運営チームが内容を確認します。通常は最短当日中に審査が完了しますが、混雑時はお時間をいただく場合があります。承認後にメールでお知らせしますので、しばらくお待ちください。',
       },
     ];
 
@@ -235,9 +240,9 @@ class HelpSupportView extends StatelessWidget {
         _buildContactItem(
           icon: Icons.chat,
           title: 'ライブチャット',
-          subtitle: 'オンラインで質問',
+          subtitle: 'ユーザーとのチャット一覧を開く',
           trailing: _buildLiveChatUnreadTrailing(),
-          onTap: () => _showChatDialog(),
+          onTap: () => _navigateToLiveChat(context),
         ),
       ],
     );
@@ -397,9 +402,12 @@ class HelpSupportView extends StatelessWidget {
     );
   }
 
-  void _showChatDialog() {
-    // ライブチャットのダイアログを表示
-    // 実際のアプリではチャット機能を実装
+  void _navigateToLiveChat(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LiveChatUserListView(),
+      ),
+    );
   }
 
 

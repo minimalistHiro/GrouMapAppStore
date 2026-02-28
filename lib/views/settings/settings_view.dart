@@ -31,6 +31,8 @@ import '../news/news_manage_view.dart';
 import '../account_deletion/account_deletion_requests_list_view.dart';
 import '../account_deletion/user_account_deletion_reasons_view.dart';
 import '../../providers/account_deletion_provider.dart';
+import '../../widgets/common_header.dart';
+import '../stamps/stamp_migration_scan_view.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
@@ -85,10 +87,9 @@ class SettingsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdminOwnerAsync = ref.watch(userIsAdminOwnerProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('設定'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
+      appBar: const CommonHeader(
+        title: '設定',
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -172,6 +173,18 @@ class SettingsView extends ConsumerWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const ScheduleCalendarView(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingsItem(
+                  icon: Icons.card_membership,
+                  title: '物理スタンプカード移行',
+                  subtitle: 'お客様の物理カードをデジタルに移行',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StampMigrationScanView(),
                       ),
                     );
                   },

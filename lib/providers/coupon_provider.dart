@@ -32,6 +32,36 @@ final storeCouponsProvider =
   }
 });
 
+// ユーザーが持つ特別クーポン（コイン交換・スタンプ達成）プロバイダー
+final userSpecialCouponsProvider = StreamProvider.family<
+    List<Map<String, dynamic>>,
+    ({String userId, String storeId})>((ref, params) {
+  try {
+    return FirebaseFirestore.instance
+        .collection('user_coupons')
+        .where('userId', isEqualTo: params.userId)
+        .where('storeId', isEqualTo: params.storeId)
+        .where('isUsed', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.where((doc) {
+        final type = doc.data()['type'] as String?;
+        return type == 'coin_exchange' || type == 'stamp_reward';
+      }).map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    }).handleError((error) {
+      debugPrint('Error fetching user special coupons: $error');
+      return <Map<String, dynamic>>[];
+    });
+  } catch (e) {
+    debugPrint('Error creating user special coupons stream: $e');
+    return Stream.value([]);
+  }
+});
+
 // アクティブなクーポンプロバイダー
 final activeCouponsProvider =
     StreamProvider.family<List<Map<String, dynamic>>, String>((ref, storeId) {
@@ -108,9 +138,9 @@ final couponUsageStatsProvider =
   }
 });
 
-// コイン交換100円引きクーポンの利用枚数（累計）
-final coinExchangeCouponUsedCountProvider =
-    StreamProvider.family<int, String>((ref, storeId) {
+// コイン交換特別クーポンの利用枚数・合計割引額（累計）
+final coinExchangeCouponUsedStatsProvider =
+    StreamProvider.family<Map<String, int>, String>((ref, storeId) {
   try {
     return FirebaseFirestore.instance
         .collection('user_coupons')
@@ -118,20 +148,25 @@ final coinExchangeCouponUsedCountProvider =
         .snapshots()
         .map((snapshot) {
       var count = 0;
+      var totalDiscount = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data();
         if (data['type'] == 'coin_exchange' && data['isUsed'] == true) {
           count++;
+          final discountValue = data['discountValue'];
+          if (discountValue is num) {
+            totalDiscount += discountValue.toInt();
+          }
         }
       }
-      return count;
+      return {'count': count, 'totalDiscount': totalDiscount};
     }).handleError((error) {
-      debugPrint('Error fetching coin exchange coupon usage count: $error');
-      return 0;
+      debugPrint('Error fetching coin exchange coupon usage stats: $error');
+      return {'count': 0, 'totalDiscount': 0};
     });
   } catch (e) {
     debugPrint('Error creating coin exchange coupon usage stream: $e');
-    return Stream.value(0);
+    return Stream.value({'count': 0, 'totalDiscount': 0});
   }
 });
 
@@ -730,4 +765,47 @@ class CouponService {
 // クーポンサービスプロバイダー
 final couponServiceProvider = Provider<CouponService>((ref) {
   return CouponService();
+});
+
+// 特別クーポン統計プロバイダー（コイン交換 + スタンプ達成）
+final specialCouponStatsProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, storeId) async {
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('user_coupons')
+        .where('storeId', isEqualTo: storeId)
+        .get();
+
+    int coinIssued = 0, coinUsed = 0, coinTotalDiscount = 0;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final type = data['type'] as String?;
+      final isUsed = data['isUsed'] == true;
+
+      if (type == 'coin_exchange') {
+        coinIssued++;
+        if (isUsed) {
+          coinUsed++;
+          final discountValue = data['discountValue'];
+          if (discountValue is num) {
+            coinTotalDiscount += discountValue.toInt();
+          }
+        }
+      }
+    }
+
+    return {
+      'coinExchange': {
+        'issued': coinIssued,
+        'used': coinUsed,
+        'totalDiscount': coinTotalDiscount,
+      },
+    };
+  } catch (e) {
+    debugPrint('Error fetching special coupon stats: $e');
+    return {
+      'coinExchange': {'issued': 0, 'used': 0, 'totalDiscount': 0},
+    };
+  }
 });

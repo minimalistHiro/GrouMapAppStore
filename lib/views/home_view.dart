@@ -28,6 +28,7 @@ import 'settings/store_location_edit_view.dart';
 import 'settings/menu_edit_view.dart';
 import 'settings/interior_images_view.dart';
 import 'settings/payment_methods_settings_view.dart';
+import 'settings/schedule_calendar_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeView extends ConsumerWidget {
@@ -1266,14 +1267,27 @@ class HomeView extends ConsumerWidget {
     );
   }
 
-  // 5項目の定義
-  static const List<Map<String, dynamic>> _setupSteps = [
+  // 基本5項目の定義
+  static const List<Map<String, dynamic>> _baseSetupSteps = [
     {'label': '店舗プロフィール', 'icon': Icons.store},
     {'label': '店舗位置情報', 'icon': Icons.location_on},
     {'label': 'メニュー', 'icon': Icons.restaurant_menu},
     {'label': '店内画像', 'icon': Icons.photo_library},
     {'label': '決済方法', 'icon': Icons.payment},
   ];
+
+  // 営業カレンダー項目（不定休の場合に追加）
+  static const Map<String, dynamic> _calendarStep = {
+    'label': '営業カレンダー',
+    'icon': Icons.calendar_month,
+  };
+
+  List<Map<String, dynamic>> _getSetupSteps(bool isRegularHoliday) {
+    if (isRegularHoliday) {
+      return [..._baseSetupSteps, _calendarStep];
+    }
+    return _baseSetupSteps;
+  }
 
   Widget _navigateToSetupStep(BuildContext context, int stepIndex, String storeId) {
     switch (stepIndex) {
@@ -1287,6 +1301,8 @@ class HomeView extends ConsumerWidget {
         return InteriorImagesView(storeId: storeId);
       case 4:
         return PaymentMethodsSettingsView(storeId: storeId);
+      case 5:
+        return const ScheduleCalendarView();
       default:
         return StoreProfileEditView(storeId: storeId);
     }
@@ -1295,17 +1311,27 @@ class HomeView extends ConsumerWidget {
   Widget _buildProfileCompletionSection(BuildContext context, WidgetRef ref, String storeId) {
     final completion = ref.watch(storeProfileCompletionProvider(storeId));
 
-    // 全項目完了時にisActiveを自動更新
+    // 全項目完了時にisActiveを自動更新（まだtrueになっていない場合のみ）
+    // 初回セットアップ完了後に自動公開する
     if (completion.isAllComplete) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        FirebaseFirestore.instance
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final doc = await FirebaseFirestore.instance
             .collection('stores')
             .doc(storeId)
-            .update({'isActive': true});
+            .get();
+        final data = doc.data();
+        if (data != null && data['isActive'] != true) {
+          await FirebaseFirestore.instance
+              .collection('stores')
+              .doc(storeId)
+              .update({'isActive': true});
+        }
       });
     }
 
     final nextStep = completion.nextIncompleteStep;
+    final setupSteps = _getSetupSteps(completion.isRegularHoliday);
+    final totalSteps = completion.totalCount;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -1355,13 +1381,13 @@ class HomeView extends ConsumerWidget {
             children: [
               Expanded(
                 child: Row(
-                  children: List.generate(5, (index) {
+                  children: List.generate(totalSteps, (index) {
                     final isComplete = completion.getStepComplete(index);
                     return Expanded(
                       child: Container(
                         height: 12,
                         margin: EdgeInsets.only(
-                          right: index < 4 ? 4 : 0,
+                          right: index < totalSteps - 1 ? 4 : 0,
                         ),
                         decoration: BoxDecoration(
                           color: isComplete
@@ -1376,7 +1402,7 @@ class HomeView extends ConsumerWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                '${completion.completedCount}/5',
+                '${completion.completedCount}/$totalSteps',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1389,9 +1415,9 @@ class HomeView extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // チェックリスト
-          ...List.generate(5, (index) {
+          ...List.generate(totalSteps, (index) {
             final isComplete = completion.getStepComplete(index);
-            final step = _setupSteps[index];
+            final step = setupSteps[index];
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -1448,9 +1474,9 @@ class HomeView extends ConsumerWidget {
                     ),
                   );
                 },
-                icon: Icon(_setupSteps[nextStep]['icon'] as IconData),
+                icon: Icon(setupSteps[nextStep]['icon'] as IconData),
                 label: Text(
-                  '${_setupSteps[nextStep]['label']}を設定する',
+                  '${setupSteps[nextStep]['label']}を設定する',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,

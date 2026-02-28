@@ -19,6 +19,7 @@ class AnnouncementDetailView extends ConsumerWidget {
     });
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('お知らせ詳細'),
         backgroundColor: const Color(0xFFFF6B35),

@@ -41,6 +41,7 @@ class _CouponSelectForCheckoutViewState
   String? _storeId;
   bool _isLoadingStoreId = true;
   final Set<String> _selectedCouponIds = {};
+  final Set<String> _selectedSpecialCouponIds = {};
   int _userStampCount = 0;
   bool _isLoadingUserStamps = true;
 
@@ -147,6 +148,7 @@ class _CouponSelectForCheckoutViewState
             userId: widget.userId,
             storeId: storeId,
             selectedCouponIds: _selectedCouponIds.toList(),
+            selectedSpecialCouponIds: _selectedSpecialCouponIds.toList(),
             scannedUserProfile: widget.scannedUserProfile,
           ),
         ),
@@ -161,6 +163,7 @@ class _CouponSelectForCheckoutViewState
           userName: widget.userName,
           usedPoints: widget.usedPoints,
           selectedCouponIds: _selectedCouponIds.toList(),
+          selectedSpecialCouponIds: _selectedSpecialCouponIds.toList(),
         ),
       ),
     );
@@ -214,7 +217,7 @@ class _CouponSelectForCheckoutViewState
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           color: Colors.white,
-          child: _selectedCouponIds.isEmpty
+          child: _selectedCouponIds.isEmpty && _selectedSpecialCouponIds.isEmpty
               ? SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -296,6 +299,10 @@ class _CouponSelectForCheckoutViewState
 
   Widget _buildCouponList(String storeId) {
     final couponsAsync = ref.watch(storeCouponsProvider(storeId));
+    final specialCouponsAsync = ref.watch(
+      userSpecialCouponsProvider(
+          (userId: widget.userId, storeId: storeId)),
+    );
     return couponsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(
@@ -343,173 +350,323 @@ class _CouponSelectForCheckoutViewState
               return true;
             }).toList();
 
-            if (availableCoupons.isEmpty) {
+            // 特別クーポン（有効期限チェック）
+            final specialCoupons = specialCouponsAsync.valueOrNull ?? [];
+            final availableSpecialCoupons = specialCoupons.where((coupon) {
+              final validUntil = _parseValidUntil(coupon['validUntil']);
+              final isNoExpiry = _isNoExpiryCoupon(coupon, validUntil);
+              if (!isNoExpiry &&
+                  (validUntil == null || !validUntil.isAfter(now))) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            if (availableCoupons.isEmpty && availableSpecialCoupons.isEmpty) {
               return const Center(
                 child: Text('利用可能なクーポンがありません'),
               );
             }
 
-            return ListView.builder(
+            return ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: availableCoupons.length,
-              itemBuilder: (context, index) {
-                final coupon = availableCoupons[index];
-                final couponId = coupon['id'] as String;
-                final title = (coupon['title'] as String?) ?? 'タイトルなし';
-                final description = (coupon['description'] as String?) ?? '';
-                final validUntil = _parseValidUntil(coupon['validUntil']);
-                final usageLimit = _parseInt(coupon['usageLimit']);
-                final usedCount = _parseInt(coupon['usedCount']);
-                final remaining = usageLimit - usedCount;
-                final isNoUsageLimit = coupon['noUsageLimit'] == true;
-                final isSelected = _selectedCouponIds.contains(couponId);
-                final requiredStampCount =
-                    _parseInt(coupon['requiredStampCount']);
-                final needsStamps = !_isLoadingUserStamps &&
-                    requiredStampCount > 0 &&
-                    _userStampCount < requiredStampCount;
-                final remainingStamps = requiredStampCount - _userStampCount;
-                final isSelectable = !needsStamps;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: isSelected
-                      ? const Color(0xFFFFF2EC)
-                      : needsStamps
-                          ? Colors.grey[100]
-                          : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: isSelected
-                          ? const Color(0xFFFF6B35)
-                          : Colors.transparent,
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      InkWell(
-                        onTap: isSelectable
-                            ? () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _selectedCouponIds.remove(couponId);
-                                  } else {
-                                    _selectedCouponIds.add(couponId);
-                                  }
-                                });
-                              }
-                            : null,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Checkbox(
-                                value: isSelected,
-                                onChanged: isSelectable
-                                    ? (_) {
-                                        setState(() {
-                                          if (isSelected) {
-                                            _selectedCouponIds.remove(couponId);
-                                          } else {
-                                            _selectedCouponIds.add(couponId);
-                                          }
-                                        });
-                                      }
-                                    : null,
-                                activeColor: const Color(0xFFFF6B35),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: needsStamps
-                                            ? Colors.grey[600]
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                    if (description.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        description,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: needsStamps
-                                              ? Colors.grey[500]
-                                              : Colors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        if (!isNoUsageLimit)
-                                          Text(
-                                            '残り$remaining枚',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: needsStamps
-                                                  ? Colors.grey[500]
-                                                  : Colors.green,
-                                            ),
-                                          ),
-                                        const SizedBox(width: 12),
-                                        if (validUntil != null)
-                                          Text(
-                                            _isNoExpiryCoupon(
-                                                    coupon, validUntil)
-                                                ? '期限: 無期限'
-                                                : '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: needsStamps
-                                                  ? Colors.grey[500]
-                                                  : Colors.grey,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (needsStamps)
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.6),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'あと$remainingStampsスタンプ',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
+              children: [
+                // 通常クーポンセクション
+                if (availableCoupons.isNotEmpty) ...[
+                  _buildSectionHeader('通常クーポン'),
+                  ...availableCoupons.map((coupon) =>
+                      _buildNormalCouponCard(coupon)),
+                ],
+                // 特別クーポンセクション
+                if (availableSpecialCoupons.isNotEmpty) ...[
+                  _buildSectionHeader('特別クーポン'),
+                  ...availableSpecialCoupons.map((coupon) =>
+                      _buildSpecialCouponCard(coupon)),
+                ],
+              ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNormalCouponCard(Map<String, dynamic> coupon) {
+    final couponId = coupon['id'] as String;
+    final title = (coupon['title'] as String?) ?? 'タイトルなし';
+    final description = (coupon['description'] as String?) ?? '';
+    final validUntil = _parseValidUntil(coupon['validUntil']);
+    final usageLimit = _parseInt(coupon['usageLimit']);
+    final usedCount = _parseInt(coupon['usedCount']);
+    final remaining = usageLimit - usedCount;
+    final isNoUsageLimit = coupon['noUsageLimit'] == true;
+    final isSelected = _selectedCouponIds.contains(couponId);
+    final requiredStampCount = _parseInt(coupon['requiredStampCount']);
+    final needsStamps = !_isLoadingUserStamps &&
+        requiredStampCount > 0 &&
+        _userStampCount < requiredStampCount;
+    final remainingStamps = requiredStampCount - _userStampCount;
+    final isSelectable = !needsStamps;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: isSelected
+          ? const Color(0xFFFFF2EC)
+          : needsStamps
+              ? Colors.grey[100]
+              : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFFFF6B35) : Colors.transparent,
+          width: 1.2,
+        ),
+      ),
+      child: Stack(
+        children: [
+          InkWell(
+            onTap: isSelectable
+                ? () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedCouponIds.remove(couponId);
+                      } else {
+                        _selectedCouponIds.add(couponId);
+                      }
+                    });
+                  }
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: isSelectable
+                        ? (_) {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedCouponIds.remove(couponId);
+                              } else {
+                                _selectedCouponIds.add(couponId);
+                              }
+                            });
+                          }
+                        : null,
+                    activeColor: const Color(0xFFFF6B35),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                needsStamps ? Colors.grey[600] : Colors.black,
+                          ),
+                        ),
+                        if (description.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  needsStamps ? Colors.grey[500] : Colors.grey,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            if (!isNoUsageLimit)
+                              Text(
+                                '残り$remaining枚',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: needsStamps
+                                      ? Colors.grey[500]
+                                      : Colors.green,
+                                ),
+                              ),
+                            const SizedBox(width: 12),
+                            if (validUntil != null)
+                              Text(
+                                _isNoExpiryCoupon(coupon, validUntil)
+                                    ? '期限: 無期限'
+                                    : '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: needsStamps
+                                      ? Colors.grey[500]
+                                      : Colors.grey,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (needsStamps)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'あと$remainingStampsスタンプ',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialCouponCard(Map<String, dynamic> coupon) {
+    final couponId = coupon['id'] as String;
+    final title = (coupon['title'] as String?) ?? 'タイトルなし';
+    final description = (coupon['description'] as String?) ?? '';
+    final validUntil = _parseValidUntil(coupon['validUntil']);
+    final type = coupon['type'] as String? ?? '';
+    final isSelected = _selectedSpecialCouponIds.contains(couponId);
+
+    final isCoinExchange = type == 'coin_exchange';
+    final badgeLabel = isCoinExchange ? 'コイン交換' : 'スタンプ達成';
+    final badgeColor =
+        isCoinExchange ? const Color(0xFFFF6B35) : const Color(0xFF4CAF50);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: isSelected ? const Color(0xFFFFF2EC) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFFFF6B35) : Colors.transparent,
+          width: 1.2,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            if (isSelected) {
+              _selectedSpecialCouponIds.remove(couponId);
+            } else {
+              _selectedSpecialCouponIds.add(couponId);
+            }
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedSpecialCouponIds.remove(couponId);
+                    } else {
+                      _selectedSpecialCouponIds.add(couponId);
+                    }
+                  });
+                },
+                activeColor: const Color(0xFFFF6B35),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      validUntil != null && _isNoExpiryCoupon(coupon, validUntil)
+                          ? '期限: 無期限'
+                          : validUntil != null
+                              ? '期限: ${validUntil.month}/${validUntil.day} ${validUntil.hour.toString().padLeft(2, '0')}:${validUntil.minute.toString().padLeft(2, '0')}'
+                              : '',
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

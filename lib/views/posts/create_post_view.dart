@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../widgets/common_header.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/image_picker_field.dart';
 
 class CreatePostView extends ConsumerStatefulWidget {
   const CreatePostView({Key? key}) : super(key: key);
@@ -699,44 +700,14 @@ class _CreatePostViewState extends ConsumerState<CreatePostView> {
                     final int index = entry.key;
                     final Uint8List imageBytes = entry.value;
 
-                    return Stack(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(
-                              imageBytes,
-                              fit: BoxFit.cover,
-                              width: 80,
-                              height: 80,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: GestureDetector(
-                            onTap: () => _removeImage(index),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    return SizedBox(
+                      width: 80,
+                      child: ImagePickerField(
+                        aspectRatio: 1.0,
+                        onRemove: () => _removeImage(index),
+                        showRemove: true,
+                        child: Image.memory(imageBytes, fit: BoxFit.cover),
+                      ),
                     );
                   }).toList(),
                 ),

@@ -7,6 +7,7 @@ class StoreUserDetailView extends StatefulWidget {
   final String userId;
   final String storeId;
   final List<String> selectedCouponIds;
+  final List<String> selectedSpecialCouponIds;
   final Map<String, dynamic>? scannedUserProfile;
 
   const StoreUserDetailView({
@@ -14,6 +15,7 @@ class StoreUserDetailView extends StatefulWidget {
     required this.userId,
     required this.storeId,
     this.selectedCouponIds = const [],
+    this.selectedSpecialCouponIds = const [],
     this.scannedUserProfile,
   }) : super(key: key);
 
@@ -124,6 +126,21 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
           'selectedCouponIds': widget.selectedCouponIds,
       };
       await callable.call(payload);
+
+      // 特別クーポン（user_coupons）を使用済みに更新
+      if (widget.selectedSpecialCouponIds.isNotEmpty) {
+        final firestore = FirebaseFirestore.instance;
+        final batch = firestore.batch();
+        for (final userCouponId in widget.selectedSpecialCouponIds) {
+          final ref = firestore.collection('user_coupons').doc(userCouponId);
+          batch.update(ref, {
+            'isUsed': true,
+            'usedAt': FieldValue.serverTimestamp(),
+          });
+        }
+        await batch.commit();
+      }
+
       if (!mounted) return;
       final requestId = '${widget.storeId}_${widget.userId}';
       Navigator.of(context).push(

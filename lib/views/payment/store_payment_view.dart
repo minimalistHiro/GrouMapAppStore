@@ -13,13 +13,15 @@ class StorePaymentView extends ConsumerStatefulWidget {
   final String userName;
   final int usedPoints;
   final List<String> selectedCouponIds;
-  
+  final List<String> selectedSpecialCouponIds;
+
   const StorePaymentView({
     Key? key,
     required this.userId,
     required this.userName,
     this.usedPoints = 0,
     this.selectedCouponIds = const [],
+    this.selectedSpecialCouponIds = const [],
   }) : super(key: key);
 
   @override
@@ -192,6 +194,20 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
         }
       }
     });
+  }
+
+  Future<void> _consumeSpecialCoupons() async {
+    if (widget.selectedSpecialCouponIds.isEmpty) return;
+    final firestore = FirebaseFirestore.instance;
+    final batch = firestore.batch();
+    for (final userCouponId in widget.selectedSpecialCouponIds) {
+      final ref = firestore.collection('user_coupons').doc(userCouponId);
+      batch.update(ref, {
+        'isUsed': true,
+        'usedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   /// 店舗情報を読み込み
@@ -455,6 +471,7 @@ class _StorePaymentViewState extends ConsumerState<StorePaymentView> {
 
       print('ステップ4.5: クーポン使用処理');
       await _consumeSelectedCoupons(storeId: currentStoreId);
+      await _consumeSpecialCoupons();
 
       print('ステップ5: ポイント付与リクエストの作成');
       // ポイント付与リクエストを作成

@@ -14,6 +14,8 @@ import '../../providers/referral_kpi_provider.dart';
 import '../ranking/leaderboard_view.dart';
 import 'individual_coupon_usage_trend_view.dart';
 import '../../widgets/stats_card.dart';
+import '../../widgets/common_header.dart';
+import 'all_store_special_coupon_view.dart';
 
 class AnalyticsView extends ConsumerWidget {
   const AnalyticsView({Key? key}) : super(key: key);
@@ -21,10 +23,9 @@ class AnalyticsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('分析'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
+      appBar: const CommonHeader(
+        title: '分析',
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -68,6 +69,11 @@ class AnalyticsView extends ConsumerWidget {
             
             // クーポン使用統計セクション
             _buildCouponStatsSection(ref),
+
+            const SizedBox(height: 24),
+
+            // 特別クーポン分析セクション
+            _buildSpecialCouponStatsSection(ref),
           ],
         ),
       ),
@@ -1284,6 +1290,251 @@ class AnalyticsView extends ConsumerWidget {
     );
   }
 
+  Widget _buildSpecialCouponStatsSection(WidgetRef ref) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final storeIdAsync = ref.watch(userStoreIdProvider);
+        final isAdminOwner = ref.watch(userIsAdminOwnerProvider).maybeWhen(
+              data: (value) => value,
+              orElse: () => false,
+            );
+        return storeIdAsync.when(
+          data: (storeId) {
+            if (storeId == null) {
+              return _buildSpecialCouponStatsPlaceholder();
+            }
+            final statsAsync =
+                ref.watch(specialCouponStatsProvider(storeId));
+            return statsAsync.when(
+              data: (stats) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSpecialCouponStatsCard(stats),
+                  if (isAdminOwner) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const AllStoreSpecialCouponView(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          '全店舗の特別クーポンを見る →',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              loading: () => _buildSpecialCouponStatsPlaceholder(),
+              error: (error, stackTrace) =>
+                  _buildSpecialCouponStatsPlaceholder(),
+            );
+          },
+          loading: () => _buildSpecialCouponStatsPlaceholder(),
+          error: (error, stackTrace) =>
+              _buildSpecialCouponStatsPlaceholder(),
+        );
+      },
+    );
+  }
+
+  Widget _buildSpecialCouponStatsPlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.star, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '特別クーポン分析',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Center(
+            child: Text(
+              '読込中...',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialCouponStatsCard(Map<String, dynamic> stats) {
+    final coinExchange = stats['coinExchange'] as Map<String, dynamic>;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.star, color: Color(0xFFFF6B35), size: 24),
+              SizedBox(width: 8),
+              Text(
+                '特別クーポン分析',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildSpecialCouponTypeCard(
+            imagePath: 'assets/images/icon_coin.png',
+            iconColor: const Color(0xFFFFA726),
+            bgColor: const Color(0xFFFFF8E1),
+            borderColor: const Color(0xFFFFE082),
+            title: 'コイン交換クーポン',
+            issued: coinExchange['issued'] as int,
+            used: coinExchange['used'] as int,
+            totalDiscount: coinExchange['totalDiscount'] as int,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialCouponTypeCard({
+    required String imagePath,
+    required Color iconColor,
+    required Color bgColor,
+    required Color borderColor,
+    required String title,
+    required int issued,
+    required int used,
+    required int totalDiscount,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Image.asset(imagePath, width: 24, height: 24),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildSpecialCouponStatItem(
+                label: '発行枚数',
+                value: '$issued枚',
+                color: iconColor,
+              ),
+              _buildSpecialCouponStatItem(
+                label: '使用済み',
+                value: '$used枚',
+                color: iconColor,
+              ),
+              _buildSpecialCouponStatItem(
+                label: '割引合計',
+                value: '¥$totalDiscount',
+                color: iconColor,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialCouponStatItem({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildReferralKpiSection(WidgetRef ref) {
     return Consumer(
       builder: (context, ref, child) {
@@ -1663,6 +1914,7 @@ class AnalyticsView extends ConsumerWidget {
           ref.invalidate(weeklyStatsProvider(storeId));
           ref.invalidate(monthlyStatsProvider(storeId));
           ref.invalidate(allVisitPieChartDataProvider(storeId));
+          ref.invalidate(specialCouponStatsProvider(storeId));
         }
       },
       loading: () {},

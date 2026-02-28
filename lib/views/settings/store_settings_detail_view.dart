@@ -738,8 +738,8 @@ class StoreSettingsDetailView extends ConsumerWidget {
   }
 
   Widget _buildCoinExchangeCouponUsageCard(WidgetRef ref) {
-    final usedCountAsync =
-        ref.watch(coinExchangeCouponUsedCountProvider(storeId));
+    final usedStatsAsync =
+        ref.watch(coinExchangeCouponUsedStatsProvider(storeId));
 
     return Container(
       width: double.infinity,
@@ -758,7 +758,7 @@ class StoreSettingsDetailView extends ConsumerWidget {
                   color: Color(0xFFFF6B35), size: 24),
               SizedBox(width: 8),
               Text(
-                '100円引きクーポン利用枚数',
+                '特別クーポン利用枚数',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -777,15 +777,28 @@ class StoreSettingsDetailView extends ConsumerWidget {
           ),
           const SizedBox(height: 18),
           Center(
-            child: usedCountAsync.when(
-              data: (count) => Text(
-                '$count枚',
-                style: const TextStyle(
-                  fontSize: 48,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFFFF6B35),
-                ),
+            child: usedStatsAsync.when(
+              data: (stats) => Column(
+                children: [
+                  Text(
+                    '${stats['count']}枚',
+                    style: const TextStyle(
+                      fontSize: 48,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFFF6B35),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '合計割引額: ¥${stats['totalDiscount']}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
               ),
               loading: () => const SizedBox(
                 width: 32,

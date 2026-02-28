@@ -4,7 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import 'email_verification_pending_view.dart';
 import 'password_reset_view.dart';
-import 'store_info_view.dart';
+import 'terms_privacy_consent_view.dart';
 
 class LoginView extends ConsumerStatefulWidget {
   const LoginView({Key? key}) : super(key: key);
@@ -257,7 +257,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (context) => const StoreInfoView()),
+                          MaterialPageRoute(builder: (context) => const TermsPrivacyConsentView()),
                         );
                       },
                       child: const Text(

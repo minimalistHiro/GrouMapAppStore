@@ -63,12 +63,21 @@ final storeProfileCompletionProvider =
       storeData['paymentMethods'] as Map<String, dynamic>?;
   final isPaymentComplete = _hasAnyPaymentMethodEnabled(paymentMethods);
 
+  // 6. 営業カレンダー（不定休の場合のみ）: scheduleOverridesに1件以上の設定がある
+  final isRegularHoliday = storeData['isRegularHoliday'] as bool? ?? false;
+  final scheduleOverrides =
+      storeData['scheduleOverrides'] as Map<String, dynamic>?;
+  final isCalendarComplete =
+      scheduleOverrides != null && scheduleOverrides.isNotEmpty;
+
   return StoreProfileCompletion(
     isProfileComplete: isProfileComplete,
     isLocationComplete: isLocationComplete,
     isMenuComplete: isMenuComplete,
     isImagesComplete: isImagesComplete,
     isPaymentComplete: isPaymentComplete,
+    isRegularHoliday: isRegularHoliday,
+    isCalendarComplete: isCalendarComplete,
   );
 });
 
@@ -90,6 +99,8 @@ class StoreProfileCompletion {
   final bool isMenuComplete;
   final bool isImagesComplete;
   final bool isPaymentComplete;
+  final bool isRegularHoliday;
+  final bool isCalendarComplete;
 
   StoreProfileCompletion({
     required this.isProfileComplete,
@@ -97,6 +108,8 @@ class StoreProfileCompletion {
     required this.isMenuComplete,
     required this.isImagesComplete,
     required this.isPaymentComplete,
+    this.isRegularHoliday = false,
+    this.isCalendarComplete = false,
   });
 
   factory StoreProfileCompletion.empty() {
@@ -109,6 +122,9 @@ class StoreProfileCompletion {
     );
   }
 
+  /// 不定休の場合は6項目、それ以外は5項目
+  int get totalCount => isRegularHoliday ? 6 : 5;
+
   int get completedCount {
     int count = 0;
     if (isProfileComplete) count++;
@@ -116,18 +132,20 @@ class StoreProfileCompletion {
     if (isMenuComplete) count++;
     if (isImagesComplete) count++;
     if (isPaymentComplete) count++;
+    if (isRegularHoliday && isCalendarComplete) count++;
     return count;
   }
 
-  bool get isAllComplete => completedCount == 5;
+  bool get isAllComplete => completedCount == totalCount;
 
-  /// 次に設定すべき項目のインデックス（0〜4）、全完了ならnull
+  /// 次に設定すべき項目のインデックス、全完了ならnull
   int? get nextIncompleteStep {
     if (!isProfileComplete) return 0;
     if (!isLocationComplete) return 1;
     if (!isMenuComplete) return 2;
     if (!isImagesComplete) return 3;
     if (!isPaymentComplete) return 4;
+    if (isRegularHoliday && !isCalendarComplete) return 5;
     return null;
   }
 
@@ -143,6 +161,8 @@ class StoreProfileCompletion {
         return isImagesComplete;
       case 4:
         return isPaymentComplete;
+      case 5:
+        return isCalendarComplete;
       default:
         return false;
     }

@@ -173,7 +173,6 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
@@ -308,9 +307,10 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       itemCount: filteredCoupons.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final coupon = filteredCoupons[index];
         final data = coupon.data() as Map<String, dynamic>;
@@ -376,189 +376,105 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
 
     final expired = isExpired();
     final isActive = coupon['isActive'] ?? false;
+    final imageUrl = coupon['imageUrl'] as String?;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => EditCouponView(couponData: coupon),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ヘッダー部分
-              Row(
-                children: [
-                  // ステータスバッジ
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: expired
-                          ? Colors.red.withOpacity(0.1)
-                          : !isActive
-                              ? Colors.grey.withOpacity(0.1)
-                              : Colors.green.withOpacity(0.1),
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EditCouponView(couponData: coupon),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 画像 (86x86)
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                color: _accentColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: imageUrl != null
+                  ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: expired
-                            ? Colors.red.withOpacity(0.3)
-                            : !isActive
-                                ? Colors.grey.withOpacity(0.3)
-                                : Colors.green.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Text(
-                      expired
-                          ? '期限切れ'
-                          : !isActive
-                              ? '非アクティブ'
-                              : 'アクティブ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: expired
-                            ? Colors.red
-                            : !isActive
-                                ? Colors.grey
-                                : Colors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // 割引情報
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _accentColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _accentColor.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Text(
-                      getDiscountText(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: _accentColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // タイトル
-              Text(
-                coupon['title'] ?? 'タイトルなし',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 8),
-
-              // 説明
-              Text(
-                coupon['description'] ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 12),
-
-              // 画像がある場合
-              if (coupon['imageUrl'] != null)
-                Container(
-                  height: 120,
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      coupon['imageUrl'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: 86,
+                        height: 86,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
                             Icons.image,
-                            color: Colors.grey,
-                            size: 40,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-              // フッター部分
-              Row(
-                children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    formatEndDate(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: expired ? Colors.red : Colors.grey[600],
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  if (coupon['noUsageLimit'] != true) ...[
-                    Icon(Icons.people, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}回使用',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                            size: 32,
+                            color: Colors.white,
+                          );
+                        },
                       ),
+                    )
+                  : const Icon(
+                      Icons.card_giftcard,
+                      size: 32,
+                      color: Colors.white,
                     ),
-                  ],
-
-                  const Spacer(),
-
-                  // アクションボタン
+            ),
+            const SizedBox(width: 12),
+            // コンテンツ
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ステータスバッジ + アクションボタン
                   Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: expired
+                              ? Colors.red.withOpacity(0.1)
+                              : !isActive
+                                  ? Colors.grey.withOpacity(0.1)
+                                  : Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          expired
+                              ? '期限切れ'
+                              : !isActive
+                                  ? '非アクティブ'
+                                  : 'アクティブ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: expired
+                                ? Colors.red
+                                : !isActive
+                                    ? Colors.grey
+                                    : Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
                       IconButton(
                         icon: Icon(
                           isActive ? Icons.pause : Icons.play_arrow,
-                          size: 20,
+                          size: 18,
                           color: isActive ? Colors.orange : Colors.green,
                         ),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
                         onPressed: () {
                           _toggleCouponStatus(
                               coupon['couponId'], storeId, !isActive);
@@ -566,17 +482,71 @@ class _CouponsManageViewState extends ConsumerState<CouponsManageView> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete,
-                            size: 20, color: Colors.red),
+                            size: 18, color: Colors.red),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
                         onPressed: () {
                           _showDeleteDialog(coupon['couponId'], storeId);
                         },
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  // タイトル
+                  Text(
+                    coupon['title'] ?? 'タイトルなし',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // 割引情報
+                  Text(
+                    getDiscountText(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: _accentColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // 有効期限 + 使用数
+                  Row(
+                    children: [
+                      Icon(Icons.access_time,
+                          size: 13, color: Colors.grey[600]),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          formatEndDate(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: expired ? Colors.red : Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (coupon['noUsageLimit'] != true) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${coupon['usedCount'] ?? 0}/${coupon['usageLimit'] ?? 0}回使用',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

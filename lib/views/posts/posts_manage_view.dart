@@ -97,15 +97,7 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -209,9 +201,10 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           itemCount: filteredPosts.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final post = filteredPosts[index];
             final data = post.data() as Map<String, dynamic>;
@@ -265,190 +258,109 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () {
-          // 投稿詳細画面に遷移（実装予定）
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('投稿詳細画面は準備中です')),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ヘッダー部分
-              Row(
-                children: [
-                  // カテゴリバッジ
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B35).withOpacity(0.1),
+    final imageUrls = (post['imageUrls'] as List?)?.whereType<String>().toList() ?? [];
+    final firstImageUrl = imageUrls.isNotEmpty ? imageUrls.first : null;
+    final isPublished = post['isPublished'] == true;
+
+    return InkWell(
+      onTap: () {
+        // 投稿詳細画面に遷移（実装予定）
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('投稿詳細画面は準備中です')),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 画像 (86x86)
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: firstImageUrl != null
+                  ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFFF6B35).withOpacity(0.3),
+                      child: Image.network(
+                        firstImageUrl,
+                        fit: BoxFit.cover,
+                        width: 86,
+                        height: 86,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.image,
+                            size: 32,
+                            color: Colors.white,
+                          );
+                        },
                       ),
+                    )
+                  : const Icon(
+                      Icons.article,
+                      size: 32,
+                      color: Colors.white,
                     ),
-                    child: Text(
-                      post['category'] ?? 'お知らせ',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFFFF6B35),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // ステータス
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: post['isPublished'] == true
-                          ? Colors.green.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: post['isPublished'] == true
-                            ? Colors.green.withOpacity(0.3)
-                            : Colors.orange.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Text(
-                      post['isPublished'] == true ? '公開中' : '下書き',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: post['isPublished'] == true
-                            ? Colors.green
-                            : Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // タイトル
-              Text(
-                post['title'] ?? 'タイトルなし',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 8),
-
-              // 内容
-              Text(
-                post['content'] ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 12),
-
-              // 画像がある場合
-              if (post['imageUrls'] != null &&
-                  (post['imageUrls'] as List).isNotEmpty)
-                Container(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: (post['imageUrls'] as List).length,
-                    itemBuilder: (context, index) {
-                      final imageUrl = (post['imageUrls'] as List)[index];
-                      return Container(
-                        width: 120,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[200],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.grey,
-                                  size: 40,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-              const SizedBox(height: 12),
-
-              // フッター部分
-              Row(
+            ),
+            const SizedBox(width: 12),
+            // コンテンツ
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.visibility, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${post['views'] ?? 0}回閲覧',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    formatDate(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // アクションボタン
+                  // カテゴリバッジ + ステータスバッジ + アクションボタン
                   Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF6B35).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          post['category'] ?? 'お知らせ',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFFF6B35),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isPublished
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isPublished ? '公開中' : '下書き',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isPublished ? Colors.green : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
+                        icon: const Icon(Icons.edit, size: 18),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -460,24 +372,113 @@ class _PostsManageViewState extends ConsumerState<PostsManageView> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete,
-                            size: 20, color: Colors.red),
+                            size: 18, color: Colors.red),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
                         onPressed: () {
-                          final imageUrls = (post['imageUrls'] as List?)
-                                  ?.whereType<String>()
-                                  .toList() ??
-                              [];
                           _showDeleteDialog(post['postId'], storeId, imageUrls);
                         },
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  // タイトル
+                  Text(
+                    post['title'] ?? 'タイトルなし',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // 内容
+                  Text(
+                    post['content'] ?? '',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // フッター（いいね・コメント・閲覧数・日付）
+                  FutureBuilder<Map<String, int>>(
+                    future: _getPostStats(storeId, post['postId'] ?? ''),
+                    builder: (context, snapshot) {
+                      final stats = snapshot.data ?? {};
+                      final likeCount = stats['likes'] ?? 0;
+                      final commentCount = stats['comments'] ?? 0;
+                      final viewCount = stats['views'] ?? 0;
+                      return Row(
+                        children: [
+                          const Icon(Icons.favorite, size: 13, color: Colors.red),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$likeCount',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(Icons.chat_bubble_outline, size: 13, color: Colors.grey[500]),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$commentCount',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(Icons.visibility_outlined, size: 13, color: Colors.grey[500]),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$viewCount',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(Icons.access_time,
+                              size: 13, color: Colors.grey[500]),
+                          const SizedBox(width: 3),
+                          Text(
+                            formatDate(),
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<Map<String, int>> _getPostStats(String storeId, String postId) async {
+    try {
+      final postRef = FirebaseFirestore.instance
+          .collection('posts')
+          .doc(storeId)
+          .collection('posts')
+          .doc(postId);
+
+      final results = await Future.wait([
+        postRef.collection('likes').get(),
+        postRef.collection('comments').get(),
+        postRef.collection('views').get(),
+      ]);
+
+      return {
+        'likes': results[0].docs.length,
+        'comments': results[1].docs.length,
+        'views': results[2].docs.length,
+      };
+    } catch (e) {
+      return {'likes': 0, 'comments': 0, 'views': 0};
+    }
   }
 
   void _showDeleteDialog(

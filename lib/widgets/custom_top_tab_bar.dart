@@ -7,10 +7,10 @@ class CustomTopTabBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.tabs,
     this.controller,
-    this.backgroundColor = StoreUi.primary,
-    this.labelColor = StoreUi.onPrimary,
-    this.unselectedLabelColor = StoreUi.onPrimary,
-    this.indicatorColor = StoreUi.onPrimary,
+    this.backgroundColor = StoreUi.surface,
+    this.labelColor = StoreUi.primary,
+    this.unselectedLabelColor = StoreUi.primary,
+    this.indicatorColor = StoreUi.primary,
   });
 
   final List<Tab> tabs;

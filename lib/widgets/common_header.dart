@@ -18,8 +18,8 @@ class CommonHeader extends StatelessWidget implements PreferredSizeWidget {
   const CommonHeader({
     super.key,
     required this.title,
-    this.backgroundColor = StoreUi.primary,
-    this.foregroundColor = StoreUi.onPrimary,
+    this.backgroundColor = StoreUi.surface,
+    this.foregroundColor = Colors.black,
     this.showBack,
     this.automaticallyImplyLeading = true,
     this.onBack,

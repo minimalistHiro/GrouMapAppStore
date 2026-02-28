@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/image_picker_field.dart';
 
 class EditCouponView extends StatefulWidget {
   final Map<String, dynamic> couponData;
@@ -356,22 +358,7 @@ class _EditCouponViewState extends State<EditCouponView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF6F2),
-      appBar: AppBar(
-        title: const Text(
-          'クーポン編集',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF2196F3),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: const CommonHeader(title: 'クーポン編集'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -1003,6 +990,7 @@ class _EditCouponViewState extends State<EditCouponView> {
   }
 
   Widget _buildImageSection() {
+    final hasImage = _existingImageUrl != null || _selectedImageBytes != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1015,82 +1003,25 @@ class _EditCouponViewState extends State<EditCouponView> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: Column(
-            children: [
-              // 画像の表示
-              if (_existingImageUrl != null || _selectedImageBytes != null)
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _existingImageUrl != null
-                        ? Image.network(
-                            _existingImageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[200],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.grey,
-                                  size: 40,
-                                ),
-                              );
-                            },
-                          )
-                        : Image.memory(
-                            _selectedImageBytes!,
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                ),
-              
-              // 画像操作ボタン
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.add_photo_alternate),
-                      label: Text(_existingImageUrl != null || _selectedImageBytes != null ? '画像を変更' : '画像を追加'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  if (_existingImageUrl != null || _selectedImageBytes != null) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _removeImage,
-                        icon: const Icon(Icons.delete),
-                        label: const Text('画像を削除'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
+        ImagePickerField(
+          aspectRatio: 1.0,
+          onTap: _pickImage,
+          onRemove: _removeImage,
+          showRemove: hasImage,
+          child: hasImage
+              ? (_selectedImageBytes != null
+                  ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                  : Image.network(
+                      _existingImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image, color: Colors.grey, size: 40),
+                        );
+                      },
+                    ))
+              : const ImagePickerPlaceholder(aspectRatio: 1.0),
         ),
       ],
     );

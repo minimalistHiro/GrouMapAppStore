@@ -148,47 +148,83 @@ class StorePostsListView extends ConsumerWidget {
                       ),
                     ),
 
-                  // いいね数オーバーレイ（通常投稿のみ）
-                  if (!isInstagramPost)
-                    FutureBuilder<int>(
-                      future: _getLikeCount(storeId, post.id),
-                      builder: (context, snapshot) {
-                        final likeCount = snapshot.data ?? 0;
-                        if (likeCount > 0) {
-                          return Positioned(
-                            bottom: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.favorite,
-                                    size: 12,
-                                    color: Colors.red,
+                  // いいね数・閲覧数オーバーレイ（通常投稿・Instagram投稿共通）
+                  FutureBuilder<Map<String, int>>(
+                    future: _getPostStats(storeId, post.id, isInstagramPost),
+                    builder: (context, snapshot) {
+                      final stats = snapshot.data ?? {};
+                      final likeCount = stats['likes'] ?? 0;
+                      final viewCount = stats['views'] ?? 0;
+                      if (likeCount > 0 || viewCount > 0) {
+                        return Positioned(
+                          bottom: 8,
+                          left: 8,
+                          right: 8,
+                          child: Row(
+                            children: [
+                              if (likeCount > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '$likeCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.favorite,
+                                        size: 12,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '$likeCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                                ),
+                              if (likeCount > 0 && viewCount > 0)
+                                const SizedBox(width: 4),
+                              if (viewCount > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '$viewCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ],
               )
             : Container(
@@ -205,18 +241,32 @@ class StorePostsListView extends ConsumerWidget {
     );
   }
 
-  Future<int> _getLikeCount(String storeId, String postId) async {
+  Future<Map<String, int>> _getPostStats(String storeId, String postId, bool isInstagramPost) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(storeId)
-          .collection('posts')
-          .doc(postId)
-          .collection('likes')
-          .get();
-      return snapshot.docs.length;
+      final DocumentReference<Map<String, dynamic>> postRef;
+      if (isInstagramPost) {
+        postRef = FirebaseFirestore.instance
+            .collection('public_instagram_posts')
+            .doc(postId);
+      } else {
+        postRef = FirebaseFirestore.instance
+            .collection('posts')
+            .doc(storeId)
+            .collection('posts')
+            .doc(postId);
+      }
+
+      final results = await Future.wait([
+        postRef.collection('likes').get(),
+        postRef.collection('views').get(),
+      ]);
+
+      return {
+        'likes': results[0].docs.length,
+        'views': results[1].docs.length,
+      };
     } catch (e) {
-      return 0;
+      return {'likes': 0, 'views': 0};
     }
   }
 }
