@@ -58,15 +58,15 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
   String? _currentIconImageUrl;
   String? _currentStoreImageUrl;
   
-  // 営業時間
+  // 営業時間（複数時間帯対応）
   Map<String, Map<String, dynamic>> _businessHours = {
-    'monday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'tuesday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'wednesday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'thursday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'friday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'saturday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-    'sunday': {'open': '09:00', 'close': '18:00', 'isOpen': false},
+    'monday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'tuesday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'wednesday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'thursday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'friday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'saturday': {'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+    'sunday': {'isOpen': false, 'periods': [{'open': '09:00', 'close': '18:00'}]},
   };
   
   // ソーシャルメディア
@@ -314,9 +314,28 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           }
         }
         
-        // 営業時間
+        // 営業時間（後方互換: periodsがなければopen/closeから生成）
         if (storeData['businessHours'] != null) {
-          _businessHours = Map<String, Map<String, dynamic>>.from(storeData['businessHours']);
+          final raw = Map<String, dynamic>.from(storeData['businessHours']);
+          for (final day in raw.keys) {
+            final dayData = Map<String, dynamic>.from(raw[day] as Map);
+            if (dayData['periods'] == null) {
+              // 旧形式: open/closeからperiodsを生成
+              dayData['periods'] = [
+                {
+                  'open': (dayData['open'] ?? '09:00').toString(),
+                  'close': (dayData['close'] ?? '18:00').toString(),
+                }
+              ];
+            } else {
+              // periodsをList<Map<String, dynamic>>に変換
+              dayData['periods'] = (dayData['periods'] as List)
+                  .map((p) => Map<String, dynamic>.from(p as Map))
+                  .toList();
+            }
+            raw[day] = dayData;
+          }
+          _businessHours = raw.map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map)));
         }
         
         // ソーシャルメディア
@@ -737,7 +756,7 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
         'phone': _phoneController.text.trim(),
         'description': _descriptionController.text.trim(),
         'isRegularHoliday': _isRegularHoliday,
-        'businessHours': _businessHours,
+        'businessHours': _buildBusinessHoursForSave(),
         'socialMedia': {
           'instagram': _instagramController.text.trim(),
           'x': _xController.text.trim(),
@@ -1586,6 +1605,22 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
     );
   }
 
+  // 保存用: periodsの最初の要素をopen/closeに同期（後方互換）
+  Map<String, Map<String, dynamic>> _buildBusinessHoursForSave() {
+    final result = <String, Map<String, dynamic>>{};
+    for (final entry in _businessHours.entries) {
+      final dayData = Map<String, dynamic>.from(entry.value);
+      final periods = dayData['periods'] as List? ?? [];
+      if (periods.isNotEmpty) {
+        final first = periods.first as Map;
+        dayData['open'] = first['open'] ?? '09:00';
+        dayData['close'] = first['close'] ?? '18:00';
+      }
+      result[entry.key] = dayData;
+    }
+    return result;
+  }
+
   Widget _buildBusinessHoursSection() {
     final days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     final dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
@@ -1618,65 +1653,115 @@ class _StoreProfileEditViewState extends ConsumerState<StoreProfileEditView> {
           final day = entry.value;
           final dayName = dayNames[index];
           final dayData = _businessHours[day]!;
-          
+          final periods = (dayData['periods'] as List?) ?? [{'open': '09:00', 'close': '18:00'}];
+          final isOpen = dayData['isOpen'] == true;
+
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    dayName,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Checkbox(
-                  value: dayData['isOpen'],
-                  onChanged: isEnabled ? (value) {
-                    setState(() {
-                      _businessHours[day]!['isOpen'] = value ?? false;
-                    });
-                  } : null,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          initialValue: dayData['open'],
-                          enabled: isEnabled && dayData['isOpen'],
-                          decoration: const InputDecoration(
-                            labelText: '開始',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          ),
-                          onChanged: (value) {
-                            _businessHours[day]!['open'] = value;
-                          },
-                        ),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        dayName,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(width: 8),
-                      const Text('〜'),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextFormField(
-                          initialValue: dayData['close'],
-                          enabled: isEnabled && dayData['isOpen'],
-                          decoration: const InputDecoration(
-                            labelText: '終了',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          ),
-                          onChanged: (value) {
-                            _businessHours[day]!['close'] = value;
-                          },
-                        ),
+                    ),
+                    Checkbox(
+                      value: isOpen,
+                      onChanged: isEnabled ? (value) {
+                        setState(() {
+                          _businessHours[day]!['isOpen'] = value ?? false;
+                        });
+                      } : null,
+                    ),
+                    Text(
+                      isOpen ? '営業' : '定休日',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isOpen ? Colors.black87 : Colors.grey,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                if (isOpen && isEnabled) ...[
+                  ...periods.asMap().entries.map((periodEntry) {
+                    final periodIndex = periodEntry.key;
+                    final period = Map<String, dynamic>.from(periodEntry.value as Map);
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 80, top: 4, bottom: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              key: ValueKey('${day}_${periodIndex}_open'),
+                              initialValue: period['open']?.toString() ?? '09:00',
+                              decoration: const InputDecoration(
+                                labelText: '開始',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              ),
+                              onChanged: (value) {
+                                ((_businessHours[day]!['periods'] as List)[periodIndex] as Map)['open'] = value;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text('〜'),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: TextFormField(
+                              key: ValueKey('${day}_${periodIndex}_close'),
+                              initialValue: period['close']?.toString() ?? '18:00',
+                              decoration: const InputDecoration(
+                                labelText: '終了',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              ),
+                              onChanged: (value) {
+                                ((_businessHours[day]!['periods'] as List)[periodIndex] as Map)['close'] = value;
+                              },
+                            ),
+                          ),
+                          if (periods.length > 1)
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              onPressed: () {
+                                setState(() {
+                                  (_businessHours[day]!['periods'] as List).removeAt(periodIndex);
+                                });
+                              },
+                            )
+                          else
+                            const SizedBox(width: 32),
+                        ],
+                      ),
+                    );
+                  }),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 80, top: 2),
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          (_businessHours[day]!['periods'] as List).add({'open': '', 'close': ''});
+                        });
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('時間帯を追加', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFFF6B35),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           );

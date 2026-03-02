@@ -44,6 +44,8 @@ class _EmailChangeOtpViewState extends ConsumerState<EmailChangeOtpView> {
 
     try {
       await ref.read(authServiceProvider).verifyEmailChangeOtp(code);
+      // ユーザーオブジェクトを最新状態に更新
+      await ref.read(authServiceProvider).currentUser?.reload();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

@@ -47,8 +47,8 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   List<String> _cities = [];
   bool _isLoadingCities = false;
 
-  // 営業時間のコントローラー
-  final Map<String, Map<String, TextEditingController>> _businessHoursControllers = {};
+  // 営業時間のコントローラー（複数時間帯対応）
+  final Map<String, List<Map<String, TextEditingController>>> _businessHoursControllers = {};
   final Map<String, bool> _businessDaysOpen = {};
   
   // タグのコントローラー
@@ -165,13 +165,51 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
   void _initializeBusinessHoursControllers() {
     final days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     for (String day in days) {
-      _businessHoursControllers[day] = {
-        'open': TextEditingController(text: '09:00'),
-        'close': TextEditingController(text: '18:00'),
-      };
+      _businessHoursControllers[day] = [
+        {
+          'open': TextEditingController(text: '09:00'),
+          'close': TextEditingController(text: '18:00'),
+        },
+      ];
       _businessDaysOpen[day] = true;
     }
-    _businessDaysOpen['sunday'] = false; // 日曜日はデフォルトで閉店
+    _businessDaysOpen['sunday'] = false;
+  }
+
+  void _addBusinessPeriod(String dayKey) {
+    setState(() {
+      _businessHoursControllers[dayKey]!.add({
+        'open': TextEditingController(text: ''),
+        'close': TextEditingController(text: ''),
+      });
+    });
+  }
+
+  void _removeBusinessPeriod(String dayKey, int index) {
+    setState(() {
+      final period = _businessHoursControllers[dayKey]!.removeAt(index);
+      period['open']?.dispose();
+      period['close']?.dispose();
+    });
+  }
+
+  Map<String, Map<String, dynamic>> _buildBusinessHoursForSave() {
+    final days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    final result = <String, Map<String, dynamic>>{};
+    for (final day in days) {
+      final periodList = _businessHoursControllers[day] ?? [];
+      final periods = periodList.map((p) => {
+        'open': p['open']?.text ?? '09:00',
+        'close': p['close']?.text ?? '18:00',
+      }).toList();
+      result[day] = {
+        'open': periods.isNotEmpty ? periods.first['open'] : '09:00',
+        'close': periods.isNotEmpty ? periods.first['close'] : '18:00',
+        'isOpen': _businessDaysOpen[day] ?? false,
+        'periods': periods,
+      };
+    }
+    return result;
   }
 
   void _initializeLocationControllers() {
@@ -212,9 +250,11 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
     _sofaSeatsController.dispose();
     _accessInfoController.dispose();
 
-    for (var controllers in _businessHoursControllers.values) {
-      controllers['open']?.dispose();
-      controllers['close']?.dispose();
+    for (var periodList in _businessHoursControllers.values) {
+      for (var controllers in periodList) {
+        controllers['open']?.dispose();
+        controllers['close']?.dispose();
+      }
     }
 
     super.dispose();
@@ -548,43 +588,7 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
             'latitude': _selectedLatitude ?? 0.0,
             'longitude': _selectedLongitude ?? 0.0,
           },
-          'businessHours': {
-            'monday': {
-              'open': _businessHoursControllers['monday']!['open']!.text,
-              'close': _businessHoursControllers['monday']!['close']!.text,
-              'isOpen': _businessDaysOpen['monday'] ?? false,
-            },
-            'tuesday': {
-              'open': _businessHoursControllers['tuesday']!['open']!.text,
-              'close': _businessHoursControllers['tuesday']!['close']!.text,
-              'isOpen': _businessDaysOpen['tuesday'] ?? false,
-            },
-            'wednesday': {
-              'open': _businessHoursControllers['wednesday']!['open']!.text,
-              'close': _businessHoursControllers['wednesday']!['close']!.text,
-              'isOpen': _businessDaysOpen['wednesday'] ?? false,
-            },
-            'thursday': {
-              'open': _businessHoursControllers['thursday']!['open']!.text,
-              'close': _businessHoursControllers['thursday']!['close']!.text,
-              'isOpen': _businessDaysOpen['thursday'] ?? false,
-            },
-            'friday': {
-              'open': _businessHoursControllers['friday']!['open']!.text,
-              'close': _businessHoursControllers['friday']!['close']!.text,
-              'isOpen': _businessDaysOpen['friday'] ?? false,
-            },
-            'saturday': {
-              'open': _businessHoursControllers['saturday']!['open']!.text,
-              'close': _businessHoursControllers['saturday']!['close']!.text,
-              'isOpen': _businessDaysOpen['saturday'] ?? false,
-            },
-            'sunday': {
-              'open': _businessHoursControllers['sunday']!['open']!.text,
-              'close': _businessHoursControllers['sunday']!['close']!.text,
-              'isOpen': _businessDaysOpen['sunday'] ?? false,
-            },
-          },
+          'businessHours': _buildBusinessHoursForSave(),
           'tags': _tags,
           'socialMedia': {
             'instagram': _instagramController.text.trim(),
@@ -1330,50 +1334,85 @@ class _StoreInfoViewState extends ConsumerState<StoreInfoView> {
 
   Widget _buildBusinessDayRow(String dayName, String dayKey, {required bool isEnabled}) {
     final isOpen = _businessDaysOpen[dayKey] ?? true;
+    final periods = _businessHoursControllers[dayKey] ?? [];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              dayName,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-          Switch(
-            value: isOpen,
-            onChanged: isEnabled ? (value) => setState(() => _businessDaysOpen[dayKey] = value) : null,
-            activeColor: Colors.white,
-            activeTrackColor: StoreUi.primary,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFE0E0E0),
-            trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildTimePicker(
-                    controller: _businessHoursControllers[dayKey]!['open']!,
-                    enabled: isEnabled && isOpen,
-                    label: '開店時間',
-                  ),
+          Row(
+            children: [
+              SizedBox(
+                width: 80,
+                child: Text(
+                  dayName,
+                  style: const TextStyle(fontSize: 14),
                 ),
-                const SizedBox(width: 8),
-                const Text('〜'),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildTimePicker(
-                    controller: _businessHoursControllers[dayKey]!['close']!,
-                    enabled: isEnabled && isOpen,
-                    label: '閉店時間',
-                  ),
-                ),
-              ],
-            ),
+              ),
+              Switch(
+                value: isOpen,
+                onChanged: isEnabled ? (value) => setState(() => _businessDaysOpen[dayKey] = value) : null,
+                activeColor: Colors.white,
+                activeTrackColor: StoreUi.primary,
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: const Color(0xFFE0E0E0),
+                trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+              ),
+            ],
           ),
+          if (isOpen && isEnabled) ...[
+            ...periods.asMap().entries.map((entry) {
+              final periodIndex = entry.key;
+              final period = entry.value;
+              return Padding(
+                padding: const EdgeInsets.only(left: 80, top: 4, bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildTimePicker(
+                        controller: period['open']!,
+                        enabled: true,
+                        label: '開店時間',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('〜'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildTimePicker(
+                        controller: period['close']!,
+                        enabled: true,
+                        label: '閉店時間',
+                      ),
+                    ),
+                    if (periods.length > 1)
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: () => _removeBusinessPeriod(dayKey, periodIndex),
+                      )
+                    else
+                      const SizedBox(width: 32),
+                  ],
+                ),
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.only(left: 80, top: 2),
+              child: TextButton.icon(
+                onPressed: () => _addBusinessPeriod(dayKey),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('時間帯を追加', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: StoreUi.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
