@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../utils/save_zip.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../providers/coupon_provider.dart';
 import '../../widgets/common_header.dart';
@@ -19,6 +20,7 @@ import '../analytics/store_user_trend_view.dart';
 import '../analytics/new_customer_trend_view.dart';
 import '../analytics/coupon_usage_trend_view.dart';
 import '../analytics/recommendation_trend_view.dart';
+import 'nfc_tag_management_view.dart';
 
 class StoreSettingsDetailView extends ConsumerWidget {
   final String storeId;
@@ -80,6 +82,7 @@ class StoreSettingsDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final storeDataAsync = ref.watch(storeDataProvider(storeId));
     ref.watch(storeCouponsProvider(storeId));
+    final isAdminOwnerAsync = ref.watch(userIsAdminOwnerProvider);
 
     return Scaffold(
       appBar: CommonHeader(title: storeName),
@@ -178,6 +181,25 @@ class StoreSettingsDetailView extends ConsumerWidget {
                         );
                       },
                     ),
+                    if (isAdminOwnerAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => false,
+                    ))
+                      _buildSettingsItem(
+                        icon: Icons.nfc,
+                        title: 'NFCタグ管理',
+                        subtitle: 'セルフチェックイン用NFCタグを管理',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => NfcTagManagementView(
+                                storeId: storeId,
+                                storeName: storeName,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
                 const SizedBox(height: 24),

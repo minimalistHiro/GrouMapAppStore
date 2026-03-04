@@ -1,6 +1,7 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-03-04更新（4回目）: `StoreSettingsDetailView` の「店舗情報編集」セクションに管理者オーナー（`isOwner=true`）限定で「NFCタグ管理」項目を追加。`NfcTagManagementView`（NFCタグ管理画面）を新規追加。
 ※ 2026-03-01更新（3回目）: `StoreSettingsDetailView` の「100円引きクーポン利用枚数」を「特別クーポン利用枚数」にリネームし合計割引額を追加表示。`AnalyticsView` の特別クーポン分析セクションにオーナー限定で「全店舗の特別クーポンを見る」遷移ボタンを追加。`AllStoreSpecialCouponView`（全店舗特別クーポン一覧画面）を新規追加。
 ※ 2026-03-01更新（2回目）: `AnalyticsView` のクーポン統計セクションの下に「特別クーポン分析」セクションを追加。コイン交換クーポンの発行枚数・使用済み・割引合計金額を表示。
 ※ 2026-03-01更新: 投稿一覧画面・投稿詳細画面・投稿管理画面に閲覧数表示を追加。投稿詳細にコメント数アイコンを追加。一覧グリッドに閲覧数オーバーレイを通常投稿・Instagram投稿共通で表示。管理画面のフッターにいいね数・コメント数・閲覧数（サブコレクションベース）を追加。
@@ -254,8 +255,13 @@
 - 説明: 店舗の公開/非公開（`isActive`）を管理する画面。トグル下に「現在、ユーザーに公開中です / 現在、ユーザーには非表示です」を表示し、更新中はトグルを無効化
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「特別クーポン利用枚数」カード（コイン交換クーポンの累計使用枚数＋合計割引額）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「特別クーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して枚数と合計割引額を表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+- 構成: 店舗情報カード、7つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理/NFCタグ管理〈管理者オーナーのみ〉）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「特別クーポン利用枚数」カード（コイン交換クーポンの累計使用枚数＋合計割引額）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。「NFCタグ管理」は管理者オーナー（`isAdminOwnerProvider`）のみ表示し、`NfcTagManagementView` へ遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「特別クーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して枚数と合計割引額を表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+
+### NfcTagManagementView (`lib/views/settings/nfc_tag_management_view.dart`)
+- 構成: `CommonHeader`（「NFCタグ管理」）、説明カード（オレンジ枠・NDEFレコード書き込み手順の説明）、タグ情報カード（NFCタグ登録済み時のみ表示。NFC URL / 店舗ID / シークレットの3行、各行にコピーボタン）、未登録時の未登録表示（NFCアイコン+テキスト）、生成/再生成ボタン（`CustomButton`。タグなし=オレンジ「新しいNFCタグを生成する」 / タグあり=赤「新しいNFCタグを再生成する」）。再生成時は確認ダイアログで「現在のタグが無効になる」旨を表示
+- 説明: 管理者オーナー（`isOwner=true`）専用のNFCタグ管理画面。`activeNfcTagProvider`（StreamProvider）でFirestore `nfc_tags` から対象店舗のアクティブタグをリアルタイム取得。「生成する」ボタンで`Random.secure()`による24文字タグシークレットを自動生成し、Cloud Function `registerNfcTag` を呼び出す。生成後はFirestoreストリームが自動更新し、NFC URL（`https://groumapapp.web.app/checkin?storeId={storeId}&secret={tagSecret}`）・storeId・tagSecretをコピーボタン付きで表示。エラーはダイアログ表示
+- 遷移元: StoreSettingsDetailView の「NFCタグ管理」設定項目（管理者オーナーのみ）
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -517,6 +523,7 @@
             │     ├─ クーポン管理（CouponsManageView）
             │     │  ├─ 新規作成（CreateCouponView）
             │     │  └─ 編集（EditCouponView）
+            │     ├─ NFCタグ管理（NfcTagManagementView）※管理者オーナーのみ
             │     ├─ 店舗利用者推移（StoreUserTrendView）
             │     ├─ 新規顧客推移（NewCustomerTrendView）
             │     ├─ クーポン利用者推移（CouponUsageTrendView）
