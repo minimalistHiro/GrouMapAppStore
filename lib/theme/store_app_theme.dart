@@ -31,7 +31,7 @@ abstract final class StoreAppTheme {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: StoreUi.card,
         elevation: 0,
         margin: EdgeInsets.zero,
