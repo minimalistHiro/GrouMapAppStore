@@ -266,6 +266,33 @@ class AuthService {
     }
   }
 
+  /// 店舗オーナー向けアカウント作成（店舗情報なし・リンクコードで後から紐づけ）
+  Future<UserCredential?> createStoreOwnerAccount(String email, String password) async {
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    if (userCredential.user != null) {
+      final uid = userCredential.user!.uid;
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'email': email,
+        'displayName': '',
+        'isOwner': false,
+        'isStoreOwner': true,
+        'linkedStoreId': null,
+        'createdStores': [],
+        'emailVerified': false,
+        'emailVerifiedAt': null,
+        'emailOtpRequired': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    return userCredential;
+  }
+
   // ログアウト
   Future<void> signOut() async {
     await _auth.signOut();

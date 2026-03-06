@@ -246,29 +246,21 @@ class _LoginViewState extends ConsumerState<LoginView> {
                 
                 const SizedBox(height: 32),
                 
-                // 新規登録リンク
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'アカウントをお持ちでない方は ',
-                      style: TextStyle(color: Colors.grey),
+                // 店舗オーナー向けアカウント作成リンク
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const TermsPrivacyConsentView()),
+                    );
+                  },
+                  child: const Text(
+                    '来店データを確認したい方はこちら',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (context) => const TermsPrivacyConsentView()),
-                        );
-                      },
-                      child: const Text(
-                        '新規登録',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
