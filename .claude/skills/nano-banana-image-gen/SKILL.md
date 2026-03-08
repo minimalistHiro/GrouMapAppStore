@@ -1,13 +1,13 @@
 ---
 name: nano-banana-image-gen
-description: 「画像を生成して」「画像を作って」「アイコンを作って」「バナーを作って」など、画像生成の依頼時に、Nano Banana Pro（Gemini 3 Pro Image）APIを使って画像を自動生成する。
+description: 「画像を生成して」「画像を作って」「アイコンを作って」「バナーを作って」など、画像生成の依頼時に、Nano Banana 2（Gemini 3.1 Flash Image）APIを使って画像を自動生成する。
 ---
 
-# Nano Banana Pro 画像生成スキル
+# Nano Banana 2 画像生成スキル
 
 ## 目的
 
-ユーザーから画像生成を依頼されたときに、Nano Banana Pro（Gemini 3 Pro Image）APIを使って自動的に画像を生成する。
+ユーザーから画像生成を依頼されたときに、Nano Banana 2（Gemini 3.1 Flash Image）APIを使って自動的に画像を生成する。
 
 ## 生成手順の参照
 

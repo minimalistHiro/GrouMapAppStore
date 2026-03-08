@@ -1,4 +1,4 @@
-# Nano Banana Pro 画像生成手順
+# Nano Banana 2 画像生成手順
 
 ## 手順
 
