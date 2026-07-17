@@ -209,13 +209,13 @@ class AuthService {
           'longitude': 0.0,
         },
         'businessHours': storeInfo['businessHours'] ?? {
-          'monday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'tuesday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'wednesday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'thursday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'friday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'saturday': {'open': '09:00', 'close': '18:00', 'isOpen': true},
-          'sunday': {'open': '09:00', 'close': '18:00', 'isOpen': false},
+          'monday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'tuesday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'wednesday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'thursday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'friday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'saturday': {'open': '09:00', 'close': '18:00', 'isOpen': true, 'periods': [{'open': '09:00', 'close': '18:00'}]},
+          'sunday': {'open': '09:00', 'close': '18:00', 'isOpen': false, 'periods': [{'open': '09:00', 'close': '18:00'}]},
         },
         'tags': storeInfo['tags'] ?? [],
         'socialMedia': storeInfo['socialMedia'] ?? {
@@ -264,6 +264,33 @@ class AuthService {
       print('Error creating store document: $e');
       rethrow;
     }
+  }
+
+  /// 店舗オーナー向けアカウント作成（店舗情報なし・リンクコードで後から紐づけ）
+  Future<UserCredential?> createStoreOwnerAccount(String email, String password) async {
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    if (userCredential.user != null) {
+      final uid = userCredential.user!.uid;
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'email': email,
+        'displayName': '',
+        'isOwner': false,
+        'isStoreOwner': true,
+        'linkedStoreId': null,
+        'createdStores': [],
+        'emailVerified': false,
+        'emailVerifiedAt': null,
+        'emailOtpRequired': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    return userCredential;
   }
 
   // ログアウト

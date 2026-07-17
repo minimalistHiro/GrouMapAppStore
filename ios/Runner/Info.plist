@@ -26,14 +26,41 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartobservatory._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>QRコードの読み取りや写真撮影のためにカメラへのアクセスを許可してください。</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>このアプリはデバッグ用にローカルネットワークを使用します。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>地図上で店舗の位置を設定するために位置情報へのアクセスを許可してください。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>店舗IDのQRコード画像を写真ライブラリに保存するためにアクセスを許可してください。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>QRコード画像やクーポン画像を選択するために写真ライブラリへのアクセスを許可してください。</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

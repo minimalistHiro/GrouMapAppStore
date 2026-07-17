@@ -1621,7 +1621,7 @@ SPEC CHECKSUMS:
   FirebaseMessagingInterop: 63e504b147a7206cfe64cbe2f40c2ddd009945bd
   FirebaseSharedSwift: e17c654ef1f1a616b0b33054e663ad1035c8fd40
   FirebaseStorage: 50fc9ee147392943e492467db6b52759b0447037
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_image_compress_common: ec1d45c362c9d30a3f6a0426c297f47c52007e3e
   geolocator_apple: 66b711889fd333205763b83c9dcf0a57a28c7afd
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7

@@ -3,7 +3,7 @@ import '../../widgets/common_header.dart';
 import '../../widgets/custom_button.dart';
 import '../settings/privacy_policy_view.dart';
 import '../settings/terms_of_service_view.dart';
-import 'store_info_view.dart';
+import 'store_owner_sign_up_view.dart';
 
 class TermsPrivacyConsentView extends StatefulWidget {
   const TermsPrivacyConsentView({super.key});
@@ -142,7 +142,7 @@ class _TermsPrivacyConsentViewState extends State<TermsPrivacyConsentView> {
   void _goToStoreInfo() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const StoreInfoView(),
+        builder: (context) => const StoreOwnerSignUpView(),
       ),
     );
   }

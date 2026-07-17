@@ -1,6 +1,9 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-03-06更新（6回目）: `AdminStoreListView` に図鑑並び替え機能を追加。AppBarに「並び替え」ボタン（`Icons.reorder`）を追加し、タップで`ReorderableListView`によるドラッグ&ドロップ並び替えモードに切替。各アイテムに現在の番号（オレンジ円）とドラッグハンドルを表示。「保存」でFirestoreの`zukanOrder`フィールドを一括バッチ更新。`allStoresForAdminProvider` を作成日降順からzukanOrder順に変更。`AdminStoreService` に `updateZukanOrder(List<String>)`・`_getNextZukanOrder()` を追加し、店舗作成時に`zukanOrder`を自動採番（既存最大値+1）。
+※ 2026-03-06更新（5回目）: 店舗登録フロー再設計。管理者による店舗作成フロー（`AdminStoreListView` / `AdminStoreCreateView`）と店舗オーナー任意登録フロー（`StoreOwnerSignUpView` / `StoreLinkView`）を新規追加。`OwnerSettingsView` に「店舗管理」セクションを追加。`TermsPrivacyConsentView` の遷移先を `StoreOwnerSignUpView` に変更。`LoginView` の新規登録テキストを変更。`auth_wrapper.dart` に未紐づけ状態の分岐を追加。
+※ 2026-03-04更新（4回目）: `StoreSettingsDetailView` の「店舗情報編集」セクションに管理者オーナー（`isOwner=true`）限定で「NFCタグ管理」項目を追加。`NfcTagManagementView`（NFCタグ管理画面）を新規追加。
 ※ 2026-03-01更新（3回目）: `StoreSettingsDetailView` の「100円引きクーポン利用枚数」を「特別クーポン利用枚数」にリネームし合計割引額を追加表示。`AnalyticsView` の特別クーポン分析セクションにオーナー限定で「全店舗の特別クーポンを見る」遷移ボタンを追加。`AllStoreSpecialCouponView`（全店舗特別クーポン一覧画面）を新規追加。
 ※ 2026-03-01更新（2回目）: `AnalyticsView` のクーポン統計セクションの下に「特別クーポン分析」セクションを追加。コイン交換クーポンの発行枚数・使用済み・割引合計金額を表示。
 ※ 2026-03-01更新: 投稿一覧画面・投稿詳細画面・投稿管理画面に閲覧数表示を追加。投稿詳細にコメント数アイコンを追加。一覧グリッドに閲覧数オーバーレイを通常投稿・Instagram投稿共通で表示。管理画面のフッターにいいね数・コメント数・閲覧数（サブコレクションベース）を追加。
@@ -27,21 +30,29 @@
 
 ### AuthWrapper (`lib/views/auth/auth_wrapper.dart`)
 - 構成: 認証状態判定、メール認証要否の分岐、AppUpdateGate
-- 説明: 起動時の認証・認証済み判定を行うラッパー
+- 説明: 起動時の認証・認証済み判定を行うラッパー。メール認証済みかつ `isStoreOwner=true` で `linkedStoreId=null`（店舗未紐づけ）の場合は `StoreLinkView` へ自動リダイレクト
 
 ## 認証・登録
 
 ### LoginView (`lib/views/auth/login_view.dart`)
-- 構成: ロゴ、メール/パスワード入力、ログインボタン、パスワード再設定導線
-- 説明: 店舗アカウントのログイン画面
+- 構成: ロゴ、メール/パスワード入力、ログインボタン、パスワード再設定導線、「来店データを確認したい方はこちら」リンク
+- 説明: 店舗アカウントのログイン画面。「来店データを確認したい方はこちら」から `TermsPrivacyConsentView` へ遷移（旧「新規登録」テキストを変更）
 
 ### TermsPrivacyConsentView (`lib/views/auth/terms_privacy_consent_view.dart`)
 - 構成: イントロ説明、白枠カード（利用規約/プライバシーポリシー）×2、各カード内の青色「確認する（必須）」ボタン、各カードの同意状態表示（未同意/同意済み）、下部固定「同意して次へ」ボタン（2項目同意済み時のみ有効）
-- 説明: 登録前の規約同意画面。各「確認する（必須）」から文書画面を開き、最下部までスクロール後に有効化される「同意する」を押して戻ると該当カードが同意済みに切り替わる。同意済みカードの確認ボタンはグレーアウトされる
+- 説明: 登録前の規約同意画面。遷移先は `StoreOwnerSignUpView`（旧 `StoreInfoView` から変更）
+
+### StoreOwnerSignUpView (`lib/views/auth/store_owner_sign_up_view.dart`) 【新規追加】
+- 構成: ロゴ、タイトル「アカウント作成」、説明文（来店データ確認用・リンクコードで紐づけ旨）、メール/パスワード/確認パスワード入力、「アカウント作成」ボタン
+- 説明: 店舗オーナー向けアカウント作成画面（店舗情報の入力なし）。アカウント作成後は `EmailVerificationPendingView` へ遷移。Firestoreに `isStoreOwner: true`, `linkedStoreId: null` でユーザードキュメントを作成
+
+### StoreLinkView (`lib/views/auth/store_link_view.dart`) 【新規追加】
+- 構成: リンクアイコン、タイトル「店舗との紐づけ」、説明テキスト、6文字リンクコード入力フィールド（大文字自動変換）、「紐づける」ボタン、「後で紐づける」テキストボタン、案内メッセージ
+- 説明: 運営から受け取った6文字のリンクコードを入力して店舗とアカウントを紐づける画面。紐づけ成功後は `MainNavigationView` へ遷移。「後で紐づける」でも `MainNavigationView` へ遷移（機能制限なし）。`isFromSignUp: true` 時はAppBarを非表示にする
 
 ### SignUpView (`lib/views/auth/sign_up_view.dart`)
 - 構成: メール/パスワード入力、登録ボタン
-- 説明: 店舗アカウント作成画面
+- 説明: 旧フロー用の店舗アカウント作成画面。新フローでは `StoreOwnerSignUpView` を使用
 
 ### EmailVerificationPendingView (`lib/views/auth/email_verification_pending_view.dart`)
 - 構成: 認証案内、6桁コード入力、認証/再送、戻る/削除導線
@@ -254,8 +265,13 @@
 - 説明: 店舗の公開/非公開（`isActive`）を管理する画面。トグル下に「現在、ユーザーに公開中です / 現在、ユーザーには非表示です」を表示し、更新中はトグルを無効化
 
 ### StoreSettingsDetailView (`lib/views/settings/store_settings_detail_view.dart`)
-- 構成: 店舗情報カード、6つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「特別クーポン利用枚数」カード（コイン交換クーポンの累計使用枚数＋合計割引額）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
-- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「特別クーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して枚数と合計割引額を表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+- 構成: 店舗情報カード、7つの設定項目リスト（プロフィール/位置情報/メニュー/店内画像/決済方法/クーポン管理/NFCタグ管理〈管理者オーナーのみ〉）、ポスター用プロンプトコピーボタン、画像一括ダウンロードボタン（円形）、データセクション（店舗利用者推移/新規顧客推移/クーポン利用者推移/おすすめ表示推移の4項目リスト）、「特別クーポン利用枚数」カード（コイン交換クーポンの累計使用枚数＋合計割引額）、全来店記録セクション（男女比/年齢別/新規・リピートの円グラフ3種）
+- 説明: 特定店舗の各種設定項目を一覧表示し、各編集画面へ遷移する中間画面。クーポン管理はタップした店舗を対象に固定して遷移。「NFCタグ管理」は管理者オーナー（`isAdminOwnerProvider`）のみ表示し、`NfcTagManagementView` へ遷移。ポスター用プロンプトコピーは店舗情報とクーポン情報をマークダウン形式でクリップボードにコピー。画像ダウンロードは店舗画像と全クーポン画像をZIP化して保存。データセクションでは分析画面と同じUIで各推移画面へ遷移（対象店舗IDを渡して正確なデータを表示）。「特別クーポン利用枚数」は `user_coupons` から `type=coin_exchange` かつ `isUsed=true` を集計して枚数と合計割引額を表示。円グラフはallVisitPieChartDataProviderで店舗ごとのトランザクションデータを集計表示
+
+### NfcTagManagementView (`lib/views/settings/nfc_tag_management_view.dart`)
+- 構成: `CommonHeader`（「NFCタグ管理」）、説明カード（オレンジ枠・NDEFレコード書き込み手順の説明）、タグ情報カード（NFCタグ登録済み時のみ表示。NFC URL / 店舗ID / シークレットの3行、各行にコピーボタン）、未登録時の未登録表示（NFCアイコン+テキスト）、生成/再生成ボタン（`CustomButton`。タグなし=オレンジ「新しいNFCタグを生成する」 / タグあり=赤「新しいNFCタグを再生成する」）。再生成時は確認ダイアログで「現在のタグが無効になる」旨を表示
+- 説明: 管理者オーナー（`isOwner=true`）専用のNFCタグ管理画面。`activeNfcTagProvider`（StreamProvider）でFirestore `nfc_tags` から対象店舗のアクティブタグをリアルタイム取得。「生成する」ボタンで`Random.secure()`による24文字タグシークレットを自動生成し、Cloud Function `registerNfcTag` を呼び出す。生成後はFirestoreストリームが自動更新し、NFC URL（`https://groumapapp.web.app/checkin?storeId={storeId}&secret={tagSecret}`）・storeId・tagSecretをコピーボタン付きで表示。エラーはダイアログ表示
+- 遷移元: StoreSettingsDetailView の「NFCタグ管理」設定項目（管理者オーナーのみ）
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
 - 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
@@ -374,8 +390,17 @@
 - 説明: 通知設定画面（stores/{storeId}のnotificationSettings・emailNotificationSettingsに保存）
 
 ### OwnerSettingsView (`lib/views/settings/owner_settings_view.dart`)
-- 構成: キャンペーン（友達紹介・店舗紹介・くじ引き・~~スロット（廃止）~~）/メンテナンス/バージョン管理/データ管理の設定。友達紹介セクションでは開始日・終了日に加え、招待者へのコイン数・被招待者へのコイン数（各1〜999）も設定可能。データ管理セクションでは「不整合を確認」ボタンでスタンプと来店数の整合性チェック、「スタンプを同期」ボタンで一括修正、不整合件数表示と「詳細を見る」ボタンで `StampSyncDetailView` へ遷移
+- 構成: **【店舗管理セクション（新規）】** 店舗一覧・新規作成への遷移（`AdminStoreListView`）/ キャンペーン（友達紹介・店舗紹介・くじ引き）/メンテナンス/バージョン管理/データ管理の設定。友達紹介セクションでは開始日・終了日に加え、招待者へのコイン数・被招待者へのコイン数（各1〜999）も設定可能。データ管理セクションでは「不整合を確認」ボタンでスタンプと来店数の整合性チェック、「スタンプを同期」ボタンで一括修正、不整合件数表示と「詳細を見る」ボタンで `StampSyncDetailView` へ遷移
 - 説明: オーナー向けの高度設定画面。`owner_settings/current` に保存され、ユーザーアプリの友達紹介ページに即時反映される
+
+### AdminStoreListView (`lib/views/settings/admin_store_list_view.dart`) 【新規追加】
+- 構成: AppBar「店舗管理」＋右上「並び替え」ボタン（`Icons.reorder`）＋「+」ボタン（`AdminStoreCreateView` へ遷移）、店舗数カウント、店舗カード一覧（店舗名・カテゴリ・公開状態バッジ・リンクコード表示・紐づけ件数・コピーボタン）、空状態は「最初の店舗を作成」ボタン
+- 並び替えモード: 「並び替え」ボタンで `ReorderableListView` による全画面ドラッグ&ドロップモードに切替。各行に番号（オレンジ円）・店舗名・カテゴリ・ドラッグハンドルを表示。AppBarが「キャンセル」「保存」ボタンに変化。「保存」でFirestoreの `zukanOrder` を一括バッチ更新
+- 説明: 管理者専用の店舗一覧画面。全承認済み店舗を `zukanOrder` 順（図鑑表示番号順）で表示。各店舗カードのリンクコード表示ボタンから `_LinkCodeBottomSheet` を開き、コードのコピーや再生成が可能。`isOwner=true` のユーザー（OwnerSettingsView 経由）のみアクセス
+
+### AdminStoreCreateView (`lib/views/settings/admin_store_create_view.dart`) 【新規追加】
+- 構成: AppBar「新規店舗を作成」、店舗情報フォーム（店舗名・経営形態・法人名/代表者名・アイコン画像・店舗イメージ・カテゴリ/サブカテゴリ・住所・電話番号・店舗説明・位置情報・営業時間・タグ・SNS・設備サービス）、「作成する」ボタン
+- 説明: 管理者専用の店舗新規作成画面。作成時に `isApproved: true`（即時承認）・`isActive: false`（非公開）・6文字英数字リンクコードを自動生成。作成完了後にリンクコード表示ダイアログを表示（コピーボタン付き）。`AdminStoreListView` の「+」ボタンから遷移
 
 ### StampSyncDetailView (`lib/views/settings/stamp_sync_detail_view.dart`)
 - 構成: CommonHeader「スタンプ不整合ユーザー」、不整合ユーザー一覧（CircleAvatar（プロフィール画像 or 名前先頭文字フォールバック）、ユーザー名、店舗名、来店数、スタンプ数）、不整合0件時は緑チェックアイコン＋「不整合はありません」メッセージ
@@ -517,6 +542,7 @@
             │     ├─ クーポン管理（CouponsManageView）
             │     │  ├─ 新規作成（CreateCouponView）
             │     │  └─ 編集（EditCouponView）
+            │     ├─ NFCタグ管理（NfcTagManagementView）※管理者オーナーのみ
             │     ├─ 店舗利用者推移（StoreUserTrendView）
             │     ├─ 新規顧客推移（NewCustomerTrendView）
             │     ├─ クーポン利用者推移（CouponUsageTrendView）

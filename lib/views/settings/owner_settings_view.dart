@@ -6,6 +6,9 @@ import '../../models/owner_settings_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../providers/auth_provider.dart';
+import 'admin_store_list_view.dart';
+import 'area_management_view.dart';
+import 'store_area_rarity_view.dart';
 import 'stamp_sync_detail_view.dart';
 
 class OwnerSettingsView extends ConsumerStatefulWidget {
@@ -354,6 +357,53 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
                       onChanged: (_) {
                         _hasLocalEdits = true;
                       },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: '店舗管理',
+                  subtitle: '店舗の新規作成・リンクコード管理を行います',
+                  icon: Icons.add_business_outlined,
+                  children: [
+                    _buildNavigationRow(
+                      label: '店舗一覧・新規作成',
+                      description: '店舗の作成・リンクコードの確認・再生成',
+                      icon: Icons.store_outlined,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AdminStoreListView(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'ゲーム設定',
+                  subtitle: 'エリア定義と店舗のレア度・エリア設定を管理します',
+                  icon: Icons.map_outlined,
+                  children: [
+                    _buildNavigationRow(
+                      label: 'エリア管理',
+                      description: '蕨駅周辺・川口駅周辺などのエリアを作成・編集',
+                      icon: Icons.location_on_outlined,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AreaManagementView(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    _buildNavigationRow(
+                      label: '店舗エリア・レア度設定',
+                      description: '各店舗のエリア帰属とレア度（手動）を設定',
+                      icon: Icons.tune_outlined,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const StoreAreaRarityView(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -930,6 +980,25 @@ class _OwnerSettingsViewState extends ConsumerState<OwnerSettingsView> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNavigationRow({
+    required String label,
+    required String description,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: const Color(0xFFFF6B35)),
+      title: Text(label),
+      subtitle: Text(
+        description,
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 
