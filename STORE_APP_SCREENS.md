@@ -1,6 +1,7 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-07-17更新（QRスタンプ押印修正）: スタンプ未設定・0のユーザーにも1日1個付与。通常・特別クーポンの使用処理をCloud Functionsの押印トランザクションへ統合。当日押印済みは生のFunctionsエラーではなく日本語ダイアログで案内。
 ※ 2026-03-06更新（6回目）: `AdminStoreListView` に図鑑並び替え機能を追加。AppBarに「並び替え」ボタン（`Icons.reorder`）を追加し、タップで`ReorderableListView`によるドラッグ&ドロップ並び替えモードに切替。各アイテムに現在の番号（オレンジ円）とドラッグハンドルを表示。「保存」でFirestoreの`zukanOrder`フィールドを一括バッチ更新。`allStoresForAdminProvider` を作成日降順からzukanOrder順に変更。`AdminStoreService` に `updateZukanOrder(List<String>)`・`_getNextZukanOrder()` を追加し、店舗作成時に`zukanOrder`を自動採番（既存最大値+1）。
 ※ 2026-03-06更新（5回目）: 店舗登録フロー再設計。管理者による店舗作成フロー（`AdminStoreListView` / `AdminStoreCreateView`）と店舗オーナー任意登録フロー（`StoreOwnerSignUpView` / `StoreLinkView`）を新規追加。`OwnerSettingsView` に「店舗管理」セクションを追加。`TermsPrivacyConsentView` の遷移先を `StoreOwnerSignUpView` に変更。`LoginView` の新規登録テキストを変更。`auth_wrapper.dart` に未紐づけ状態の分岐を追加。
 ※ 2026-03-04更新（4回目）: `StoreSettingsDetailView` の「店舗情報編集」セクションに管理者オーナー（`isOwner=true`）限定で「NFCタグ管理」項目を追加。`NfcTagManagementView`（NFCタグ管理画面）を新規追加。
@@ -184,7 +185,7 @@
 
 ### CouponSelectForCheckoutView (`lib/views/coupons/coupon_select_for_checkout_view.dart`)
 - 構成: 「通常クーポン」セクション（`coupons/{storeId}/coupons` から取得、スタンプ数条件付き）と「特別クーポン」セクション（`user_coupons` から取得・`coin_exchange`/`stamp_reward` タイプ）のリスト、チェックボックス選択、次工程への導線。特別クーポンカードには種別バッジ（コイン交換=オレンジ / スタンプ達成=緑）を表示。クーポンが1枚もない場合は「利用可能なクーポンがありません」を表示
-- 説明: 会計時に使うクーポンの選択画面（通常クーポン＋特別クーポンの両方を表示）
+- 説明: 会計時に使うクーポンの選択画面（通常クーポン＋特別クーポンの両方を表示）。QR押印へ進む場合は選択IDを `punchStamp` に渡し、押印と同じサーバートランザクションで使用済みに更新
 
 ### PostsManageView (`lib/views/posts/posts_manage_view.dart`)
 - 構成: `CommonHeader`（右上 `+` ボタンなし）、カテゴリフィルター（白背景・角丸16・ボーダーなし・影なし）、投稿一覧（`ListView.separated`・間隔12・左右上下パディング16）、投稿カード（白背景・角丸16・ボーダーなし・影なし・padding12。左: 86×86 画像エリア（オレンジ薄背景・角丸12・画像なし時 `Icons.article`・複数画像がある場合は先頭1枚を表示）・右: カテゴリバッジ＋公開状態バッジ＋コンパクトな編集・削除ボタン＋タイトル（14px bold）＋投稿内容（12px グレー・最大2行）＋いいね数❤️・コメント数💬・閲覧数👁・投稿日🕐（11px グレー・サブコレクションベースで正確にカウント））、下部固定の新規投稿作成 `CustomButton`（カプセル型）。空状態でも中央ボタンは表示せず下部固定ボタンのみ表示
@@ -274,8 +275,8 @@
 - 遷移元: StoreSettingsDetailView の「NFCタグ管理」設定項目（管理者オーナーのみ）
 
 ### StoreUserDetailView (`lib/views/user/store_user_detail_view.dart`)
-- 構成: ユーザー統計、来店/スタンプ/ポイント、押印導線
-- 説明: 店舗側のユーザー詳細画面
+- 構成: `CommonHeader`、ユーザー情報カード、`StatsCard`（来店/スタンプ/ポイント）、来店履歴、`CustomButton`の押印導線、処理中の全面ローディング
+- 説明: 店舗側のユーザー詳細画面。QR押印と選択クーポン使用を `punchStamp` で一括処理。当日押印済みの場合は「本日は押印済みです」ダイアログを表示し、押印ボタンを無効化
 
 ### PointRequestConfirmationView (`lib/views/user/point_request_confirmation_view.dart`)
 - 構成: 押印確認、承認/拒否、結果表示

@@ -1,6 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/material.dart';
+
+import '../../theme/store_ui.dart';
+import '../../widgets/app_loading_overlay.dart';
+import '../../widgets/common_header.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_loading_indicator.dart';
+import '../../widgets/dismiss_keyboard.dart';
+import '../../widgets/game_dialog.dart';
+import '../../widgets/stats_card.dart';
 import 'point_request_confirmation_view.dart';
 
 class StoreUserDetailView extends StatefulWidget {
@@ -11,13 +20,13 @@ class StoreUserDetailView extends StatefulWidget {
   final Map<String, dynamic>? scannedUserProfile;
 
   const StoreUserDetailView({
-    Key? key,
+    super.key,
     required this.userId,
     required this.storeId,
     this.selectedCouponIds = const [],
     this.selectedSpecialCouponIds = const [],
     this.scannedUserProfile,
-  }) : super(key: key);
+  });
 
   @override
   State<StoreUserDetailView> createState() => _StoreUserDetailViewState();
@@ -26,6 +35,7 @@ class StoreUserDetailView extends StatefulWidget {
 class _StoreUserDetailViewState extends State<StoreUserDetailView> {
   late Future<_UserSummary> _summaryFuture;
   bool _isStampProcessing = false;
+  bool _alreadyStampedToday = false;
 
   @override
   void initState() {
@@ -124,22 +134,10 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
         'storeId': widget.storeId,
         if (widget.selectedCouponIds.isNotEmpty)
           'selectedCouponIds': widget.selectedCouponIds,
+        if (widget.selectedSpecialCouponIds.isNotEmpty)
+          'selectedUserCouponIds': widget.selectedSpecialCouponIds,
       };
       await callable.call(payload);
-
-      // 特別クーポン（user_coupons）を使用済みに更新
-      if (widget.selectedSpecialCouponIds.isNotEmpty) {
-        final firestore = FirebaseFirestore.instance;
-        final batch = firestore.batch();
-        for (final userCouponId in widget.selectedSpecialCouponIds) {
-          final ref = firestore.collection('user_coupons').doc(userCouponId);
-          batch.update(ref, {
-            'isUsed': true,
-            'usedAt': FieldValue.serverTimestamp(),
-          });
-        }
-        await batch.commit();
-      }
 
       if (!mounted) return;
       final requestId = '${widget.storeId}_${widget.userId}';
@@ -148,15 +146,24 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
           builder: (_) => PointRequestConfirmationView(requestId: requestId),
         ),
       );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('スタンプ押印に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint(
+        'punchStamp error: code=${e.code}, message=${e.message}, details=${e.details}',
+      );
+      if (!mounted) return;
+      if (e.code == 'already-exists') {
+        setState(() {
+          _alreadyStampedToday = true;
+          _summaryFuture = _loadSummary();
+        });
+        await _showAlreadyStampedDialog();
+      } else {
+        await _showStampErrorDialog();
       }
+    } catch (e) {
+      debugPrint('punchStamp unexpected error: $e');
+      if (!mounted) return;
+      await _showStampErrorDialog();
     } finally {
       if (mounted) {
         setState(() {
@@ -166,14 +173,46 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
     }
   }
 
+  Future<void> _showAlreadyStampedDialog() {
+    return showGameDialog(
+      context: context,
+      title: '本日は押印済みです',
+      message: 'この店舗では、本日分のスタンプがすでに記録されています。',
+      icon: Icons.check_circle_outline,
+      actions: [
+        GameDialogAction(
+          label: 'OK',
+          isPrimary: true,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showStampErrorDialog() {
+    return showGameDialog(
+      context: context,
+      title: '押印できませんでした',
+      message: '通信状況を確認して、もう一度お試しください。',
+      icon: Icons.error_outline,
+      headerColor: StoreUi.error,
+      actions: [
+        GameDialogAction(
+          label: '閉じる',
+          isPrimary: true,
+          color: StoreUi.error,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('ユーザー詳細'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
+      backgroundColor: StoreUi.surface,
+      appBar: CommonHeader(
+        title: 'ユーザー詳細',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -185,81 +224,85 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
           ),
         ],
       ),
-      body: FutureBuilder<_UserSummary>(
-        future: _summaryFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: Text('ユーザー情報が取得できませんでした'));
-          }
+      body: DismissKeyboard(
+        child: Stack(
+          children: [
+            FutureBuilder<_UserSummary>(
+              future: _summaryFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CustomLoadingIndicator());
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: Text('ユーザー情報が取得できませんでした'));
+                }
 
-          final data = snapshot.data!;
-          final userName = _resolveDisplayName(data.userData);
-          final profileUrl = _resolveProfileImageUrl(data.userData);
+                final data = snapshot.data!;
+                final userName = _resolveDisplayName(data.userData);
+                final profileUrl = _resolveProfileImageUrl(data.userData);
+                final availablePoints = data.balanceData != null
+                    ? _parseInt(data.balanceData?['availablePoints'])
+                    : _parseInt(data.userData?['points']) +
+                        _parseInt(data.userData?['specialPoints']);
+                final stamps = _parseInt(data.userStoreData?['stamps']);
+                final totalVisits =
+                    _parseInt(data.storeUserData?['totalVisits']);
+                final firstVisitAt =
+                    _parseDate(data.storeUserData?['firstVisitAt']);
+                final lastVisitAt =
+                    _parseDate(data.storeUserData?['lastVisitAt']);
 
-          final availablePoints = data.balanceData != null
-              ? _parseInt(data.balanceData?['availablePoints'])
-              : _parseInt(data.userData?['points']) +
-                  _parseInt(data.userData?['specialPoints']);
-
-          final stamps = _parseInt(data.userStoreData?['stamps']);
-          final totalVisits = _parseInt(data.storeUserData?['totalVisits']);
-          final firstVisitAt = _parseDate(data.storeUserData?['firstVisitAt']);
-          final lastVisitAt = _parseDate(data.storeUserData?['lastVisitAt']);
-
-          return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildHeader(userName, profileUrl),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: _buildStatCard('来店回数', '${totalVisits}回')),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard('スタンプ', '${stamps}個')),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _buildStatCard('ポイント', '${availablePoints}pt')),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildVisitInfo(firstVisitAt, lastVisitAt),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isStampProcessing ? null : _punchStamp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B35),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: _isStampProcessing
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'スタンプを押印する',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      _buildHeader(userName, profileUrl),
+                      const SizedBox(height: 16),
+                      StatsCard(
+                        title: '来店情報',
+                        items: [
+                          StatItem(
+                            label: '来店回数',
+                            value: '$totalVisits回',
+                            icon: Icons.storefront_outlined,
+                            color: StoreUi.primary,
                           ),
+                          StatItem(
+                            label: 'スタンプ',
+                            value: '$stamps個',
+                            icon: Icons.stars_outlined,
+                            color: Colors.amber.shade700,
+                          ),
+                          StatItem(
+                            label: 'ポイント',
+                            value: '${availablePoints}pt',
+                            icon: Icons.toll_outlined,
+                            color: Colors.blue,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildVisitInfo(firstVisitAt, lastVisitAt),
+                      const Spacer(),
+                      CustomButton(
+                        text: _alreadyStampedToday ? '本日は押印済み' : 'スタンプを押印する',
+                        onPressed: _isStampProcessing || _alreadyStampedToday
+                            ? null
+                            : _punchStamp,
+                        height: 52,
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
+            if (_isStampProcessing) const AppLoadingOverlay(),
+          ],
+        ),
       ),
     );
   }
@@ -271,9 +314,6 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
       ),
       child: Row(
         children: [
@@ -281,7 +321,7 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFFFF6B35),
+              color: StoreUi.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(32),
             ),
             child: ClipRRect(
@@ -293,9 +333,9 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
                       height: 64,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
-                          _buildFallbackAvatar(userName),
+                          _buildFallbackAvatar(),
                     )
-                  : _buildFallbackAvatar(userName),
+                  : _buildFallbackAvatar(),
             ),
           ),
           const SizedBox(width: 16),
@@ -321,39 +361,9 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
     );
   }
 
-  Widget _buildFallbackAvatar(String userName) {
-    return Center(
-      child: Text(
-        userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : '客',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
+  Widget _buildFallbackAvatar() {
+    return const Center(
+      child: Icon(Icons.person, color: StoreUi.primary, size: 34),
     );
   }
 
@@ -364,16 +374,13 @@ class _StoreUserDetailViewState extends State<StoreUserDetailView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             '来店履歴',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text('初回来店: ${_formatDate(firstVisitAt)}'),
