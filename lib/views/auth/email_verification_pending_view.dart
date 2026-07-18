@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/game_dialog.dart';
 import '../main_navigation_view.dart';
 import 'login_view.dart';
 
@@ -12,16 +14,18 @@ class EmailVerificationPendingView extends ConsumerStatefulWidget {
   final bool isLoginFlow;
 
   const EmailVerificationPendingView({
-    Key? key,
+    super.key,
     this.autoSendOnLoad = true,
     this.isLoginFlow = false,
-  }) : super(key: key);
+  });
 
   @override
-  ConsumerState<EmailVerificationPendingView> createState() => _EmailVerificationPendingViewState();
+  ConsumerState<EmailVerificationPendingView> createState() =>
+      _EmailVerificationPendingViewState();
 }
 
-class _EmailVerificationPendingViewState extends ConsumerState<EmailVerificationPendingView> {
+class _EmailVerificationPendingViewState
+    extends ConsumerState<EmailVerificationPendingView> {
   bool _isResending = false;
   bool _isVerifying = false;
   bool _isDeleting = false;
@@ -47,9 +51,9 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
-    
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFBF6F2),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -58,16 +62,16 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              
+
               // アイコン
               const Icon(
                 Icons.mark_email_unread,
                 size: 100,
                 color: Color(0xFFFF6B35),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // タイトル
               const Text(
                 'メール認証コードの入力',
@@ -78,9 +82,9 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // 説明文
               Text(
                 '${user?.email ?? "登録したメールアドレス"}に6桁の認証コードを送信しました。\nメールに記載されたコードを入力してください。',
@@ -91,7 +95,7 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               // メールプロバイダーの注意
               if (user?.email?.contains('@rakumail.jp') == true ||
                   user?.email?.contains('@yahoo.co.jp') == true)
@@ -122,9 +126,9 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                     ),
                   ),
                 ),
-              
+
               const SizedBox(height: 24),
-              
+
               // 注意事項
               Container(
                 padding: const EdgeInsets.all(16),
@@ -138,7 +142,8 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                        Icon(Icons.info_outline,
+                            color: Colors.orange, size: 20),
                         SizedBox(width: 8),
                         Text(
                           'ご注意',
@@ -161,7 +166,7 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
 
               TextField(
@@ -194,9 +199,9 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // 再送信ボタン
               CustomButton(
                 text: '認証コードを再送信',
@@ -210,9 +215,9 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // トップに戻るボタン
               TextButton(
                 onPressed: widget.isLoginFlow
@@ -229,7 +234,7 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 40),
             ],
           ),
@@ -242,11 +247,10 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
   Future<void> _verifyEmailOtp() async {
     final code = _codeController.text.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('6桁の認証コードを入力してください'),
-          backgroundColor: Colors.orange,
-        ),
+      await _showOtpError(
+        title: '入力内容をご確認ください',
+        message: '6桁の認証コードを入力してください。',
+        headerColor: Colors.orange,
       );
       return;
     }
@@ -261,13 +265,6 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
       await authService.setEmailOtpRequired(false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('メール認証が完了しました'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainNavigationView()),
           (route) => false,
@@ -275,11 +272,10 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('確認に失敗しました: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        debugPrint('メール認証エラー: $e');
+        await _showOtpError(
+          title: '認証に失敗しました',
+          message: _emailOtpErrorMessage(e, isSending: false),
         );
       }
     } finally {
@@ -298,26 +294,13 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
 
     try {
       final authService = ref.read(authServiceProvider);
-      final user = ref.read(currentUserProvider);
-
       await authService.sendEmailVerification();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${user?.email ?? "メールアドレス"} に認証コードを送信しました'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('送信に失敗しました: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+        debugPrint('認証コード送信エラー: $e');
+        await _showOtpError(
+          title: '送信に失敗しました',
+          message: _emailOtpErrorMessage(e, isSending: true),
         );
       }
     } finally {
@@ -332,6 +315,58 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
   // 認証コードを再送信
   Future<void> _resendEmailVerification() async {
     await _requestEmailOtp();
+  }
+
+  String _emailOtpErrorMessage(Object error, {required bool isSending}) {
+    if (error is FirebaseFunctionsException) {
+      switch (error.code) {
+        case 'resource-exhausted':
+          return error.message ??
+              (isSending
+                  ? 'しばらく待ってから、もう一度送信してください。'
+                  : '認証コードの試行回数が上限に達しました。再送信してください。');
+        case 'invalid-argument':
+          return error.message ?? '6桁の認証コードをご確認ください。';
+        case 'not-found':
+          return '認証コードが見つかりません。認証コードを再送信してください。';
+        case 'failed-precondition':
+          return error.message ?? '認証コードの有効期限をご確認ください。';
+        case 'unauthenticated':
+          return 'ログイン状態を確認できませんでした。ログインし直してください。';
+        case 'unavailable':
+        case 'deadline-exceeded':
+          return '通信に失敗しました。ネットワーク接続を確認して、もう一度お試しください。';
+        default:
+          break;
+      }
+    }
+
+    return isSending
+        ? '認証コードを送信できませんでした。時間をおいて再度お試しください。'
+        : '認証コードを確認して、もう一度お試しください。';
+  }
+
+  Future<void> _showOtpError({
+    required String title,
+    required String message,
+    Color headerColor = Colors.red,
+  }) async {
+    if (!mounted) return;
+    await showGameDialog(
+      context: context,
+      title: title,
+      message: message,
+      icon: Icons.error_outline,
+      headerColor: headerColor,
+      actions: [
+        GameDialogAction(
+          label: '閉じる',
+          onPressed: () => Navigator.of(context).pop(),
+          isPrimary: true,
+          color: headerColor,
+        ),
+      ],
+    );
   }
 
   Future<void> _deleteAccountAndReturn() async {
@@ -388,10 +423,12 @@ class _EmailVerificationPendingViewState extends ConsumerState<EmailVerification
     }
 
     try {
-      await authService.reauthenticateWithPassword(email: email, password: password);
+      await authService.reauthenticateWithPassword(
+          email: email, password: password);
       await authService.deleteAccount();
       if (mounted) {
         await authService.signOut();
+        if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginView()),
           (route) => false,

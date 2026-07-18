@@ -1,6 +1,7 @@
 # 店舗用アプリ 画面一覧（構成と説明）
 
 この一覧は `/Users/kanekohiroki/Desktop/groumapapp_store/lib/views` 配下の画面実装を基に整理しています。各画面の「構成」は主要なUI要素の概要、「説明」は用途の軽い要約です。
+※ 2026-07-18更新（メールOTP配送基盤移行）: ログイン時・メールアドレス変更時の6桁認証コード配送を、Google Workspace SMTPからResend APIへ変更。認証コード送信・検証エラーはスタックトレースを表示せず、利用者向けの日本語ダイアログで案内。
 ※ 2026-07-17更新（QRスタンプ押印修正）: スタンプ未設定・0のユーザーにも1日1個付与。通常・特別クーポンの使用処理をCloud Functionsの押印トランザクションへ統合。当日押印済みは生のFunctionsエラーではなく日本語ダイアログで案内。
 ※ 2026-03-06更新（6回目）: `AdminStoreListView` に図鑑並び替え機能を追加。AppBarに「並び替え」ボタン（`Icons.reorder`）を追加し、タップで`ReorderableListView`によるドラッグ&ドロップ並び替えモードに切替。各アイテムに現在の番号（オレンジ円）とドラッグハンドルを表示。「保存」でFirestoreの`zukanOrder`フィールドを一括バッチ更新。`allStoresForAdminProvider` を作成日降順からzukanOrder順に変更。`AdminStoreService` に `updateZukanOrder(List<String>)`・`_getNextZukanOrder()` を追加し、店舗作成時に`zukanOrder`を自動採番（既存最大値+1）。
 ※ 2026-03-06更新（5回目）: 店舗登録フロー再設計。管理者による店舗作成フロー（`AdminStoreListView` / `AdminStoreCreateView`）と店舗オーナー任意登録フロー（`StoreOwnerSignUpView` / `StoreLinkView`）を新規追加。`OwnerSettingsView` に「店舗管理」セクションを追加。`TermsPrivacyConsentView` の遷移先を `StoreOwnerSignUpView` に変更。`LoginView` の新規登録テキストを変更。`auth_wrapper.dart` に未紐づけ状態の分岐を追加。
@@ -57,7 +58,7 @@
 
 ### EmailVerificationPendingView (`lib/views/auth/email_verification_pending_view.dart`)
 - 構成: 認証案内、6桁コード入力、認証/再送、戻る/削除導線
-- 説明: メール認証コード入力画面
+- 説明: Resend APIで配送されるメール認証コードの入力・再送画面。送信・検証エラーは利用者向けの日本語ダイアログで表示
 
 ### PasswordResetView (`lib/views/auth/password_reset_view.dart`)
 - 構成: メールアドレス入力、再設定メール送信
@@ -380,7 +381,7 @@
 
 ### EmailChangeView (`lib/views/settings/email_change_view.dart`)
 - 構成: 説明テキスト、現在のメールアドレス表示（読み取り専用）、新しいメールアドレス入力、現在のパスワード入力（パスワード表示/非表示トグル付き）、「認証コードを送信」ボタン
-- 説明: メールアドレス変更画面。パスワード再認証後、新メールアドレスに6桁OTP認証コードを送信し、EmailChangeOtpViewに遷移。メール/パスワード認証のアカウントのみ利用可能（設定画面にもパスワード認証時のみ表示）
+- 説明: メールアドレス変更画面。パスワード再認証後、Resend APIで新メールアドレスに6桁OTP認証コードを送信し、EmailChangeOtpViewに遷移。メール/パスワード認証のアカウントのみ利用可能（設定画面にもパスワード認証時のみ表示）
 
 ### EmailChangeOtpView (`lib/views/settings/email_change_otp_view.dart`)
 - 構成: メールアイコン、タイトル「メールアドレス変更の認証」、送信先メール表示、注意事項ボックス、6桁コード入力フィールド（数字のみ・6桁制限）、「認証する」ボタン、「認証コードを再送信」ボタン
